@@ -837,7 +837,7 @@ body:has(.user-app.page-home) { min-height: 100svh; }
 .user-app.page-home .home-profile-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .user-app.page-home .home-profile-button > svg { flex: 0 0 auto; }
 .user-app.page-home .home-welcome { margin: 0 0 12px; color: #f5f8fc; font-size: 24px; font-weight: 750; line-height: 1.2; letter-spacing: -.4px; overflow-wrap: anywhere; }
-.user-app.page-home .bonus-banner { width: min(100%, clamp(240px, 44svh, 340px)); margin: 0 auto 14px; }
+.user-app.page-home .bonus-banner { width: calc(100% - 8px); margin: 0 auto 14px; }
 .user-app.page-home .section-title { margin-bottom: 10px; padding-left: 11px; font-size: 24px; }
 .user-app.page-home .section-title::before { width: 3px; }
 .user-app.page-home .quick-actions { gap: 8px; margin-bottom: 18px; }
@@ -856,7 +856,7 @@ body:has(.user-app.page-home) { min-height: 100svh; }
 .user-app.page-home footer { margin: 8px 0 0; }
 @media (max-height: 700px) {
   .user-app.page-home .home-welcome { margin-bottom: 8px; font-size: 22px; }
-  .user-app.page-home .bonus-banner { width: min(100%, 240px); margin-bottom: 10px; }
+  .user-app.page-home .bonus-banner { margin-bottom: 10px; }
   .user-app.page-home .section-title { margin-bottom: 8px; font-size: 22px; }
   .user-app.page-home .action-card { padding: 6px 10px; }
   .user-app.page-home .quick-actions { margin-bottom: 12px; }
