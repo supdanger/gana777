@@ -21,7 +21,7 @@ export function BankTransferCard({ bank, onCopy }: { bank: Bank; onCopy: (text: 
     '--bank-overlay': theme.overlay,
     '--bank-background-position': theme.backgroundPosition,
   };
-  const copyButton = (value: string, label: string) => <button type="button" onClick={() => onCopy(value, label)} aria-label={`Copiar ${label}`}><Copy size={16} /><span>Copiar</span></button>;
+  const copyButton = (value: string, label: string) => <button type="button" onClick={() => onCopy(value, label)} aria-label={`Copiar ${label}`} title={`Copiar ${label}`}><Copy size={13} /><span>Copiar</span></button>;
 
   return <section className={`bank-transfer-card ${theme.className}${theme.defaultBanner ? ' branded-bank-banner' : ''}${hasBankArt ? ' has-bank-art' : ''}`} data-bank-theme={theme.key} style={style} aria-label={`Datos para transferir a ${bank.bank}`}>
     <div className="bank-theme-art" aria-hidden="true" style={background ? { backgroundImage: `url(${JSON.stringify(background).slice(1, -1)})` } : undefined} />

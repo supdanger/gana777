@@ -531,6 +531,86 @@ a.social.instagram:hover { border-color: #ff8ab8; }
 }
 .user-app.page-deposit .bank-transfer-card.branded-bank-banner.theme-galicia.has-bank-art .bank-transfer-content { padding-top: clamp(68px, 20cqw, 86px); }
 .user-app.page-deposit .bank-transfer-card.theme-galicia .bank-art-subtitle { top: clamp(48px, 14cqw, 62px); }
+/* Mercado Pago mantiene la relación de aspecto de la marca en móviles. */
+.user-app.page-deposit .bank-transfer-card.theme-mercado-pago { container-type: inline-size; }
+.user-app.page-deposit .bank-transfer-card.branded-bank-banner.theme-mercado-pago.has-bank-art .bank-theme-art {
+  background-size: 106% auto;
+  background-position: center -2.5cqw;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0 26cqw, transparent 43cqw);
+  mask-image: linear-gradient(to bottom, #000 0 26cqw, transparent 43cqw);
+}
+.user-app.page-deposit .bank-transfer-card.branded-bank-banner.theme-mercado-pago.has-bank-art .bank-transfer-content { padding-top: clamp(72px, 21cqw, 88px); }
+.user-app.page-deposit .bank-transfer-card.theme-mercado-pago .bank-art-subtitle { top: clamp(51px, 15cqw, 64px); }
+/* El título de Ualá es más alto en el archivo y requiere su propio espacio. */
+.user-app.page-deposit .bank-transfer-card.theme-uala { container-type: inline-size; }
+.user-app.page-deposit .bank-transfer-card.branded-bank-banner.theme-uala.has-bank-art .bank-theme-art {
+  background-size: 106% auto;
+  background-position: center -1.3cqw;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0 26cqw, transparent 43cqw);
+  mask-image: linear-gradient(to bottom, #000 0 26cqw, transparent 43cqw);
+}
+.user-app.page-deposit .bank-transfer-card.branded-bank-banner.theme-uala.has-bank-art .bank-transfer-content { padding-top: clamp(72px, 22cqw, 96px); }
+.user-app.page-deposit .bank-transfer-card.theme-uala .bank-art-subtitle { top: clamp(51px, 16cqw, 72px); }
+/* Lemon conserva el tamaño natural de la marca y reserva aire bajo el título. */
+.user-app.page-deposit .bank-transfer-card.theme-lemon { container-type: inline-size; }
+.user-app.page-deposit .bank-transfer-card.branded-bank-banner.theme-lemon.has-bank-art .bank-theme-art {
+  background-size: 106% auto;
+  background-position: center -2.9cqw;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0 26cqw, transparent 43cqw);
+  mask-image: linear-gradient(to bottom, #000 0 26cqw, transparent 43cqw);
+}
+.user-app.page-deposit .bank-transfer-card.branded-bank-banner.theme-lemon.has-bank-art .bank-transfer-content { padding-top: clamp(74px, 23cqw, 100px); }
+.user-app.page-deposit .bank-transfer-card.theme-lemon .bank-art-subtitle { top: clamp(53px, 17cqw, 76px); }
+/* AstroPay mantiene el formato horizontal original de la marca. */
+.user-app.page-deposit .bank-transfer-card.theme-astropay { container-type: inline-size; }
+.user-app.page-deposit .bank-transfer-card.branded-bank-banner.theme-astropay.has-bank-art .bank-theme-art {
+  background-size: 106% auto;
+  background-position: center -2.5cqw;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0 26cqw, transparent 43cqw);
+  mask-image: linear-gradient(to bottom, #000 0 26cqw, transparent 43cqw);
+}
+.user-app.page-deposit .bank-transfer-card.branded-bank-banner.theme-astropay.has-bank-art .bank-transfer-content { padding-top: clamp(72px, 21cqw, 92px); }
+.user-app.page-deposit .bank-transfer-card.theme-astropay .bank-art-subtitle { top: clamp(51px, 15cqw, 66px); }
+/* Claro Pay conserva las proporciones de la marca y sus acentos superiores. */
+.user-app.page-deposit .bank-transfer-card.theme-claro-pay { container-type: inline-size; }
+.user-app.page-deposit .bank-transfer-card.branded-bank-banner.theme-claro-pay.has-bank-art .bank-theme-art {
+  background-size: 106% auto;
+  background-position: center -2.2cqw;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0 26cqw, transparent 43cqw);
+  mask-image: linear-gradient(to bottom, #000 0 26cqw, transparent 43cqw);
+}
+.user-app.page-deposit .bank-transfer-card.branded-bank-banner.theme-claro-pay.has-bank-art .bank-transfer-content { padding-top: clamp(74px, 23cqw, 100px); }
+.user-app.page-deposit .bank-transfer-card.theme-claro-pay .bank-art-subtitle { top: clamp(53px, 17cqw, 76px); }
+/* Personal Pay mantiene el formato horizontal del nombre y del isotipo. */
+.user-app.page-deposit .bank-transfer-card.theme-personal-pay { container-type: inline-size; }
+.user-app.page-deposit .bank-transfer-card.branded-bank-banner.theme-personal-pay.has-bank-art .bank-theme-art {
+  background-size: 106% auto;
+  background-position: center -1.8cqw;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0 26cqw, transparent 43cqw);
+  mask-image: linear-gradient(to bottom, #000 0 26cqw, transparent 43cqw);
+}
+.user-app.page-deposit .bank-transfer-card.branded-bank-banner.theme-personal-pay.has-bank-art .bank-transfer-content { padding-top: clamp(74px, 23cqw, 100px); }
+.user-app.page-deposit .bank-transfer-card.theme-personal-pay .bank-art-subtitle { top: clamp(53px, 17cqw, 76px); }
+/* Brubank usa una ilustración más alta; se conserva su relación de aspecto. */
+.user-app.page-deposit .bank-transfer-card.theme-brubank { container-type: inline-size; }
+.user-app.page-deposit .bank-transfer-card.branded-bank-banner.theme-brubank.has-bank-art .bank-theme-art {
+  background-size: 106% auto;
+  background-position: center -2.4cqw;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0 26cqw, transparent 43cqw);
+  mask-image: linear-gradient(to bottom, #000 0 26cqw, transparent 43cqw);
+}
+.user-app.page-deposit .bank-transfer-card.branded-bank-banner.theme-brubank.has-bank-art .bank-transfer-content { padding-top: clamp(76px, 24cqw, 104px); }
+.user-app.page-deposit .bank-transfer-card.theme-brubank .bank-art-subtitle { top: clamp(55px, 18cqw, 80px); }
+/* Naranja X conserva el formato original del nombre y del logotipo NX. */
+.user-app.page-deposit .bank-transfer-card.theme-naranja-x { container-type: inline-size; }
+.user-app.page-deposit .bank-transfer-card.branded-bank-banner.theme-naranja-x.has-bank-art .bank-theme-art {
+  background-size: 106% auto;
+  background-position: center -2.2cqw;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0 26cqw, transparent 43cqw);
+  mask-image: linear-gradient(to bottom, #000 0 26cqw, transparent 43cqw);
+}
+.user-app.page-deposit .bank-transfer-card.branded-bank-banner.theme-naranja-x.has-bank-art .bank-transfer-content { padding-top: clamp(74px, 23cqw, 100px); }
+.user-app.page-deposit .bank-transfer-card.theme-naranja-x .bank-art-subtitle { top: clamp(53px, 17cqw, 76px); }
 .user-app.page-deposit .bank-transfer-content { position: relative; min-width: 0; padding: 13px 14px 10px; }
 .user-app.page-deposit .bank-art-subtitle { position: absolute; top: clamp(47px, 13vw, 59px); left: 14px; color: #b5c7da; font-size: 12px; line-height: 1.2; }
 .user-app.page-deposit .bank-transfer-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; min-width: 0; margin: 0 0 4px; }
@@ -539,12 +619,16 @@ a.social.instagram:hover { border-color: #ff8ab8; }
 .user-app.page-deposit .bank-transfer-heading small { margin-top: 3px; color: #b5c7da; font-size: 13px; line-height: 1.2; }
 .user-app.page-deposit .bank-transfer-heading img { width: 62px; height: 44px; flex: 0 0 auto; object-fit: contain; }
 .user-app.page-deposit .bank-transfer-data { margin: 0; }
-.user-app.page-deposit .bank-transfer-data > div { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 2px 10px; min-width: 0; padding: 6px 0; border-top: 1px solid #a9c1d633; }
-.user-app.page-deposit .bank-transfer-data dt { grid-column: 1 / -1; color: #a9bfd2; font-size: 11px; font-weight: 750; letter-spacing: .05em; line-height: 1.1; text-transform: uppercase; }
-.user-app.page-deposit .bank-transfer-data dd { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; margin: 0; }
+.user-app.page-deposit .bank-transfer-data > div { display: grid; grid-template-columns: 45px minmax(0,1fr); align-items: center; gap: 8px; min-width: 0; min-height: 36px; padding: 3px 0; border-top: 1px solid #a9c1d633; }
+.user-app.page-deposit .bank-transfer-data dt { color: #a9bfd2; font-size: 12px; font-weight: 750; letter-spacing: .01em; line-height: 1.2; }
+.user-app.page-deposit .bank-transfer-data dd { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-width: 0; margin: 0; overflow-wrap: anywhere; color: #f5f8fc; font-size: 15px; font-weight: 700; line-height: 1.25; }
 .user-app.page-deposit .bank-transfer-data dd > span { min-width: 0; overflow-wrap: anywhere; color: #f5f8fc; font-size: 15px; font-weight: 700; line-height: 1.2; }
-.user-app.page-deposit .bank-transfer-data button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 78px; min-height: 40px; flex: 0 0 auto; padding: 7px 9px; border: 1px solid #4b7795; border-radius: 8px; background: #0b2233df; color: #dceaf5; font-size: 13px; font-weight: 700; }
-.user-app.page-deposit .bank-transfer-data button svg { color: var(--bank-accent, #48b9fa); }
+.user-app.page-deposit .bank-transfer-data button { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 4px; width: 72px; min-width: 72px; height: 44px; min-height: 44px; flex: 0 0 auto; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #dceaf5; font-size: 12px; font-weight: 700; }
+/* Marco de 32px de alto con una superficie táctil de 44px. */
+.user-app.page-deposit .bank-transfer-data button::before { content: ''; position: absolute; inset: 6px 0; border: 1px solid #4b7795; border-radius: 6px; background: #0b2233df; }
+.user-app.page-deposit .bank-transfer-data button span { position: relative; }
+.user-app.page-deposit .bank-transfer-data button:hover::before { border-color: var(--bank-accent, #48b9fa); background: #17364b; }
+.user-app.page-deposit .bank-transfer-data button svg { position: relative; color: var(--bank-accent, #48b9fa); }
 .user-app.page-deposit .bank-loading-card { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 14px; }
 .user-app.page-deposit .bank-loading-card > div { display: grid; gap: 3px; }
 .user-app.page-deposit .bank-loading-card strong { font-size: 16px; }
@@ -587,11 +671,7 @@ a.social.instagram:hover { border-color: #ff8ab8; }
 .user-app.page-deposit .primary { min-height: 54px; }
 .user-app.page-deposit { background: radial-gradient(ellipse at 85% 16%, #17435a55, transparent 58%), radial-gradient(ellipse at 10% 70%, #17435a33, transparent 70%), #091923; }
 .user-app.page-deposit .card { background: linear-gradient(120deg, #193243eb, #142a39ee); }
-.user-app.page-deposit .bank-transfer-data > div { position: relative; padding: 5px 0; }
-.user-app.page-deposit .bank-transfer-data > div:has(button) { min-height: 54px; padding-right: 88px; }
-.user-app.page-deposit .bank-transfer-data button { position: absolute; right: 0; top: 50%; transform: translateY(-50%); min-height: 44px; }
-.user-app.page-deposit .bank-transfer-data dt { font-size: 11px; }
-.user-app.page-deposit .bank-transfer-data dd { font-size: 16px; line-height: 1.25; }
+.user-app.page-deposit .bank-transfer-data > div:has(button) { min-height: 44px; padding-top: 0; padding-bottom: 0; }
 .user-app.page-deposit .deposit-amount { padding: 13px; }
 .user-app.page-deposit .deposit-amount .amount-input { min-height: 52px; }
 .user-app.page-deposit .deposit-amount .amount-input input { min-height: 50px; padding-top: 7px; padding-bottom: 7px; }
@@ -608,9 +688,6 @@ a.social.instagram:hover { border-color: #ff8ab8; }
   .user-app.page-deposit .bank-transfer-content { padding: 11px 11px 8px; }
   .user-app.page-deposit .bank-transfer-heading strong { font-size: 18px; }
   .user-app.page-deposit .bank-transfer-data dd > span { font-size: 14px; }
-  .user-app.page-deposit .bank-transfer-data button { min-width: 44px; }
-  .user-app.page-deposit .bank-transfer-data button span { display: none; }
-  .user-app.page-deposit .bank-transfer-data > div:has(button) { padding-right: 54px; }
   .user-app.page-deposit .bonus-choices.two-options { gap: 6px; }
   .user-app.page-deposit .bonus-choices label { padding: 8px 6px; }
   .user-app.page-deposit .receipt-picker { grid-template-columns: 42px minmax(0,1fr) auto; gap: 8px; padding: 8px; }
@@ -643,3 +720,30 @@ a.social.instagram:hover { border-color: #ff8ab8; }
   .user-app.page-withdrawal .withdrawal-history-link { transition: none; }
   .user-app.page-withdrawal .withdrawal-history-link:active { transform: none; }
 }
+
+/* Flujo compacto de Cargas: reduce espacios, conservando tamaños de lectura y
+   objetivos táctiles. El documento puede crecer con errores o más opciones. */
+body:has(.user-app.page-deposit) { min-height: 100svh; }
+.user-app.page-deposit {
+  padding-top: max(10px, env(safe-area-inset-top));
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+}
+.user-app.page-deposit .inner-header { min-height: 44px; margin-bottom: 10px; }
+.user-app.page-deposit .back-button { width: 44px; height: 44px; min-height: 44px; padding: 9px; }
+.user-app.page-deposit .request-form { gap: 8px; }
+.user-app.page-deposit .deposit-amount,
+.user-app.page-deposit .receipt-card { padding: 10px 12px; }
+.user-app.page-deposit .deposit-amount .amount-input { min-height: 48px; margin-top: 4px; }
+.user-app.page-deposit .deposit-amount .amount-input input { min-height: 46px; padding-top: 5px; padding-bottom: 5px; }
+.user-app.page-deposit .deposit-amount .bonus-options { margin-top: 8px; }
+.user-app.page-deposit .deposit-amount .bonus-options legend { padding-bottom: 5px; }
+.user-app.page-deposit .bonus-choices label { min-height: 44px; padding-top: 6px; padding-bottom: 6px; }
+.user-app.page-deposit .bonus-range-note { margin: 6px 0 0; }
+.user-app.page-deposit .receipt-compact-heading { gap: 8px; margin-bottom: 8px; }
+.user-app.page-deposit .receipt-compact-heading > span { width: 30px; height: 30px; }
+.user-app.page-deposit .receipt-compact-heading > span svg { width: 19px; height: 19px; }
+.user-app.page-deposit .receipt-picker .file-button { min-height: 44px; }
+.user-app.page-deposit .receipt-picker:not(.has-file) { padding: 0; }
+.user-app.page-deposit .receipt-formats { margin-top: 5px; }
+.user-app.page-deposit .primary { min-height: 48px; }
+.user-app.page-deposit footer { margin: 10px 0 0; }
