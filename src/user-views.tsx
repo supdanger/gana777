@@ -60,9 +60,9 @@ export function LoginView({ admin, busy, configured, feedback, onLogin, onDemo, 
     <footer><ShieldCheck size={17} /> Conexión segura · {admin ? 'GANA777 Panel' : 'GANA777'}</footer>
   </main>;
 }
-export function UserHeader({ page, navigate }: { page: Page; navigate: (page: Page) => void }) {
+export function UserHeader({ page, navigate, name = 'Mi perfil' }: { page: Page; navigate: (page: Page) => void; name?: string }) {
   return <header className={page === 'home' ? 'home-header' : 'inner-header'}>
-    {page === 'home' ? <Brand /> : <><button className="back-button" aria-label="Volver al inicio" onClick={() => navigate('home')}><ArrowLeft /></button><h1>{titles[page]}</h1><Brand /></>}
+    {page === 'home' ? <><Brand /><button className="home-profile-button" onClick={() => navigate('profile')} aria-label={`Ver perfil e historial de ${name}`}><span className="user-avatar"><StorageImage path="avatars/panda-user-avatar.png" alt="" /></span><span className="home-profile-name">{name}</span><ChevronRight size={16} aria-hidden="true" /></button></> : <><button className="back-button" aria-label="Volver al inicio" onClick={() => navigate('home')}><ArrowLeft /></button><h1>{titles[page]}</h1><Brand /></>}
   </header>;
 }
 function WhatsAppMark() {
@@ -92,7 +92,7 @@ export function UserHome({ name, navigate, whatsappUrl }: { name: string; naviga
     { name: 'Instagram', url: safeHttpsLink(settings.instagram_url, ['instagram.com', 'www.instagram.com']), mark: <InstagramMark />, className: 'instagram', animation: contactAnimations.instagram, visible: settings.show_instagram },
   ].filter(contact => contact.visible);
   return <>
-    <button className="home-greeting" onClick={() => navigate('profile')} aria-label={`Abrir el perfil de ${name}`}><span className="user-avatar"><StorageImage path="avatars/panda-user-avatar.png" alt="" /></span><span className="home-greeting-copy"><h1>Hola, {name}</h1><small>Ver perfil e historial</small></span><ChevronRight aria-hidden="true" /></button>
+    <h1 className="home-welcome">¡Hola, {name}!</h1>
     <BonusBanner />
     <h2 className="section-title">¿Qué querés hacer?</h2>
     <div className="quick-actions">{([

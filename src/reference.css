@@ -821,3 +821,46 @@ body:has(.user-app.page-deposit) { min-height: 100svh; }
 .user-app.page-deposit .deposit-amount .amount-input input:-webkit-autofill { -webkit-text-fill-color: #fff; caret-color: #fff; box-shadow: 0 0 0 1000px #000 inset; -webkit-box-shadow: 0 0 0 1000px #000 inset; }
 .user-app.page-deposit .primary { min-height: 48px; }
 .user-app.page-deposit footer { margin: 10px 0 0; }
+
+/* Inicio compacto: perfil en el encabezado y espaciado según la altura útil. */
+body:has(.user-app.page-home) { min-height: 100svh; }
+.user-app.page-home {
+  padding-top: max(8px, env(safe-area-inset-top));
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  background: radial-gradient(ellipse at 90% 12%, #1b3f4b55, transparent 65%), #091923;
+}
+.user-app.page-home .home-header { justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.user-app.page-home .home-header .brand { font-size: clamp(25px, 7vw, 30px); }
+.user-app.page-home .home-header .brand-image { max-width: 140px; }
+.user-app.page-home .home-profile-button { display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 48%; min-height: 44px; padding: 4px 8px 4px 5px; border: 1px solid #304f67; border-radius: 10px; background: #142b3f; color: #e7f1fb; font-size: 14px; }
+.user-app.page-home .home-profile-button .user-avatar { width: 30px; height: 30px; border-width: 1px; box-shadow: none; }
+.user-app.page-home .home-profile-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-app.page-home .home-profile-button > svg { flex: 0 0 auto; }
+.user-app.page-home .home-welcome { margin: 0 0 12px; color: #f5f8fc; font-size: 24px; font-weight: 750; line-height: 1.2; letter-spacing: -.4px; overflow-wrap: anywhere; }
+.user-app.page-home .bonus-banner { width: min(100%, clamp(240px, 44svh, 340px)); margin: 0 auto 14px; }
+.user-app.page-home .section-title { margin-bottom: 10px; padding-left: 11px; font-size: 24px; }
+.user-app.page-home .section-title::before { width: 3px; }
+.user-app.page-home .quick-actions { gap: 8px; margin-bottom: 18px; }
+.user-app.page-home .action-card { min-height: clamp(64px, 10svh, 80px); gap: 12px; padding: 9px 12px; border-radius: 10px; }
+.user-app.page-home .action-card .icon-circle { width: 44px; height: 44px; flex: 0 0 auto; }
+.user-app.page-home .action-card .icon-circle svg { width: 23px; height: 23px; }
+.user-app.page-home .action-card strong { margin-bottom: 3px; font-size: 20px; }
+.user-app.page-home .action-card small { font-size: 16px; line-height: 1.2; }
+.user-app.page-home .action-card > svg { width: 18px; height: 18px; }
+.user-app.page-home .contacts h2 { margin-bottom: 6px; font-size: 18px; }
+.user-app.page-home .contact-links { gap: 8px; }
+.user-app.page-home .social { min-height: 60px; gap: 5px; padding: 2px 4px; }
+.user-app.page-home .social-mark { width: 36px; height: 36px; }
+.user-app.page-home .social-mark svg { width: 22px; height: 22px; }
+.user-app.page-home .social-name { font-size: 13px; }
+.user-app.page-home footer { margin: 8px 0 0; }
+@media (max-height: 700px) {
+  .user-app.page-home .home-welcome { margin-bottom: 8px; font-size: 22px; }
+  .user-app.page-home .bonus-banner { width: min(100%, 240px); margin-bottom: 10px; }
+  .user-app.page-home .section-title { margin-bottom: 8px; font-size: 22px; }
+  .user-app.page-home .action-card { padding: 6px 10px; }
+  .user-app.page-home .quick-actions { margin-bottom: 12px; }
+  .user-app.page-home .contacts h2 { margin-bottom: 4px; }
+  .user-app.page-home .social { min-height: 52px; gap: 4px; }
+  .user-app.page-home .social-mark { width: 32px; height: 32px; }
+}

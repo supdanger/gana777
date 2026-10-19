@@ -585,7 +585,7 @@ function App() {
   const staffAvatarUrl = staffContext.avatarPath && supabase ? supabase.storage.from('cashier-avatars').getPublicUrl(staffContext.avatarPath).data.publicUrl : null;
   if (adminApp) return <AdminShell page={page} counts={pendingCounts} permissions={demo ? allStaffPermissions : staffContext.permissions} superAdmin={demo || staffContext.superAdmin} staffName={demo ? 'Superadministrador' : staffContext.displayName || name} avatarUrl={staffAvatarUrl} busy={busy} navigate={navigate} logout={() => void logout()}>{content}</AdminShell>;
   return <div className={`app user-app page-${page}`}>
-    <UserHeader page={page} navigate={navigate} />
+    <UserHeader page={page} navigate={navigate} name={name} />
     {content}
   </div>;
 }
