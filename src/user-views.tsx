@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import { ArrowLeft, Camera, ChevronRight, Eye, EyeOff, FileText, Headphones, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserRound } from 'lucide-react';
 import { BonusBanner, StorageImage, useContent } from './content';
 import { asBonusRule, bonusEnabled, moneyInputMaxLength, moneyInputPattern, percentText, readMoney } from '../supabase/functions/_shared/bonus-rule';
+import { creditAmounts } from './amounts';
 import { date, money, type Bank, type BankOperationStatus, type RequestRow, type Message } from './lib';
 import { ContactAnimation } from './contact-animation';
 import { safeHttpsLink } from './security';
@@ -75,6 +76,13 @@ function InstagramMark() {
 }
 function CasinoChip() {
   return <span className="casino-chip" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" /><circle cx="16" cy="16" r="7" /><path d="M16 3v6M16 23v6M3 16h6M23 16h6M6.8 6.8l4.3 4.3M20.9 20.9l4.3 4.3M25.2 6.8l-4.3 4.3M11.1 20.9l-4.3 4.3" /></svg></span>;
+}
+const bonusBanners: Record<number, string> = {
+  1000: '/preview-assets/bonus-1000.png',
+  2000: '/preview-assets/bonus-2000.png',
+};
+function bonusBanner(promotion: { bonus_mode: string; bonus_amount: number }) {
+  return promotion.bonus_mode === 'fixed' ? bonusBanners[promotion.bonus_amount] ?? '' : '';
 }
 export function UserHome({ name, navigate, whatsappUrl }: { name: string; navigate: (page: Page) => void; whatsappUrl?: string | null }) {
   const { settings, contactAnimations } = useContent();
@@ -154,6 +162,10 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
   const typedAmount = kind === 'deposit' ? readMoney(rawAmount) : null;
   const offers = promotions.filter(p => p.selectable && (p.bonus_mode === 'fixed' ? p.bonus_amount > 0 : p.bonus_percent > 0));
   const available = typedAmount === null ? [] : offers.filter(p => bonusEnabled(asBonusRule(p), typedAmount));
+  const bonusColumns = available.length === 0 ? ' single-option' : available.length === 1 ? ' two-options' : '';
+  const selectedOffer = offers.find(offer => offer.id === bonus);
+  const bonusCredit = selectedOffer && typedAmount !== null ? creditAmounts(typedAmount, selectedOffer.bonus_mode === 'percent' ? selectedOffer.bonus_percent : 0, selectedOffer.bonus_mode === 'fixed' ? selectedOffer.bonus_amount : 0).bonus : 0;
+  const bonusCreditLabel = bonusCredit > 0 ? `+ ${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 }).format(bonusCredit)}` : '';
   useEffect(() => {
     if (!bonus) return;
     const amount = readMoney(rawAmount);
@@ -191,12 +203,26 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     setReceiptError('');
     setCompressing(false);
   }
-  const amount = <label className="amount-label">Monto a {kind === 'deposit' ? 'cargar' : 'retirar'}<span className="amount-input"><span aria-hidden="true">$</span><input className="amount" name="amount" inputMode="decimal" type="text" pattern={moneyInputPattern} maxLength={moneyInputMaxLength} placeholder="10.000" aria-label={`Monto a ${kind === 'deposit' ? 'cargar' : 'retirar'} en pesos argentinos`} required value={kind === 'deposit' ? rawAmount : undefined} onChange={kind === 'deposit' ? event => setRawAmount(event.target.value) : undefined} /></span></label>;
+  const amount = <label className="amount-label">Monto a {kind === 'deposit' ? 'cargar' : 'retirar'}<span className="amount-input">{(kind !== 'deposit' || rawAmount) && <span aria-hidden="true">$</span>}<input className="amount" name="amount" inputMode="decimal" type="text" pattern={moneyInputPattern} maxLength={moneyInputMaxLength} placeholder={kind === 'deposit' ? 'Carga mínima 3.000' : '10.000'} aria-label={`Monto a ${kind === 'deposit' ? 'cargar' : 'retirar'} en pesos argentinos`} required value={kind === 'deposit' ? rawAmount : undefined} onChange={kind === 'deposit' ? event => setRawAmount(event.target.value) : undefined} />{bonusCreditLabel && <span className="amount-bonus">{bonusCreditLabel}</span>}</span></label>;
   return <form className="request-form" onSubmit={event => onSubmit(event, kind === 'deposit' ? file : null)}>
     {kind === 'deposit' ? <>
       <input type="hidden" name="bank_assignment_id" value={bank?.assignment_id ?? ''} />
       {!bank && bankOperation && bankOperation.mode !== 'online' ? <BankPause status={bankOperation} now={now} /> : bank ? <BankTransferCard bank={bank} onCopy={onCopy} /> : <section className="card bank-loading-card" aria-live="polite"><Landmark /><div><strong>Preparando una cuenta</strong><small>Esperá un momento…</small></div></section>}
-      <section className="card deposit-amount">{amount}<fieldset className="bonus-options"><legend>Bonos disponibles</legend><div className={`bonus-choices${available.length === 1 ? ' two-options' : ''}`}><label className={bonus === '' ? 'selected' : ''}><input type="radio" name="bonus_id" value="" checked={bonus === ''} onChange={() => setBonus('')} /><span className="bonus-choice-copy"><strong>Sin bono</strong></span><span className="bonus-selected-mark" aria-hidden="true" /></label>{available.map(p => { const reward = p.bonus_mode === 'fixed' ? `+${money(p.bonus_amount)}` : `+${percentText(p.bonus_percent)}%`; return <label className={bonus === p.id ? 'selected' : ''} key={p.id}><input type="radio" name="bonus_id" value={p.id} checked={bonus === p.id} onChange={() => setBonus(p.id)} /><CasinoChip /><span className="bonus-choice-copy"><small>{p.title}</small><strong>{reward}</strong></span><span className="bonus-selected-mark" aria-hidden="true" /></label>; })}</div>{typedAmount === null ? <p className="bonus-range-note">Ingresá el monto para ver los bonos habilitados.</p> : offers.length > 0 && !available.length ? <p className="bonus-range-note">Ningún bono está habilitado para este monto.</p> : null}</fieldset></section>
+      <section className="card deposit-amount">
+        {amount}
+        {typedAmount !== null ? <fieldset className="bonus-options">
+          <legend>Bonos disponibles</legend>
+          <div className={`bonus-choices${bonusColumns}`}>
+            <label className={`bonus-choice-art bonus-none-art${bonus === '' ? ' selected' : ''}`}><input type="radio" name="bonus_id" value="" checked={bonus === ''} onChange={() => setBonus('')} /><span className="bonus-none-frame"><img src="/preview-assets/bonus-none.png" alt="Sin bono" /></span></label>
+            {available.map(p => {
+              const reward = p.bonus_mode === 'fixed' ? `+${money(p.bonus_amount)}` : `+${percentText(p.bonus_percent)}%`;
+              const banner = bonusBanner(p);
+              return <label className={`${bonus === p.id ? 'selected' : ''}${banner ? ' bonus-choice-art bonus-reward-art' : ''}`} data-bonus-amount={p.bonus_amount} key={p.id}><input type="radio" name="bonus_id" value={p.id} checked={bonus === p.id} onChange={() => setBonus(p.id)} />{banner ? <span className="bonus-reward-frame"><img src={banner} alt={`Bono ${reward}`} /></span> : <><CasinoChip /><span className="bonus-choice-copy"><small>{p.title}</small><strong>{reward}</strong></span></>}<span className="bonus-selected-mark" aria-hidden="true" /></label>;
+            })}
+          </div>
+          {offers.length > 0 && !available.length && <p className="bonus-range-note">Ningún bono está habilitado para este monto.</p>}
+        </fieldset> : <input type="hidden" name="bonus_id" value="" />}
+      </section>
       <section className="card receipt-card compact-receipt-card">
         <div className="receipt-compact-heading"><span><FileText /></span><strong>Comprobante</strong></div>
         <div className={`receipt-picker${file ? ' has-file' : ''}`}>

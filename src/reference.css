@@ -111,8 +111,8 @@ a.social.instagram:hover { border-color: #ff8ab8; }
 .user-app .amount-input input { border: 0; background: none; margin: 0; padding: 11px 10px; font-size: 31px; font-weight: 800; }
 .amount-input:focus-within { outline: 3px solid #4de7ff; outline-offset: 3px; }
 .user-app .amount-input input:focus-visible { outline: none; }
-.user-app .deposit-amount .amount-input { background: #000; }
-.user-app .deposit-amount .amount-input input { color: #fff; caret-color: #fff; }
+.user-app .deposit-amount .amount-input { background: #000; border-color: #000; }
+.user-app .deposit-amount .amount-input input { color: #fff; caret-color: #fff; background: #000; }
 .user-app .deposit-amount .amount-input input:-webkit-autofill { -webkit-text-fill-color: #fff; -webkit-box-shadow: 0 0 0 1000px #000 inset; }
 .bonus-options { margin: 14px 0 0; padding: 0; border: 0; min-width: 0; }
 .bonus-options legend { color: #8fafe8; font-size: 12px; font-weight: 700; text-transform: uppercase; padding: 0 0 8px; }
@@ -640,7 +640,8 @@ a.social.instagram:hover { border-color: #ff8ab8; }
 .user-app.page-deposit .deposit-amount .amount-input { min-height: 56px; margin-top: 6px; padding-left: 12px; }
 .user-app.page-deposit .deposit-amount .amount-input > span,
 .user-app.page-deposit .deposit-amount .amount-input input { font-size: 29px; }
-.user-app.page-deposit .deposit-amount .amount-input input { min-height: 54px; }
+.user-app.page-deposit .deposit-amount .amount-input input { min-width: 0; min-height: 54px; flex: 1 1 auto; }
+.user-app.page-deposit .deposit-amount .amount-bonus { flex: 0 0 auto; margin-left: 8px; padding-right: 12px; color: #7af6ff; font-size: 18px; font-weight: 800; letter-spacing: -.02em; white-space: nowrap; }
 .user-app.page-deposit .deposit-amount .bonus-options { margin-top: 12px; }
 .user-app.page-deposit .deposit-amount .bonus-options legend { padding-bottom: 7px; }
 .user-app.page-deposit .bonus-choices { grid-template-columns: 1fr; gap: 8px; }
@@ -741,14 +742,76 @@ body:has(.user-app.page-deposit) { min-height: 100svh; }
 .user-app.page-deposit .deposit-amount .bonus-options { margin-top: 8px; }
 .user-app.page-deposit .deposit-amount .bonus-options legend { padding-bottom: 5px; }
 .user-app.page-deposit .bonus-choices label { min-height: 44px; padding-top: 6px; padding-bottom: 6px; }
+.user-app.page-deposit .bonus-choices.two-options { align-items: stretch; }
+.user-app.page-deposit .bonus-choices.single-option { display: flex; justify-content: center; }
+.user-app.page-deposit .bonus-choices.single-option label { width: calc((100% - 8px) / 2); flex: 0 0 auto; }
+@media (max-width: 360px) {
+  .user-app.page-deposit .bonus-choices.single-option label { width: calc((100% - 6px) / 2); }
+}
+.user-app.page-deposit .bonus-choices.two-options label { height: 100%; }
+.user-app.page-deposit .bonus-choices label.bonus-choice-art { position: relative; display: block; height: 52px; min-height: 52px; padding: 0; border: 0; border-radius: 10px; background: #041526; overflow: hidden; box-shadow: none; }
+.user-app.page-deposit .bonus-choices label.bonus-choice-art.selected { border: 0; background: #041526; box-shadow: 0 0 0 2px #7ad7ff; }
+.user-app.page-deposit .bonus-choices label.bonus-choice-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.user-app.page-deposit .bonus-choices label.bonus-choice-art .bonus-selected-mark { display: none; }
+/* La imagen Sin bono contiene una sombra negra debajo del marco. El recorte
+   conserva la proporción del botón y evita enmarcar también esa sombra. */
+.user-app.page-deposit .bonus-choices label.bonus-none-art,
+.user-app.page-deposit .bonus-choices label.bonus-none-art.selected,
+.user-app.page-deposit .bonus-choices label.bonus-reward-art,
+.user-app.page-deposit .bonus-choices label.bonus-reward-art.selected {
+  display: flex;
+  align-items: center;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+}
+.user-app.page-deposit .bonus-none-frame,
+.user-app.page-deposit .bonus-reward-frame {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 946 / 246;
+  overflow: hidden;
+  border-radius: 9px;
+}
+.user-app.page-deposit .bonus-none-art.selected .bonus-none-frame,
+.user-app.page-deposit .bonus-reward-art.selected .bonus-reward-frame { box-shadow: 0 0 0 1px #7ad7ff; }
+.user-app.page-deposit .bonus-choices label.bonus-none-art img {
+  inset: auto;
+  left: -1.48%;
+  top: -1.63%;
+  width: 101.48%;
+  height: 121.14%;
+  max-width: none;
+  object-fit: fill;
+}
+.user-app.page-deposit .bonus-choices label.bonus-reward-art img {
+  inset: auto;
+  left: -1.5%;
+  top: -8.33%;
+  width: 103%;
+  height: 116.67%;
+  max-width: none;
+  object-fit: fill;
+}
+.user-app.page-deposit .bonus-choices label.bonus-reward-art[data-bonus-amount="1000"] img {
+  left: -1.91%;
+  top: 0;
+  width: 101.91%;
+  height: 102.44%;
+}
 .user-app.page-deposit .bonus-range-note { margin: 6px 0 0; }
 .user-app.page-deposit .receipt-compact-heading { gap: 8px; margin-bottom: 8px; }
 .user-app.page-deposit .receipt-compact-heading > span { width: 30px; height: 30px; }
 .user-app.page-deposit .receipt-compact-heading > span svg { width: 19px; height: 19px; }
 .user-app.page-deposit .receipt-picker .file-button { min-height: 44px; }
 .user-app.page-deposit .receipt-picker:not(.has-file) { padding: 0; }
-.user-app.page-deposit .deposit-amount .amount-input { background: #000; box-shadow: none; }
+.user-app.page-deposit .deposit-amount .amount-input,
+.user-app.page-deposit .deposit-amount .amount-input input { background: #000; background-color: #000; border-color: #000; box-shadow: none; color-scheme: dark; }
 .user-app.page-deposit .deposit-amount .amount-input > span,
 .user-app.page-deposit .deposit-amount .amount-input input { color: #fff; caret-color: #fff; -webkit-text-fill-color: #fff; opacity: 1; }
+.user-app.page-deposit .deposit-amount .amount-input > span.amount-bonus { flex: 0 0 auto; margin-left: 8px; padding-right: 12px; color: #7af6ff; -webkit-text-fill-color: #7af6ff; font-size: 18px; font-weight: 800; letter-spacing: -.02em; white-space: nowrap; }
+.user-app.page-deposit .deposit-amount .amount-input input::placeholder { color: #b7b7b7; -webkit-text-fill-color: #b7b7b7; opacity: 1; font-size: 16px; font-weight: 700; }
+.user-app.page-deposit .deposit-amount .amount-input input:-webkit-autofill { -webkit-text-fill-color: #fff; caret-color: #fff; box-shadow: 0 0 0 1000px #000 inset; -webkit-box-shadow: 0 0 0 1000px #000 inset; }
 .user-app.page-deposit .primary { min-height: 48px; }
 .user-app.page-deposit footer { margin: 10px 0 0; }
