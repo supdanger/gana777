@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs';
 
 // Emit installation metadata only in the player build, never the admin panel.
 export function portalPwaPlugin(mode) {
-  if (mode !== 'user') return null;
+  // Match src/lib.ts: only mode "admin" is the panel. Vite's default
+  // production build is also the player portal and needs its manifest.
+  if (mode === 'admin') return null;
   const files = new Map([
     ['manifest.webmanifest', 'application/manifest+json'],
     ['icon-192.png', 'image/png'],

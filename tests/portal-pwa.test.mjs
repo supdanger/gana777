@@ -3,6 +3,20 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { portalPwaPlugin } from '../scripts/portal-pwa.mjs';
 
+test('el build predeterminado de Vite también publica una app instalable', () => {
+  for (const mode of ['production', 'development', 'user', 'staging']) {
+    const plugin = portalPwaPlugin(mode);
+    assert.ok(plugin, `El portal en modo ${mode} necesita los archivos PWA`);
+    assert.ok(plugin.transformIndexHtml().some(tag => tag.attrs.rel === 'manifest'));
+    const assets = [];
+    plugin.generateBundle.call({ emitFile: asset => assets.push(asset.fileName) });
+    assert.ok(assets.includes('pwa/manifest.webmanifest'));
+    assert.ok(assets.includes('pwa/icon-192.png'));
+    assert.ok(assets.includes('pwa/icon-512.png'));
+  }
+  assert.equal(portalPwaPlugin('admin'), null);
+});
+
 test('solo el portal incluye manifiesto y metadatos de instalación', () => {
   assert.equal(portalPwaPlugin('admin'), null);
   const plugin = portalPwaPlugin('user');
