@@ -206,7 +206,6 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
           {file && <button className="receipt-remove" type="button" onClick={clearReceipt} aria-label="Eliminar comprobante"><Trash2 size={18} /></button>}
           {receiptError && <small className="receipt-error" role="alert">{receiptError}</small>}
         </div>
-        {!file && <small className="receipt-formats">JPG/PNG/WebP: 20 MB · PDF: 5 MB</small>}
       </section>
     </> : <>
       <section className={`card withdrawal-window ${pending ? 'pending' : seconds > 0 ? 'counting' : 'ready'}`}>

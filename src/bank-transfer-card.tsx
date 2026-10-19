@@ -34,7 +34,7 @@ export function BankTransferCard({ bank, onCopy }: { bank: Bank; onCopy: (text: 
       </header>
       <dl className="bank-transfer-data">
         <div><dt>Titular</dt><dd>{bank.holder}</dd></div>
-        <div><dt>CBU</dt><dd><span>{bank.cbu}</span>{copyButton(bank.cbu, 'CBU')}</dd></div>
+        <div><dt>CBU</dt><dd><span className="bank-cbu">{bank.cbu}</span>{copyButton(bank.cbu, 'CBU')}</dd></div>
         {bank.alias && <div><dt>Alias</dt><dd><span>{bank.alias}</span>{copyButton(bank.alias, 'alias')}</dd></div>}
       </dl>
     </div>

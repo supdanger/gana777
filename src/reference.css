@@ -623,7 +623,9 @@ a.social.instagram:hover { border-color: #ff8ab8; }
 .user-app.page-deposit .bank-transfer-data dt { color: #a9bfd2; font-size: 12px; font-weight: 750; letter-spacing: .01em; line-height: 1.2; }
 .user-app.page-deposit .bank-transfer-data dd { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-width: 0; margin: 0; overflow-wrap: anywhere; color: #f5f8fc; font-size: 15px; font-weight: 700; line-height: 1.25; }
 .user-app.page-deposit .bank-transfer-data dd > span { min-width: 0; overflow-wrap: anywhere; color: #f5f8fc; font-size: 15px; font-weight: 700; line-height: 1.2; }
-.user-app.page-deposit .bank-transfer-data button { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 4px; width: 72px; min-width: 72px; height: 44px; min-height: 44px; flex: 0 0 auto; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #dceaf5; font-size: 12px; font-weight: 700; }
+.user-app.page-deposit .bank-transfer-data dd:has(.bank-cbu) { container-type: inline-size; }
+.user-app.page-deposit .bank-transfer-data .bank-cbu { flex: 1 1 auto; white-space: nowrap; overflow-wrap: normal; word-break: keep-all; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; font-size: clamp(11px, calc((100cqi - 68px) / 13.6), 15px); }
+.user-app.page-deposit .bank-transfer-data button { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 4px; width: 64px; min-width: 64px; height: 44px; min-height: 44px; flex: 0 0 auto; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #dceaf5; font-size: 12px; font-weight: 700; }
 /* Marco de 32px de alto con una superficie táctil de 44px. */
 .user-app.page-deposit .bank-transfer-data button::before { content: ''; position: absolute; inset: 6px 0; border: 1px solid #4b7795; border-radius: 6px; background: #0b2233df; }
 .user-app.page-deposit .bank-transfer-data button span { position: relative; }
@@ -680,7 +682,6 @@ a.social.instagram:hover { border-color: #ff8ab8; }
 .user-app.page-deposit .receipt-picker .file-button { width: 100%; min-height: 48px; border-color: #178de6; background: linear-gradient(110deg, #0675ec, #0065da); color: #fff; }
 .user-app.page-deposit .receipt-picker .file-button > span { flex: 1; text-align: center; }
 .user-app.page-deposit .receipt-picker.has-file .file-button { width: auto; }
-.user-app.page-deposit .receipt-formats { display: block; margin-top: 7px; font-size: 12px; line-height: 1.35; }
 .user-app.page-deposit .receipt-compact-heading { margin-bottom: 12px; font-size: 18px; }
 .user-app.page-deposit .request-feedback:empty { display: none; }
 .user-app.page-deposit .primary { background: linear-gradient(110deg, #009fef, #087bdf); }
@@ -726,7 +727,9 @@ a.social.instagram:hover { border-color: #ff8ab8; }
 body:has(.user-app.page-deposit) { min-height: 100svh; }
 .user-app.page-deposit {
   padding-top: max(10px, env(safe-area-inset-top));
+  padding-right: max(12px, env(safe-area-inset-right));
   padding-bottom: max(10px, env(safe-area-inset-bottom));
+  padding-left: max(12px, env(safe-area-inset-left));
 }
 .user-app.page-deposit .inner-header { min-height: 44px; margin-bottom: 10px; }
 .user-app.page-deposit .back-button { width: 44px; height: 44px; min-height: 44px; padding: 9px; }
@@ -744,6 +747,8 @@ body:has(.user-app.page-deposit) { min-height: 100svh; }
 .user-app.page-deposit .receipt-compact-heading > span svg { width: 19px; height: 19px; }
 .user-app.page-deposit .receipt-picker .file-button { min-height: 44px; }
 .user-app.page-deposit .receipt-picker:not(.has-file) { padding: 0; }
-.user-app.page-deposit .receipt-formats { margin-top: 5px; }
+.user-app.page-deposit .deposit-amount .amount-input { background: #000; box-shadow: none; }
+.user-app.page-deposit .deposit-amount .amount-input > span,
+.user-app.page-deposit .deposit-amount .amount-input input { color: #fff; caret-color: #fff; -webkit-text-fill-color: #fff; opacity: 1; }
 .user-app.page-deposit .primary { min-height: 48px; }
 .user-app.page-deposit footer { margin: 10px 0 0; }
