@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { ArrowLeft, Camera, ChevronRight, Copy, Eye, EyeOff, FileText, Headphones, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, UserRound } from 'lucide-react';
+import { ArrowLeft, Camera, ChevronRight, Eye, EyeOff, FileText, Headphones, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserRound } from 'lucide-react';
 import { BonusBanner, StorageImage, useContent } from './content';
-import { asBonusRule, bonusEnabled, moneyInputMaxLength, moneyInputPattern, readMoney } from '../supabase/functions/_shared/bonus-rule';
-import { creditAmounts } from './amounts';
+import { asBonusRule, bonusEnabled, moneyInputMaxLength, moneyInputPattern, percentText, readMoney } from '../supabase/functions/_shared/bonus-rule';
 import { date, money, type Bank, type BankOperationStatus, type RequestRow, type Message } from './lib';
 import { ContactAnimation } from './contact-animation';
 import { safeHttpsLink } from './security';
 import { Turnstile } from './turnstile';
 import { compressReceipt, readableFileSize } from './image-compression';
+import { BankTransferCard } from './bank-transfer-card';
 
 export type Page = 'home' | 'profile' | 'deposit' | 'withdrawal' | 'history' | 'users' | 'contacts' | 'bonuses' | 'accounts' | 'shifts' | 'chat' | 'cashiers';
 export const titles = { home: 'Inicio', profile: 'Mi perfil', deposit: 'Cargas', withdrawal: 'Retiros', history: 'Historial', users: 'Usuarios', contacts: 'Contactos', bonuses: 'Bonos', accounts: 'Cuentas', shifts: 'Turnos', chat: 'Chat', cashiers: 'Cajeros' };
@@ -72,6 +72,9 @@ function TelegramMark() {
 }
 function InstagramMark() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 7.2A4.8 4.8 0 1 0 16.8 12 4.8 4.8 0 0 0 12 7.2Zm0 7.9A3.1 3.1 0 1 1 15.1 12 3.1 3.1 0 0 1 12 15.1Zm6.2-9.1a1.12 1.12 0 1 1-1.12-1.12A1.12 1.12 0 0 1 18.2 6Zm2.1 1.9a5.9 5.9 0 0 0-1.61-4.18A5.9 5.9 0 0 0 14.5 2.1c-1.63-.09-6.51-.09-8.14 0a5.9 5.9 0 0 0-4.18 1.62A5.9 5.9 0 0 0 .56 7.9c-.09 1.63-.09 6.51 0 8.14a5.9 5.9 0 0 0 1.62 4.18 5.9 5.9 0 0 0 4.18 1.62c1.63.09 6.51.09 8.14 0a5.9 5.9 0 0 0 4.18-1.62 5.9 5.9 0 0 0 1.62-4.18c.09-1.63.09-6.5 0-8.14Zm-2 9.95a3.36 3.36 0 0 1-1.9 1.9c-1.31.52-4.43.4-5.88.4s-4.58.12-5.89-.4a3.36 3.36 0 0 1-1.9-1.9c-.52-1.31-.4-4.43-.4-5.88s-.12-4.58.4-5.89a3.36 3.36 0 0 1 1.9-1.9c1.31-.52 4.43-.4 5.89-.4s4.57-.12 5.88.4a3.36 3.36 0 0 1 1.9 1.9c.52 1.31.4 4.43.4 5.89s.12 4.57-.4 5.88Z" /></svg>;
+}
+function CasinoChip() {
+  return <span className="casino-chip" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" /><circle cx="16" cy="16" r="7" /><path d="M16 3v6M16 23v6M3 16h6M23 16h6M6.8 6.8l4.3 4.3M20.9 20.9l4.3 4.3M25.2 6.8l-4.3 4.3M11.1 20.9l-4.3 4.3" /></svg></span>;
 }
 export function UserHome({ name, navigate, whatsappUrl }: { name: string; navigate: (page: Page) => void; whatsappUrl?: string | null }) {
   const { settings, contactAnimations } = useContent();
@@ -181,16 +184,29 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
       if (changeId === receiptChangeId.current) setCompressing(false);
     }
   }
+  function clearReceipt() {
+    receiptChangeId.current += 1;
+    if (fileInput.current) fileInput.current.value = '';
+    setFile(null);
+    setReceiptError('');
+    setCompressing(false);
+  }
   const amount = <label className="amount-label">Monto a {kind === 'deposit' ? 'cargar' : 'retirar'}<span className="amount-input"><span aria-hidden="true">$</span><input className="amount" name="amount" inputMode="decimal" type="text" pattern={moneyInputPattern} maxLength={moneyInputMaxLength} placeholder="10.000" aria-label={`Monto a ${kind === 'deposit' ? 'cargar' : 'retirar'} en pesos argentinos`} required value={kind === 'deposit' ? rawAmount : undefined} onChange={kind === 'deposit' ? event => setRawAmount(event.target.value) : undefined} /></span></label>;
   return <form className="request-form" onSubmit={event => onSubmit(event, kind === 'deposit' ? file : null)}>
     {kind === 'deposit' ? <>
       <input type="hidden" name="bank_assignment_id" value={bank?.assignment_id ?? ''} />
-      {!bank && bankOperation && bankOperation.mode !== 'online' ? <BankPause status={bankOperation} now={now} /> : <section className="card transfer-card"><SectionHeading icon={<Landmark />} title="Datos para transferir" description="Realizá una transferencia desde tu banco" />
-        {bank ? <div className="bank-data">{(['bank', 'holder', 'cbu', 'alias'] as const).map(field => <div key={field}><span><small>{{ bank: 'BANCO DISPONIBLE', holder: 'TITULAR', cbu: 'CBU', alias: 'ALIAS' }[field]}</small><strong>{bank[field]}</strong></span>{(field === 'cbu' || field === 'alias') && <button type="button" onClick={() => onCopy(bank[field], field.toUpperCase())}><Copy size={17} /><span>Copiar</span></button>}</div>)}</div> : <p className="empty">Preparando una cuenta para vos…</p>}
-      </section>}
-      <section className="card deposit-amount">{amount}<fieldset className="bonus-options"><legend>Bonos disponibles</legend><div className="bonus-choices"><label className={bonus === '' ? 'selected' : ''}><input type="radio" name="bonus_id" value="" checked={bonus === ''} onChange={() => setBonus('')} />Sin bono</label>{available.map(p => <label className={bonus === p.id ? 'selected' : ''} key={p.id}><input type="radio" name="bonus_id" value={p.id} checked={bonus === p.id} onChange={() => setBonus(p.id)} />Saldo de bono +{money(creditAmounts(typedAmount ?? 0, p.bonus_percent, p.bonus_amount).bonus)}</label>)}</div>{typedAmount === null ? <p className="bonus-range-note">Ingresá el monto para ver los bonos habilitados.</p> : offers.length > 0 && !available.length ? <p className="bonus-range-note">Ningún bono está habilitado para este monto.</p> : null}</fieldset></section>
-      <section className="card receipt-card"><SectionHeading icon={<FileText />} title="Comprobante" description="Subí el comprobante de la transferencia" />
-        <div className="receipt-picker">{preview ? <img className="receipt-preview" src={preview} alt="Vista previa del comprobante seleccionado" /> : <Camera className="camera-icon" size={38} />}<strong>{compressing ? 'Optimizando imagen…' : file ? file.name : 'Subir comprobante'}</strong><p>{compressing ? 'Esperá un momento' : file ? `Lista para enviar · ${readableFileSize(file.size)}` : 'Sacá una foto o elegí una imagen'}</p><label className="file-button">{file ? 'Cambiar comprobante' : 'Seleccionar imagen'}<input ref={fileInput} name="receipt" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required onChange={event => void selectReceipt(event)} /></label>{receiptError && <small className="receipt-error" role="alert">{receiptError}</small>}<small>Imágenes hasta 20 MB, se comprimen automáticamente · PDF hasta 5 MB</small></div>
+      {!bank && bankOperation && bankOperation.mode !== 'online' ? <BankPause status={bankOperation} now={now} /> : bank ? <BankTransferCard bank={bank} onCopy={onCopy} /> : <section className="card bank-loading-card" aria-live="polite"><Landmark /><div><strong>Preparando una cuenta</strong><small>Esperá un momento…</small></div></section>}
+      <section className="card deposit-amount">{amount}<fieldset className="bonus-options"><legend>Bonos disponibles</legend><div className={`bonus-choices${available.length === 1 ? ' two-options' : ''}`}><label className={bonus === '' ? 'selected' : ''}><input type="radio" name="bonus_id" value="" checked={bonus === ''} onChange={() => setBonus('')} /><span className="bonus-choice-copy"><strong>Sin bono</strong></span><span className="bonus-selected-mark" aria-hidden="true" /></label>{available.map(p => { const reward = p.bonus_mode === 'fixed' ? `+${money(p.bonus_amount)}` : `+${percentText(p.bonus_percent)}%`; return <label className={bonus === p.id ? 'selected' : ''} key={p.id}><input type="radio" name="bonus_id" value={p.id} checked={bonus === p.id} onChange={() => setBonus(p.id)} /><CasinoChip /><span className="bonus-choice-copy"><small>{p.title}</small><strong>{reward}</strong></span><span className="bonus-selected-mark" aria-hidden="true" /></label>; })}</div>{typedAmount === null ? <p className="bonus-range-note">Ingresá el monto para ver los bonos habilitados.</p> : offers.length > 0 && !available.length ? <p className="bonus-range-note">Ningún bono está habilitado para este monto.</p> : null}</fieldset></section>
+      <section className="card receipt-card compact-receipt-card">
+        <div className="receipt-compact-heading"><span><FileText /></span><strong>Comprobante</strong></div>
+        <div className={`receipt-picker${file ? ' has-file' : ''}`}>
+          {preview ? <img className="receipt-preview" src={preview} alt="Vista previa del comprobante seleccionado" /> : file ? <FileText className="camera-icon" size={30} /> : null}
+          {(file || compressing) && <div className="receipt-file-copy" aria-live="polite"><strong>{compressing ? 'Optimizando imagen…' : file?.name}</strong><small>{compressing ? 'Esperá un momento' : file ? `Listo para enviar · ${readableFileSize(file.size)}` : ''}</small></div>}
+          <label className="file-button"><Camera size={20} /><span>{file ? 'Cambiar comprobante' : 'Seleccionar comprobante'}</span><ChevronRight size={18} /><input ref={fileInput} name="receipt" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required onChange={event => void selectReceipt(event)} /></label>
+          {file && <button className="receipt-remove" type="button" onClick={clearReceipt} aria-label="Eliminar comprobante"><Trash2 size={18} /></button>}
+          {receiptError && <small className="receipt-error" role="alert">{receiptError}</small>}
+        </div>
+        {!file && <small className="receipt-formats">JPG, PNG o WebP hasta 20 MB · PDF hasta 5 MB</small>}
       </section>
     </> : <>
       <section className={`card withdrawal-window ${pending ? 'pending' : seconds > 0 ? 'counting' : 'ready'}`}>
@@ -203,7 +219,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     </>}
     {feedback && <div className="request-feedback">{feedback}</div>}
     {depositRetrySeconds > 0 && <div className="deposit-retry-countdown" role="timer" aria-live="polite"><span>Podés volver a enviar en</span><strong>{depositRetryCountdown}</strong></div>}
-    <button className="primary" disabled={busy || demo || withdrawalBlocked || compressing || depositRetrySeconds > 0 || (kind === 'deposit' && (!file || !bank))}>{compressing ? 'Optimizando…' : busy ? 'Enviando…' : depositRetrySeconds > 0 ? `Esperá ${depositRetryCountdown}` : kind === 'deposit' ? 'Enviar carga' : 'Solicitar retiro'}</button>
+    <button className="primary" disabled={busy || demo || withdrawalBlocked || compressing || depositRetrySeconds > 0 || (kind === 'deposit' && (!file || !bank))}>{compressing ? 'Optimizando…' : busy ? kind === 'deposit' ? 'Enviando solicitud…' : 'Enviando…' : depositRetrySeconds > 0 ? `Esperá ${depositRetryCountdown}` : kind === 'deposit' ? 'Solicitar carga' : 'Solicitar retiro'}</button>
   </form>;
 }
 export function Conversation({ messages, userId, busy, disabled, onSubmit }: { messages: Message[]; userId: string; busy: boolean; disabled: boolean; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {

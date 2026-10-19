@@ -2,9 +2,10 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { assertFormFields, InputError, parseAlias, parseBank, parseCbu, parseHolder } from '../supabase/functions/_shared/validation';
 import { supabase, type Bank } from './lib';
 import { shifts, shiftLabel, type ShiftKey } from './shifts';
+import { bankThemeRegistry, type BankThemeKey } from './bank-themes';
 
-type Account = Omit<Bank, 'assignment_id'> & { active: boolean; shift_key: ShiftKey; usage_count: number };
-const accountColumns = 'id,bank,holder,cbu,alias,active,shift_key,usage_count';
+type Account = Omit<Bank, 'assignment_id' | 'theme_background_path' | 'theme_logo_path'> & { theme_key: BankThemeKey; active: boolean; shift_key: ShiftKey; usage_count: number };
+const accountColumns = 'id,bank,holder,cbu,alias,theme_key,active,shift_key,usage_count';
 const previewNotice = 'La vista previa no guarda las cuentas. Entrá como administrador para realizar cambios.';
 
 function persistError(error: { code?: string; message?: string }): Error {
@@ -37,12 +38,37 @@ export function AccountAdmin({ demo, busy, action }: { demo: boolean; busy: bool
   }, [demo]);
 
   function readAccount(form: FormData) {
-    assertFormFields(form, ['bank', 'holder', 'cbu', 'alias', 'shift_key']);
+    assertFormFields(form, ['bank', 'holder', 'cbu', 'alias', 'shift_key', 'theme_key', 'theme_banner', 'included_banner']);
     const alias = parseAlias(form.get('alias'));
     const shift = form.get('shift_key');
+    const theme = form.get('theme_key');
     if (!alias) throw new InputError('Ingresá el alias de la cuenta.');
     if (!shifts.some(item => item.key === shift)) throw new InputError('Elegí un turno válido.');
-    return { bank: parseBank(form.get('bank')), holder: parseHolder(form.get('holder')), cbu: parseCbu(form.get('cbu')), alias, shift_key: shift as ShiftKey };
+    if (typeof theme !== 'string' || !(theme in bankThemeRegistry)) throw new InputError('Elegí un diseño bancario válido.');
+    return { bank: parseBank(form.get('bank')), holder: parseHolder(form.get('holder')), cbu: parseCbu(form.get('cbu')), alias, shift_key: shift as ShiftKey, theme_key: theme as BankThemeKey };
+  }
+
+  async function uploadThemeBanner(value: FormDataEntryValue | null, theme: BankThemeKey, useIncluded: boolean) {
+    if (!supabase) throw new InputError(previewNotice);
+    let image = value instanceof File && value.size ? value : null;
+    const includedBanner = bankThemeRegistry[theme].defaultBanner;
+    if (useIncluded && !includedBanner) throw new InputError('Elegí un diseño de entidad con banner incluido.');
+    if (!image && includedBanner) {
+      const { data: currentTheme, error: themeReadError } = await supabase.from('bank_themes').select('background_path').eq('key', theme).maybeSingle();
+      if (themeReadError) throw themeReadError;
+      if (currentTheme?.background_path && !useIncluded) return;
+      const response = await fetch(includedBanner);
+      if (!response.ok) throw new InputError(`No pudimos cargar el banner predeterminado de ${bankThemeRegistry[theme].name}.`);
+      image = new File([await response.blob()], `${theme}-banner.png`, { type: 'image/png' });
+    }
+    if (!image) return;
+    if (!['image/jpeg','image/png','image/webp'].includes(image.type) || image.size > 5 * 1024 * 1024) throw new InputError('El banner debe ser JPG, PNG o WebP y pesar hasta 5 MB.');
+    const extension = image.type === 'image/jpeg' ? 'jpg' : image.type === 'image/png' ? 'png' : 'webp';
+    const path = `bank-themes/${theme}/banner-${crypto.randomUUID()}.${extension}`;
+    const { error: uploadError } = await supabase.storage.from('app-assets').upload(path, image, { upsert: true, contentType: image.type, cacheControl: '3600' });
+    if (uploadError) throw new InputError('No pudimos guardar el banner bancario.');
+    const { error: themeError } = await supabase.from('bank_themes').update({ background_path: path, updated_at: new Date().toISOString() }).eq('key', theme);
+    if (themeError) throw themeError;
   }
 
   async function saveAccount(event: FormEvent<HTMLFormElement>) {
@@ -53,6 +79,7 @@ export function AccountAdmin({ demo, busy, action }: { demo: boolean; busy: bool
       const fields = readAccount(form);
       const current = accounts.find(item => item.id === editingId) ?? null;
       if (demo || !supabase) throw new InputError(previewNotice);
+      await uploadThemeBanner(form.get('theme_banner'), fields.theme_key, form.get('included_banner') === '1');
       const query = current ? supabase.from('bank_accounts').update(fields).eq('id', current.id) : supabase.from('bank_accounts').insert({ ...fields, active: true });
       const { data, error } = await query.select(accountColumns).single();
       if (error || !data) throw persistError(error ?? { message: 'No se pudo guardar la cuenta.' });
@@ -97,6 +124,9 @@ export function AccountAdmin({ demo, busy, action }: { demo: boolean; busy: bool
       <p>{demo ? previewNotice : editing ? 'Editando esta cuenta.' : `Nueva cuenta para ${shiftLabel[selectedShift].toLowerCase()}.`}</p>
       <input type="hidden" name="shift_key" value={editing?.shift_key ?? selectedShift} />
       <label>Banco<input name="bank" maxLength={80} placeholder="Ejemplo: Mercado Pago" defaultValue={editing?.bank ?? ''} required /></label>
+      <label>Diseño de la tarjeta<select name="theme_key" defaultValue={editing?.theme_key ?? 'default'}>{Object.values(bankThemeRegistry).map(theme => <option value={theme.key} key={theme.key}>{theme.name}</option>)}</select></label>
+      <label>Banner del diseño <span>(opcional; los diseños de entidades incluyen su propio banner)</span><input name="theme_banner" type="file" accept="image/jpeg,image/png,image/webp" /></label>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}><input name="included_banner" type="checkbox" value="1" style={{ width: 20, minHeight: 20, flexShrink: 0 }} />Reemplazar el banner actual por el incluido del diseño</label>
       <label>Titular<input name="holder" maxLength={120} autoComplete="name" placeholder="Nombre y apellido" defaultValue={editing?.holder ?? ''} required /></label>
       <label>CBU / CVU<input name="cbu" inputMode="decimal" pattern="[0-9. \-]{22,34}" maxLength={34} placeholder="22 números, con o sin puntos" autoCapitalize="none" spellCheck={false} defaultValue={editing?.cbu ?? ''} required /></label>
       <label>Alias<input name="alias" maxLength={20} autoCapitalize="none" spellCheck={false} placeholder="tu.alias" defaultValue={editing?.alias ?? ''} required /></label>
@@ -107,7 +137,7 @@ export function AccountAdmin({ demo, busy, action }: { demo: boolean; busy: bool
     </form>
     {loading ? <p className="empty">Cargando cuentas…</p> : loadError ? <p className="empty">{loadError}</p> : !visibleAccounts.length ? <p className="empty">Todavía no hay cuentas en {shiftLabel[selectedShift].toLowerCase()}.</p> : <div className="account-offers">
       {visibleAccounts.map(account => <article className={`account-offer${account.active ? '' : ' inactive'}${editing?.id === account.id ? ' editing' : ''}`} key={account.id}>
-        <div><strong>{account.bank}</strong><small>{account.holder}</small><small>{account.cbu}</small><small>{account.alias}</small><span className="account-usage">{account.usage_count} usos confirmados · {account.active ? 'Disponible' : 'Pausada'}</span></div>
+        <div><strong>{account.bank}</strong><small>{bankThemeRegistry[account.theme_key]?.name ?? bankThemeRegistry.default.name}</small><small>{account.holder}</small><small>{account.cbu}</small><small>{account.alias}</small><span className="account-usage">{account.usage_count} usos confirmados · {account.active ? 'Disponible' : 'Pausada'}</span></div>
         <div className="account-offer-actions">
           <button type="button" disabled={busy} onClick={() => { setEditingId(account.id); document.getElementById('account-title')?.scrollIntoView({ block: 'start' }); }}>Editar</button>
           <button type="button" disabled={busy} onClick={() => void toggleAccount(account)}>{account.active ? 'Pausar' : 'Habilitar'}</button>
