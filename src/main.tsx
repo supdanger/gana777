@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, type FormEvent } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Session } from '@supabase/supabase-js';
-import { ArrowUpRight, CalendarClock, Check, CheckCircle2, ChevronRight, Clock, Copy, Hash, Send, ShieldCheck, UserRound, WalletCards, X } from 'lucide-react';
+import { ArrowUpRight, CalendarClock, Check, CheckCircle2, ChevronRight, Clock, Copy, Hash, Send, UserRound, WalletCards, X } from 'lucide-react';
 import { canonicalMoney, percentText } from '../supabase/functions/_shared/bonus-rule';
 import { adminApp, supabase, configError, turnstileSiteKey, REQUEST_COLUMNS, REQUEST_COLUMNS_LEGACY, money, date, statusLabel, type RequestRow, type Message, type Bank, type BankOperationStatus } from './lib';
 import { DEPOSIT_PAGE_SIZE, depositWindow } from './deposit-page';
@@ -13,6 +13,7 @@ import { ContentProvider } from './content';
 import { DepositRateLimitError, submitDeposit, receiptUrl } from './receipt';
 import { creditAmounts } from './amounts';
 import { userHistoryWindow } from './user-history';
+import { PlayerFooter } from './player-legal';
 
 function missingBonusAmount(error: { message?: string } | null) {
   return !!error && /bonus_amount/i.test(error.message ?? '');
@@ -580,7 +581,7 @@ function App() {
         <form className="composer" onSubmit={sendMessage}><input name="message" aria-label="Mensaje" placeholder="Escribí un mensaje…" maxLength={2000} required /><button className="send" aria-label="Enviar mensaje" disabled={busy || demo || !thread}><Send size={21} /></button></form>
       </> : <Conversation messages={messages} userId={userId} busy={busy} disabled={demo} onSubmit={sendMessage} />)}
     </>}
-    {!adminApp && <footer><ShieldCheck size={16} /> Conexión segura · GANA777</footer>}
+    {!adminApp && <PlayerFooter />}
   </>;
   const staffAvatarUrl = staffContext.avatarPath && supabase ? supabase.storage.from('cashier-avatars').getPublicUrl(staffContext.avatarPath).data.publicUrl : null;
   if (adminApp) return <AdminShell page={page} counts={pendingCounts} permissions={demo ? allStaffPermissions : staffContext.permissions} superAdmin={demo || staffContext.superAdmin} staffName={demo ? 'Superadministrador' : staffContext.displayName || name} avatarUrl={staffAvatarUrl} busy={busy} navigate={navigate} logout={() => void logout()}>{content}</AdminShell>;

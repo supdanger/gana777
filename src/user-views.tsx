@@ -9,6 +9,7 @@ import { safeHttpsLink } from './security';
 import { Turnstile } from './turnstile';
 import { compressReceipt, readableFileSize } from './image-compression';
 import { BankTransferCard } from './bank-transfer-card';
+import { PlayerFooter } from './player-legal';
 
 export type Page = 'home' | 'profile' | 'deposit' | 'withdrawal' | 'history' | 'users' | 'contacts' | 'bonuses' | 'accounts' | 'shifts' | 'chat' | 'cashiers';
 export const titles = { home: 'Inicio', profile: 'Mi perfil', deposit: 'Cargas', withdrawal: 'Retiros', history: 'Historial', users: 'Usuarios', contacts: 'Contactos', bonuses: 'Bonos', accounts: 'Cuentas', shifts: 'Turnos', chat: 'Chat', cashiers: 'Cajeros' };
@@ -57,7 +58,7 @@ export function LoginView({ admin, busy, configured, feedback, onLogin, onDemo, 
       {safeHttpsLink(settings.help_url) ? <a className="help-link" href={safeHttpsLink(settings.help_url)!} target="_blank" rel="noopener noreferrer">¿Necesitás ayuda?</a> : <button className="help-link" onClick={onHelp}>¿Necesitás ayuda?</button>}
     </section>
     {(!configured || import.meta.env.DEV) && <button className="text-button" onClick={onDemo}>Explorar vista previa</button>}
-    <footer><ShieldCheck size={17} /> Conexión segura · {admin ? 'GANA777 Panel' : 'GANA777'}</footer>
+    {admin ? <footer><span className="secure-connection"><ShieldCheck size={17} /> Conexión segura · GANA777 Panel</span></footer> : <PlayerFooter />}
   </main>;
 }
 export function UserHeader({ page, navigate, name = 'Mi perfil' }: { page: Page; navigate: (page: Page) => void; name?: string }) {
