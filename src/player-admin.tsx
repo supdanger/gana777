@@ -8,6 +8,7 @@ type Player = {
   user_id: string; username: string | null; display_name: string; phone: string | null;
   external_user_id: string | null; whatsapp_principal_slot: number | null; whatsapp_principal_phone: string | null;
   deposits: number; withdrawals: number; created_at: string;
+  referrer_user_id: string | null; referrer_name: string | null;
 };
 
 async function functionError(error: unknown, data: unknown, fallback: string): Promise<Error> {
@@ -34,12 +35,12 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
   async function refresh() {
     if (demo || !supabase) { setLoading(false); return; }
     const [directory, contacts] = await Promise.all([
-      supabase.from('player_directory').select('user_id,username,display_name,phone,external_user_id,whatsapp_principal_slot,whatsapp_principal_phone,deposits,withdrawals,created_at').order('created_at', { ascending: false }),
+      supabase.from('player_directory').select('user_id,username,display_name,phone,external_user_id,whatsapp_principal_slot,whatsapp_principal_phone,deposits,withdrawals,created_at,referrer_user_id,referrer_name').order('created_at', { ascending: false }),
       supabase.from('whatsapp_principals').select('slot,phone,active').order('slot'),
     ]);
     setLoading(false);
     const failure = directory.error ?? contacts.error;
-    if (failure) { setLoadError('No pudimos cargar los jugadores. Aplicá la migración 017 y desplegá manage-players.'); return; }
+    if (failure) { setLoadError('No pudimos cargar los jugadores. Aplicá las migraciones hasta la 022 y desplegá manage-players.'); return; }
     setLoadError('');
     setPlayers((directory.data ?? []).map(row => ({ ...row, deposits: Number(row.deposits) || 0, withdrawals: Number(row.withdrawals) || 0 })) as Player[]);
     setPrincipals((contacts.data ?? []) as Principal[]);
@@ -50,18 +51,35 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
     if (demo || !supabase) throw new InputError('La vista previa no modifica jugadores.');
     const result = await supabase.functions.invoke('manage-players', { body });
     if (result.error || (!result.data?.ok && !result.data?.user_id)) throw await functionError(result.error, result.data, fallback);
+    return result.data;
   }
   async function createPlayer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const element = event.currentTarget;
     const form = new FormData(element);
     await action(async () => {
-      await invoke({
+      if (demo || !supabase) throw new InputError('La vista previa no modifica jugadores.');
+      const referrerId = form.get('referrer_user_id') || null;
+      if (referrerId) {
+        // Older deployments silently ignore referrer_user_id. Check before creating an account.
+        const capability = await supabase!.functions.invoke('manage-players', { body: { action: 'referral-capabilities' } });
+        if (capability.error || capability.data?.referrals !== true) {
+          throw new InputError('No se creó el jugador: no pudimos confirmar que el servidor registre recomendaciones. Aplicá la migración 022, ejecutá npm run deploy:functions y revisá la conexión antes de reintentar.');
+        }
+      }
+      const created = await invoke({
         action: 'create', username: form.get('username'), password: form.get('password'), phone: form.get('phone'),
         external_user_id: form.get('external_user_id'), whatsapp_principal_slot: form.get('whatsapp_principal_slot'),
+        referrer_user_id: referrerId,
       }, 'No se pudo crear el jugador.');
       element.reset();
       await refresh();
+      if (referrerId) {
+        const link = await supabase!.from('player_referrals').select('referrer_user_id').eq('referred_user_id', created.user_id).maybeSingle();
+        if (link.error || link.data?.referrer_user_id !== referrerId) {
+          throw new InputError('El jugador se creó, pero no pudimos confirmar su recomendación. No vuelvas a crear la cuenta: revisá el vínculo y el despliegue de manage-players antes de aprobar su primera carga.');
+        }
+      }
     });
   }
   async function updatePlayer(event: FormEvent<HTMLFormElement>, player: Player) {
@@ -88,11 +106,12 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
     <form className="player-create" onSubmit={createPlayer}>
       <div className="player-form-title"><UserPlus /><div><strong>Nuevo jugador</strong><small>El teléfono y el principal son obligatorios.</small></div></div>
       <div className="player-create-fields">
-        <label>Nombre de usuario<input name="username" minLength={3} maxLength={32} pattern="[a-zA-Z0-9._-]+" autoCapitalize="none" spellCheck={false} placeholder="juanito" required /></label>
+        <label>Nombre de usuario<input name="username" minLength={3} maxLength={32} pattern={'[a-zA-Z0-9._\\-]+'} autoCapitalize="none" spellCheck={false} placeholder="juanito" required /></label>
         <label>Contraseña<input name="password" type="password" minLength={8} maxLength={72} autoComplete="new-password" placeholder="Mínimo 8 caracteres" required /></label>
         <label>Teléfono del jugador<input name="phone" type="tel" maxLength={30} placeholder="Ej.: +595981123456" required /></label>
         <label>ID de la plataforma <span>(opcional)</span><input name="external_user_id" maxLength={80} placeholder="ID externo" /></label>
         <label>WhatsApp principal<select name="whatsapp_principal_slot" required defaultValue=""><option value="" disabled>Seleccionar principal</option>{activePrincipals.map(item => <option key={item.slot} value={item.slot}>Principal {item.slot} · +{item.phone}</option>)}</select></label>
+        <label>Recomendado por <span>(opcional)</span><select name="referrer_user_id" defaultValue=""><option value="">Sin recomendador</option>{players.map(player => <option key={player.user_id} value={player.user_id}>{player.username || player.display_name}{player.external_user_id ? ` · ID ${player.external_user_id}` : ''}</option>)}</select><small>Al aprobar su primera carga se generarán $1.000 para cada uno. Elegilo al crear la cuenta; la relación no se puede cambiar después.</small></label>
       </div>
       {!activePrincipals.length && <p className="player-form-warning">Primero cargá al menos un número en Contactos.</p>}
       <button className="cashier-create-submit" disabled={busy || loading || !activePrincipals.length}>Crear jugador</button>
@@ -100,6 +119,7 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
     {loading ? <p className="empty">Cargando jugadores…</p> : loadError ? <p className="empty">{loadError}</p> : !players.length ? <p className="empty">Todavía no hay jugadores registrados.</p> : <div className="player-list">{players.map(player => <article className="player-card" key={player.user_id}>
       <header className="player-card-header"><span className="player-avatar"><UserRound /></span><div><strong>{player.username ? `@${player.username}` : player.display_name}</strong><small>{player.phone ? `+${player.phone}` : 'Teléfono pendiente'}</small></div><span className={player.phone && player.whatsapp_principal_slot ? 'player-complete' : 'player-incomplete'}>{player.phone && player.whatsapp_principal_slot ? 'Completo' : 'Completar'}</span></header>
       <dl className="player-details"><div><dt>Principal</dt><dd>{player.whatsapp_principal_slot ? `Principal ${player.whatsapp_principal_slot}` : 'Sin asignar'}</dd></div><div><dt>ID plataforma</dt><dd>{player.external_user_id || 'Sin cargar'}</dd></div><div><dt>Actividad</dt><dd>{player.deposits} cargas · {player.withdrawals} retiros</dd></div></dl>
+      <p className="player-referrer">{player.referrer_user_id ? <>Recomendado por <strong>{player.referrer_name || 'Jugador registrado'}</strong></> : 'Sin recomendador registrado · No genera premios por recomendación.'}</p>
       {editId === player.user_id && <form className="player-edit-form" onSubmit={event => void updatePlayer(event, player)}><label>Teléfono<input name="phone" type="tel" maxLength={30} defaultValue={player.phone ? `+${player.phone}` : ''} required /></label><label>ID de la plataforma<input name="external_user_id" maxLength={80} defaultValue={player.external_user_id ?? ''} /></label><label>WhatsApp principal<select name="whatsapp_principal_slot" defaultValue={player.whatsapp_principal_slot ?? ''} required><option value="" disabled>Seleccionar principal</option>{activePrincipals.map(item => <option key={item.slot} value={item.slot}>Principal {item.slot} · +{item.phone}</option>)}</select></label><div><button disabled={busy}>Guardar datos</button><button type="button" onClick={() => setEditId(null)}>Cancelar</button></div></form>}
       {passwordId === player.user_id && <form className="player-password-form" onSubmit={event => void changePassword(event, player)}><input name="password" type="password" minLength={8} maxLength={72} autoComplete="new-password" placeholder="Nueva contraseña" required /><button disabled={busy}>Guardar contraseña</button><button type="button" onClick={() => setPasswordId(null)}>Cancelar</button></form>}
       <div className="player-card-actions"><button type="button" onClick={() => { setPasswordId(null); setEditId(player.user_id); }}><Pencil />Editar datos</button><button type="button" onClick={() => { setEditId(null); setPasswordId(player.user_id); }}><KeyRound />Cambiar contraseña</button><a href={player.whatsapp_principal_phone ? `https://wa.me/${player.whatsapp_principal_phone}` : undefined} aria-disabled={!player.whatsapp_principal_phone} target="_blank" rel="noopener noreferrer"><Phone />Abrir principal</a></div>

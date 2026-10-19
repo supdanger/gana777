@@ -28,7 +28,6 @@ function Responsible() {
 
 function Terms() {
   return <>
-    <Responsible />
     <Section title="1. Alcance del portal">
       <p>El portal permite acceder a una cuenta de jugador, enviar solicitudes de carga y retiro, consultar su historial y comunicarse con soporte. La plataforma externa asociada puede tener condiciones propias, que deben informarse antes de su uso.</p>
       <p>Estas condiciones no acreditan una licencia de juego ni sustituyen las autorizaciones exigidas en cada jurisdicción. Antes de publicar la versión definitiva deben identificarse el operador, las jurisdicciones habilitadas y, cuando corresponda, la autoridad y la autorización aplicables.</p>
@@ -61,7 +60,7 @@ function Privacy() {
     <Section title="1. Datos que utiliza el portal">
       <ul>
         <li>Cuenta: nombre de usuario, nombre visible, teléfono, correo cuando corresponda, identificador de la plataforma asociada y canal de atención asignado.</li>
-        <li>Operaciones: importe, bono seleccionado, tipo y estado de solicitud, fechas, historial, titular, CBU/CVU y alias informados para retiros.</li>
+        <li>Operaciones: importe, bono seleccionado, tipo y estado de solicitud, fechas, historial, titular, CBU/CVU y alias informados para retiros. Si corresponde, relación entre recomendador y recomendado y registro de sus premios.</li>
         <li>Archivos y asistencia: comprobantes de transferencias y mensajes enviados por el chat. Un comprobante puede contener datos adicionales incluidos por su emisor.</li>
         <li>Acceso y seguridad: información de sesión y registros de autenticación, solicitudes y revisión. Los proveedores técnicos pueden procesar dirección IP y datos del navegador para prestar sus servicios y prevenir abusos.</li>
       </ul>
@@ -126,9 +125,12 @@ export function PlayerFooter() {
       {document && <>
         <header className="player-legal-header"><h2 id="player-legal-title">{title}</h2><button type="button" autoFocus onClick={() => setDocument(null)} aria-label="Cerrar información legal"><X size={22} /></button></header>
         <article className="player-legal-content">
-          <p className="legal-version">Borrador para revisión · 19/10/2026</p>
-          <p className="legal-draft-notice" role="note">Documento pendiente de completar y validar por el responsable. La identidad legal, el contacto, los plazos de conservación y las habilitaciones aplicables deben confirmarse antes de presentarlo como una versión definitiva.</p>
+          {document === 'privacy' && <>
+            <p className="legal-version">Borrador para revisión · 19/10/2026</p>
+            <p className="legal-draft-notice" role="note">Documento pendiente de completar y validar por el responsable. La identidad legal, el contacto, los plazos de conservación y las habilitaciones aplicables deben confirmarse antes de presentarlo como una versión definitiva.</p>
+          </>}
           {document === 'terms' ? <Terms /> : <Privacy />}
+          {document === 'terms' && <p className="legal-version legal-end-note">Borrador para revisión · 19/10/2026. Pendiente de completar los datos del responsable y validar las condiciones y habilitaciones aplicables antes de su publicación definitiva.</p>}
         </article>
       </>}
     </dialog>

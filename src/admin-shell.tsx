@@ -13,6 +13,7 @@ const groups: Array<{ label: string; items: Array<{ page: Page; Icon: typeof Lay
   { label: 'Operaciones', items: [
     { page: 'deposit', Icon: ArrowDownToLine, count: 'deposit' },
     { page: 'withdrawal', Icon: ArrowUpFromLine, count: 'withdrawal' },
+    { page: 'referrals', Icon: Gift },
     { page: 'history', Icon: History },
   ] },
   { label: 'Clientes', items: [

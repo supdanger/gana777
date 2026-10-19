@@ -1,0 +1,17 @@
+{
+  "id": "/",
+  "name": "GANA777",
+  "short_name": "GANA777",
+  "description": "Acceso al portal de jugadores GANA777.",
+  "lang": "es-AR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#001322",
+  "theme_color": "#001322",
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "/pwa/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/pwa/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

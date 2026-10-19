@@ -15,3 +15,11 @@ test('un cajero abre solamente apartados habilitados y el superadmin abre todos'
   assert.equal(canOpenAdminPage('cashiers', permissions, false), false);
   assert.equal(canOpenAdminPage('cashiers', permissions, true), true);
 });
+
+test('Recomendados conserva los permisos de Usuarios o Bonos', () => {
+  assert.equal(canOpenAdminPage('referrals', noStaffPermissions, false), false);
+  assert.equal(canOpenAdminPage('referrals', { ...noStaffPermissions, deposit: true, withdrawal: true }, false), false);
+  assert.equal(canOpenAdminPage('referrals', { ...noStaffPermissions, users: true }, false), true);
+  assert.equal(canOpenAdminPage('referrals', { ...noStaffPermissions, bonuses: true }, false), true);
+  assert.equal(canOpenAdminPage('referrals', noStaffPermissions, true), true);
+});

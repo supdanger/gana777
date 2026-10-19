@@ -13,7 +13,7 @@ import { ContentProvider } from './content';
 import { DepositRateLimitError, submitDeposit, receiptUrl } from './receipt';
 import { creditAmounts } from './amounts';
 import { userHistoryWindow } from './user-history';
-import { PlayerFooter } from './player-legal';
+import { ApprovedReferralNotice, ReferralBonusHistory, ReferralRewardsAdmin } from './referrals';
 
 function missingBonusAmount(error: { message?: string } | null) {
   return !!error && /bonus_amount/i.test(error.message ?? '');
@@ -534,6 +534,7 @@ function App() {
             <div><span>{approvedBonus ? `Bono ${approvedBonus}` : 'Sin bono'}</span><strong>{approvedBonus ? `+${money(credit.bonus)}` : money(0)}</strong></div>
           </div>
           <div className="credit-copy-field credit-total"><span>Total a acreditar</span><div><strong>{money(credit.total)}</strong><button aria-label="Copiar total a acreditar" onClick={() => void copyCreditValue(credit.copyValue, 'amount')}>{copiedCreditField === 'amount' ? <><Check size={17} /> Copiado</> : <><Copy size={17} /> Copiar monto</>}</button></div><small>Se copiará {credit.copyValue}, listo para pegar.</small></div>
+          {!demo && <ApprovedReferralNotice requestId={approvedDeposit.id} />}
           <button className="credit-done" onClick={() => setApprovedDeposit(null)}>Listo</button>
         </section>
       </div>}
@@ -564,7 +565,7 @@ function App() {
     {adminApp && !isAdmin && !demo ? <section className="card"><h1>Acceso restringido</h1><p>Esta cuenta no tiene permisos de administración.</p>{feedback}</section> : !canOpenCurrentPage ? <section className="card"><h1>Sin acceso</h1><p>Este apartado no está habilitado para tu usuario.</p>{feedback}</section> : <>
       {(adminApp || (page !== 'deposit' && page !== 'withdrawal')) && feedback}
       {page === 'home' && (adminApp ? <><div className="welcome"><h1>Resumen del turno</h1><p>Revisá rápidamente las operaciones que necesitan atención.</p></div><div className="stats">{(['deposit', 'withdrawal'] as const).map(kind => <section className="card" key={kind}><p>{kind === 'deposit' ? 'Cargas pendientes' : 'Retiros pendientes'}</p><h1>{kind === 'deposit' ? pendingCounts.deposit : pendingCounts.withdrawal}</h1></section>)}</div>{bonusBoard()}</> : <UserHome name={name} navigate={navigate} whatsappUrl={demo ? undefined : playerWhatsAppUrl} />)}
-      {!adminApp && page === 'profile' && <><UserProfile name={name} busy={busy} logout={() => void logout()} />{history('deposit')}{history('withdrawal')}</>}
+      {!adminApp && page === 'profile' && <><UserProfile name={name} busy={busy} logout={() => void logout()} />{history('deposit')}{history('withdrawal')}<ReferralBonusHistory userId={userId} demo={demo} /></>}
       {(page === 'deposit' || page === 'withdrawal') && !adminApp && <RequestForm key={page} kind={page} requests={requests.filter(r => r.user_id === userId)} bank={bank} bankOperation={bankOperation} retryAt={page === 'deposit' ? depositRetryAt : 0} busy={busy} demo={demo} feedback={feedback} onSubmit={submitRequest} onCopy={(text, label) => void action(async () => { await navigator.clipboard.writeText(text); setNotice(`${label} copiado.`); })} onOpenWithdrawalHistory={() => { setProfileHistoryTarget('withdrawal'); navigate('profile'); }} />}
       {adminApp && page === 'deposit' && depositList()}
       {adminApp && page === 'withdrawal' && history('withdrawal')}
@@ -572,6 +573,7 @@ function App() {
       {adminApp && page === 'users' && <PlayerAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'contacts' && <ContactAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'bonuses' && <BonusAdmin demo={demo} busy={busy} action={action} />}
+      {adminApp && page === 'referrals' && <ReferralRewardsAdmin demo={demo} busy={busy} action={action} userId={userId} superAdmin={demo || staffContext.superAdmin} />}
       {adminApp && page === 'accounts' && <AccountAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'shifts' && <ShiftAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'cashiers' && staffContext.superAdmin && <CashierAdmin demo={demo} busy={busy} action={action} />}
@@ -581,7 +583,6 @@ function App() {
         <form className="composer" onSubmit={sendMessage}><input name="message" aria-label="Mensaje" placeholder="Escribí un mensaje…" maxLength={2000} required /><button className="send" aria-label="Enviar mensaje" disabled={busy || demo || !thread}><Send size={21} /></button></form>
       </> : <Conversation messages={messages} userId={userId} busy={busy} disabled={demo} onSubmit={sendMessage} />)}
     </>}
-    {!adminApp && <PlayerFooter />}
   </>;
   const staffAvatarUrl = staffContext.avatarPath && supabase ? supabase.storage.from('cashier-avatars').getPublicUrl(staffContext.avatarPath).data.publicUrl : null;
   if (adminApp) return <AdminShell page={page} counts={pendingCounts} permissions={demo ? allStaffPermissions : staffContext.permissions} superAdmin={demo || staffContext.superAdmin} staffName={demo ? 'Superadministrador' : staffContext.displayName || name} avatarUrl={staffAvatarUrl} busy={busy} navigate={navigate} logout={() => void logout()}>{content}</AdminShell>;

@@ -50,12 +50,18 @@ Deno.serve(async request => {
   if (request.method !== 'POST') return json({ error: 'Método no permitido.' }, 405);
   try {
     if (Number(request.headers.get('Content-Length') ?? 0) > 16384) throw new HttpError(413, 'Solicitud demasiado grande.');
-    const { db } = await authenticate(request);
+    const { db, user } = await authenticate(request);
     const { data: allowed, error: permissionError } = await db.rpc('has_admin_permission', { permission_name: 'users' });
     if (permissionError || !allowed) throw new HttpError(403, 'No tenés permiso para gestionar jugadores.');
     const payload = record(await request.json());
     const action = payload.action;
     const server = serverClient();
+
+    if (action === 'referral-capabilities') {
+      const { error } = await server.from('player_referrals').select('referred_user_id').limit(0);
+      if (error) throw new HttpError(400, 'Aplicá la migración 022 antes de crear recomendados.');
+      return json({ ok: true, referrals: true });
+    }
 
     if (action === 'create') {
       const playerUsername = username(payload.username);
@@ -63,6 +69,15 @@ Deno.serve(async request => {
       const password = text(payload.password, 'Contraseña', 8, 72);
       const principalSlot = slot(payload.whatsapp_principal_slot);
       const externalId = optionalText(payload.external_user_id, 'ID de la plataforma', 80);
+      const referrerId = payload.referrer_user_id === null || payload.referrer_user_id === undefined || payload.referrer_user_id === '' ? null : uuid(payload.referrer_user_id);
+      if (referrerId) {
+        const [profile, staff] = await Promise.all([
+          server.from('user_profiles').select('user_id').eq('user_id', referrerId).maybeSingle(),
+          server.from('admin_users').select('user_id').eq('user_id', referrerId).maybeSingle(),
+        ]);
+        if (profile.error || staff.error) throw new HttpError(400, 'No pudimos verificar al recomendador.');
+        if (!profile.data || staff.data) throw new HttpError(400, 'Seleccioná un jugador válido como recomendador.');
+      }
       const { data: principal } = await server.from('whatsapp_principals').select('slot').eq('slot', principalSlot).eq('active', true).maybeSingle();
       if (!principal) throw new HttpError(400, 'Seleccioná un principal de WhatsApp activo.');
       const { data: existingPhone } = await server.from('user_profiles').select('user_id').eq('phone', playerPhone).maybeSingle();
@@ -81,7 +96,17 @@ Deno.serve(async request => {
         external_user_id: externalId, whatsapp_principal_slot: principalSlot, updated_at: new Date().toISOString(),
       }).eq('user_id', created.user.id);
       if (saveError) { await server.auth.admin.deleteUser(created.user.id); throw profileError(saveError); }
-      return json({ user_id: created.user.id });
+      if (referrerId) {
+        const { error: referralError } = await server.from('player_referrals').insert({
+          referred_user_id: created.user.id, referrer_user_id: referrerId, created_by: user.id,
+        });
+        if (referralError) {
+          const { error: cleanupError } = await server.auth.admin.deleteUser(created.user.id);
+          if (cleanupError) throw new HttpError(500, 'No se completó la recomendación. Revisá la cuenta creada antes de volver a intentar.');
+          throw new HttpError(400, referralError.code === '22023' ? referralError.message : 'No se pudo registrar la recomendación. Aplicá la migración 022 antes de crear recomendados.');
+        }
+      }
+      return json({ user_id: created.user.id, referral_registered: Boolean(referrerId) });
     }
 
     if (action === 'update') {

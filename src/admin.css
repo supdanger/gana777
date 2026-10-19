@@ -730,3 +730,35 @@
   .bonus-offer-actions, .account-offer-actions { width: 100%; justify-content: stretch; }
   .bonus-offer-actions button, .account-offer-actions button { flex: 1; }
 }
+/* Gestión de premios por recomendación, compartida por Usuarios y Bonos. */
+.referral-admin { margin-top: 24px; padding: 20px; border: 1px solid #304a60; border-radius: 12px; background: #102332; color: #f5f8fc; }
+.referral-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.referral-heading h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 7px; font-size: 23px; }
+.referral-heading p, .referral-instructions { color: #b5c7da; font-size: 14px; line-height: 1.45; }
+.referral-instructions { margin: 12px 0; }
+.referral-filters, .referral-copy-actions, .referral-reward-actions, .referral-pagination { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.referral-filters { margin-bottom: 14px; }
+.referral-admin button { min-height: 44px; padding: 8px 12px; border: 1px solid #3b617c; border-radius: 8px; background: #142c3f; color: #e3edf5; font-size: 14px; }
+.referral-filters button[aria-pressed="true"] { border-color: #289ee0; background: #134a74; }
+.referral-reward-list { display: grid; gap: 12px; }
+.referral-reward-card { padding: 16px; border: 1px solid #304a60; border-radius: 10px; background: #091b28; }
+.referral-reward-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.referral-reward-heading > div { display: grid; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+.referral-reward-heading strong { font-size: 18px; }
+.referral-reward-heading small, .referral-reward-card p { color: #b5c7da; font-size: 13px; line-height: 1.4; }
+.referral-reward-card p { margin: 8px 0; }
+.referral-copy-actions { margin: 12px 0; }
+.referral-reward-actions { margin-top: 12px; }
+.referral-reward-actions .referral-confirm { border-color: #31ad86; background: #125341; }
+.referral-reward-actions > span { color: #e9c477; font-size: 14px; }
+.referral-pagination { justify-content: space-between; margin-top: 16px; }
+.referral-pagination > span { color: #b5c7da; font-size: 13px; }
+.player-referrer { padding: 0 16px 12px; color: #b5c7da; font-size: 14px; }
+.player-create-fields label > small { color: #9db5ca; font-size: 12px; line-height: 1.45; }
+.approved-referral-notice { display: flex; align-items: flex-start; gap: 8px; padding: 12px; border: 1px solid #3a7797; border-radius: 8px; background: #102b3c; color: #c8e9fa; font-size: 14px; line-height: 1.45; }
+.approved-referral-notice > svg { flex: 0 0 auto; }
+@media (max-width: 560px) {
+  .referral-admin { padding: 14px; }
+  .referral-heading { flex-direction: column; }
+  .referral-reward-card { padding: 12px; }
+}

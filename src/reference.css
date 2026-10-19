@@ -915,6 +915,9 @@ body:has(.user-login) { min-height: 100svh; }
 .player-legal-content { flex: 1 1 auto; min-height: 0; padding: 16px 20px 24px; overflow-y: auto; overscroll-behavior: contain; color: #c2d1de; font-size: 16px; line-height: 1.6; overflow-wrap: anywhere; }
 .player-legal-content p { margin: 0 0 12px; }
 .player-legal-content .legal-version { color: #98b1c5; font-size: 13px; }
+.player-legal-content { text-align: left; }
+.player-legal-content > .legal-section:first-child { margin-top: 0; }
+.player-legal-content .legal-end-note { margin-top: 24px; padding-top: 12px; border-top: 1px solid #304a60; }
 .player-legal-content .legal-draft-notice { padding: 12px; border: 1px solid #877348; border-radius: 9px; background: #332a1b; color: #f2dbaa; font-size: 14px; }
 .player-legal-content .legal-section { margin-top: 24px; }
 .player-legal-content h3 { margin: 0 0 10px; color: #f5f8fc; font-size: 19px; line-height: 1.3; }
@@ -935,3 +938,24 @@ body:has(.user-login) { min-height: 100svh; }
   .user-app.page-home .social { min-height: 52px; gap: 4px; }
   .user-app.page-home .social-mark { width: 32px; height: 32px; }
 }
+.user-app.page-profile .referral-player-history { margin-top: 12px; }
+.user-app.page-profile .referral-player-history h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 20px; }
+.user-app.page-profile .referral-player-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid #304a60; }
+.user-app.page-profile .referral-player-row > div { display: grid; gap: 4px; }
+.user-app.page-profile .referral-player-row strong { font-size: 18px; }
+.user-app.page-profile .referral-player-row small { font-size: 13px; line-height: 1.35; }
+.user-app.page-profile .referral-player-row > span { max-width: 40%; color: #a6d9ef; font-size: 13px; text-align: right; }
+.user-app.page-profile .referral-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
+.user-app.page-profile .referral-pagination button { min-height: 44px; padding: 8px; font-size: 14px; }
+
+/* Installation stays compact and is never shown in the admin panel. */
+.portal-install { margin: 6px 0; text-align: center; }
+.portal-install .portal-install-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; width: auto; margin: 0; padding: 5px 10px; border: 1px solid #34718c; border-radius: 8px; background: #142b3a; color: #bceaff; font-size: 13px; font-weight: 600; line-height: 1.2; }
+.portal-install .portal-install-button:focus-visible { outline: 2px solid #45dfff; outline-offset: 2px; }
+.portal-install-dialog { width: min(420px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); box-sizing: border-box; padding: 22px; overflow-y: auto; border: 1px solid #34718c; border-radius: 16px; background: #142a39; color: #dcebf5; text-align: left; box-shadow: 0 16px 64px #0008; }
+.portal-install-dialog::backdrop { background: #00101ccc; }
+.portal-install-dialog h2 { margin: 0 30px 18px 0; font-size: 21px; line-height: 1.3; color: #fff; }
+.portal-install-dialog p { margin: 0 0 14px; font-size: 15px; line-height: 1.5; }
+.portal-install-dialog small { color: #9fb8cd; font-size: 13px; line-height: 1.4; }
+.portal-install-dialog .portal-install-close { position: absolute; top: 12px; right: 12px; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 1px solid #34718c; border-radius: 8px; background: #142b3a; color: #dcebf5; }
+@media (display-mode: standalone) { .portal-install { display: none; } }
