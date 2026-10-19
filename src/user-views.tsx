@@ -84,15 +84,29 @@ const bonusBanners: Record<number, string> = {
 function bonusBanner(promotion: { bonus_mode: string; bonus_amount: number }) {
   return promotion.bonus_mode === 'fixed' ? bonusBanners[promotion.bonus_amount] ?? '' : '';
 }
+const greetingHourFormatter = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', hourCycle: 'h23',
+});
+function playerGreeting() {
+  const hour = Number(greetingHourFormatter.format(new Date()));
+  return hour >= 6 && hour < 12 ? 'Buenos días' : hour >= 12 && hour < 20 ? 'Buenas tardes' : 'Buenas noches';
+}
 export function UserHome({ name, navigate, whatsappUrl }: { name: string; navigate: (page: Page) => void; whatsappUrl?: string | null }) {
   const { settings, contactAnimations } = useContent();
+  const [greeting, setGreeting] = useState(playerGreeting);
+  useEffect(() => {
+    const refreshGreeting = () => setGreeting(playerGreeting());
+    const timer = window.setInterval(refreshGreeting, 60_000);
+    window.addEventListener('focus', refreshGreeting);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refreshGreeting); };
+  }, []);
   const contacts = [
     { name: 'WhatsApp', url: safeHttpsLink(whatsappUrl === undefined ? settings.whatsapp_url : whatsappUrl, ['wa.me', 'api.whatsapp.com']), mark: <WhatsAppMark />, className: 'whatsapp', animation: contactAnimations.whatsapp, visible: settings.show_whatsapp },
     { name: 'Telegram', url: safeHttpsLink(settings.telegram_url, ['t.me']), mark: <TelegramMark />, className: 'telegram', animation: contactAnimations.telegram, visible: settings.show_telegram },
     { name: 'Instagram', url: safeHttpsLink(settings.instagram_url, ['instagram.com', 'www.instagram.com']), mark: <InstagramMark />, className: 'instagram', animation: contactAnimations.instagram, visible: settings.show_instagram },
   ].filter(contact => contact.visible);
   return <>
-    <h1 className="home-welcome">¡Hola, {name}!</h1>
+    <h1 className="home-welcome">¡{greeting}, {name}!</h1>
     <BonusBanner />
     <h2 className="section-title">¿Qué querés hacer?</h2>
     <div className="quick-actions">{([
