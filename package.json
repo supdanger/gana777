@@ -1,0 +1,32 @@
+{
+  "name": "gana777-gestion",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --mode user",
+    "dev:admin": "vite --mode admin",
+    "build": "tsc --noEmit && vite build --mode user",
+    "build:admin": "tsc --noEmit && vite build --mode admin",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview",
+    "assets:upload": "node --env-file=.env scripts/upload-assets.mjs",
+    "auth:limits": "node --env-file=.env --env-file-if-exists=.env.auth.local scripts/auth-rate-limits.mjs",
+    "cloudinary:check": "node --env-file=.env scripts/cloudinary-check.mjs",
+    "deploy:functions": "node scripts/deploy-functions.mjs",
+    "test": "node --experimental-strip-types --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.0.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "supabase": "^2.121.0",
+    "typescript": "^5.7.0",
+    "vite": "^7.0.0"
+  }
+}

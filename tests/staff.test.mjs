@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { canOpenAdminPage, noStaffPermissions, staffSignInEmail } from '../src/staff.ts';
+
+test('convierte el usuario del cajero a un correo interno', () => {
+  assert.equal(staffSignInEmail('Carlos_1'), 'carlos_1@staff.gana777.internal');
+  assert.equal(staffSignInEmail('dueno@example.com'), 'dueno@example.com');
+  assert.throws(() => staffSignInEmail('ca'));
+});
+
+test('un cajero abre solamente apartados habilitados y el superadmin abre todos', () => {
+  const permissions = { ...noStaffPermissions, deposit: true };
+  assert.equal(canOpenAdminPage('deposit', permissions, false), true);
+  assert.equal(canOpenAdminPage('withdrawal', permissions, false), false);
+  assert.equal(canOpenAdminPage('cashiers', permissions, false), false);
+  assert.equal(canOpenAdminPage('cashiers', permissions, true), true);
+});

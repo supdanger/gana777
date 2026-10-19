@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="1040" viewBox="0 0 720 1040" role="img" aria-labelledby="title desc">
+  <title id="title">Comprobante bancario de demostración</title>
+  <desc id="desc">Comprobante ficticio por ciento cincuenta mil pesos.</desc>
+  <rect width="720" height="1040" fill="#f5f7fb"/>
+  <rect x="0" y="0" width="720" height="150" fill="#0757b7"/>
+  <circle cx="92" cy="75" r="42" fill="#fff" opacity=".98"/>
+  <path d="M70 79h44M78 62h28M78 96h28" stroke="#0757b7" stroke-width="9" stroke-linecap="round"/>
+  <text x="155" y="68" fill="#fff" font-family="Arial,sans-serif" font-size="30" font-weight="700">Banco Río</text>
+  <text x="155" y="105" fill="#dceaff" font-family="Arial,sans-serif" font-size="19">Transferencia realizada</text>
+  <circle cx="360" cy="235" r="38" fill="#d9f5e7"/>
+  <path d="M341 235l13 13 27-30" fill="none" stroke="#148353" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="360" y="306" text-anchor="middle" fill="#172238" font-family="Arial,sans-serif" font-size="23" font-weight="700">¡Transferencia exitosa!</text>
+  <text x="360" y="373" text-anchor="middle" fill="#172238" font-family="Arial,sans-serif" font-size="19">Monto transferido</text>
+  <text x="360" y="428" text-anchor="middle" fill="#0757b7" font-family="Arial,sans-serif" font-size="44" font-weight="700">$ 150.000,00</text>
+  <line x1="70" y1="486" x2="650" y2="486" stroke="#d3d9e5" stroke-width="2"/>
+  <g font-family="Arial,sans-serif" font-size="18">
+    <text x="70" y="548" fill="#687386">Destinatario</text><text x="650" y="548" text-anchor="end" fill="#172238" font-weight="700">GANA777</text>
+    <text x="70" y="612" fill="#687386">Fecha</text><text x="650" y="612" text-anchor="end" fill="#172238">18/10/2026 · 14:32</text>
+    <text x="70" y="676" fill="#687386">Operación</text><text x="650" y="676" text-anchor="end" fill="#172238">948201576</text>
+    <text x="70" y="740" fill="#687386">Concepto</text><text x="650" y="740" text-anchor="end" fill="#172238">Transferencia</text>
+  </g>
+  <line x1="70" y1="790" x2="650" y2="790" stroke="#d3d9e5" stroke-width="2"/>
+  <rect x="70" y="842" width="580" height="92" rx="16" fill="#e8f1fd"/>
+  <text x="360" y="880" text-anchor="middle" fill="#0757b7" font-family="Arial,sans-serif" font-size="16" font-weight="700">COMPROBANTE DE DEMOSTRACIÓN</text>
+  <text x="360" y="910" text-anchor="middle" fill="#51627c" font-family="Arial,sans-serif" font-size="14">Los datos de esta imagen son ficticios.</text>
+</svg>

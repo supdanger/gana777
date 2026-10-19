@@ -1,0 +1,9 @@
+# Auth is verified with auth.getUser inside each handler; supports publishable API keys.
+[functions.submit-deposit]
+verify_jwt = false
+[functions.receipt-url]
+verify_jwt = false
+[functions.manage-cashiers]
+verify_jwt = false
+[functions.manage-players]
+verify_jwt = false

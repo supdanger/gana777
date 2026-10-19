@@ -1,0 +1,63 @@
+/* The user application keeps the same single-column flow on every screen. */
+.user-app {
+  max-width: 520px;
+  min-height: 100svh;
+  padding: max(20px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+}
+.user-app header { margin-bottom: 30px; gap: 16px; }
+.user-app header button { min-height: 44px; }
+.user-app .welcome { margin-bottom: 30px; }
+.user-app .welcome h1 { overflow-wrap: anywhere; font-size: clamp(26px, 7vw, 34px); line-height: 1.2; }
+.user-app .welcome p { margin-bottom: 0; }
+.user-app .eyebrow { font-size: 10px; letter-spacing: 1.5px; }
+.user-app .section-title { font-size: 24px; margin-bottom: 18px; }
+.user-app .quick-actions { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 0; }
+.user-app .action-card { min-height: 116px; width: 100%; display: flex; flex-direction: row; align-items: center; gap: 18px; padding: 22px 18px; border-radius: 18px; }
+.user-app .action-card > span:nth-child(2) { flex: 1; min-width: 0; }
+.user-app .action-card .icon-circle { padding: 16px; }
+.user-app .action-card strong { font-size: 25px; margin: 0 0 6px; }
+.user-app .action-card small { font-size: 14px; line-height: 1.45; max-width: none; padding: 0; }
+.user-app .action-card > svg { position: static; width: 20px; flex-shrink: 0; }
+.user-app .card { padding: 20px; }
+.user-app .card h2 { font-size: 19px; line-height: 1.35; }
+.user-app .card h2 > svg { flex-shrink: 0; }
+.user-app label { font-size: 13px; line-height: 1.5; }
+.user-app input, .user-app select, .login input { font-size: 16px; min-height: 50px; }
+.user-app input.amount { font-size: 30px; }
+.user-app input.amount { appearance: textfield; -moz-appearance: textfield; }
+.user-app input.amount::-webkit-inner-spin-button,
+.user-app input.amount::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.user-app .primary { min-height: 56px; }
+.user-app .page-title button, .user-app .bank-data button { min-width: 44px; min-height: 44px; flex-shrink: 0; }
+.user-app .bank-data strong { font-size: 15px; word-break: break-word; }
+.user-app .upload { padding: 20px 12px; }
+.user-app .upload input { font-size: 13px; max-width: 100%; padding: 12px 8px; }
+.user-app .upload input::file-selector-button { min-height: 44px; margin-right: 8px; border: 1px solid #356da3; border-radius: 8px; background: #06345a; color: white; padding: 8px; }
+.user-app .support { gap: 12px; }
+.user-app .support .icon-circle { padding: 12px; }
+.user-app .support h2 { font-size: 18px; }
+.user-app.page-chat { height: 100dvh; min-height: 0; display: flex; flex-direction: column; }
+.user-app.page-chat header { margin-bottom: 18px; flex-shrink: 0; }
+.user-app.page-chat .page-title { margin-bottom: 16px; }
+.user-app.page-chat .support { padding: 16px; margin-bottom: 12px; }
+.user-app.page-chat .chat-log { flex: 1; min-height: 120px; max-height: none; margin-bottom: 12px; overscroll-behavior: contain; }
+.user-app.page-chat .chat-log .empty { margin: auto; }
+.user-app.page-chat .message { max-width: 90%; }
+.user-app.page-chat .message p { font-size: 16px; }
+.user-app.page-chat .composer { padding: 8px; gap: 8px; flex-shrink: 0; }
+.user-app.page-chat .composer input { padding: 12px 14px; }
+.user-app.page-chat .send { width: 50px; min-height: 50px; }
+.user-app.page-chat footer { margin: 12px 0 0; flex-shrink: 0; font-size: 10px; }
+.login { min-height: 100svh; padding-top: max(28px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+.login .login-art { margin: 24px 0; }
+@media (max-width: 360px) {
+  .user-app { padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
+  .user-app .action-card { gap: 12px; padding: 18px 14px; }
+  .user-app .action-card .icon-circle { padding: 12px; }
+  .user-app .action-card strong { font-size: 23px; }
+  .user-app .card { padding: 16px; }
+}
+@media (max-height: 600px) {
+  .user-app.page-chat .support { display: none; }
+  .user-app.page-chat footer { display: none; }
+}
