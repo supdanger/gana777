@@ -428,16 +428,17 @@ a.social.instagram:hover { border-color: #ff8ab8; }
 .user-app.page-withdrawal .withdrawal-history-link > svg:last-child { color: #a9bed1; }
 .user-app.page-withdrawal .withdrawal-history-link:hover { border-color: #4b718c; background: #173044; }
 .user-app.page-withdrawal .withdrawal-history-link:active { transform: scale(.985); }
-.user-app.page-withdrawal .account-card { padding: 16px; }
-.user-app.page-withdrawal .account-card .section-heading { margin-bottom: 2px; }
-.user-app.page-withdrawal .account-card .section-heading .icon-circle { width: 46px; height: 46px; }
-.user-app.page-withdrawal .account-card .section-heading h2 { font-size: 20px; }
+.user-app.page-withdrawal .account-card { padding: 13px 14px; }
+.user-app.page-withdrawal .account-card .section-heading { gap: 10px; margin-bottom: 0; }
+.user-app.page-withdrawal .account-card .section-heading .icon-circle { width: 38px; height: 38px; }
+.user-app.page-withdrawal .account-card .section-heading .icon-circle svg { width: 19px; height: 19px; }
+.user-app.page-withdrawal .account-card .section-heading h2 { font-size: 18px; }
 .user-app.page-withdrawal .account-card label,
-.user-app.page-withdrawal .account-card .amount-label { margin-top: 12px; font-size: 12px; }
-.user-app.page-withdrawal .account-card input { min-height: 48px; margin-top: 6px; padding: 12px; font-size: 16px; }
-.user-app.page-withdrawal .account-card .amount-input { min-height: 52px; margin-top: 6px; padding-left: 13px; }
-.user-app.page-withdrawal .account-card .amount-input > span { font-size: 26px; }
-.user-app.page-withdrawal .account-card .amount-input input { min-height: 50px; padding: 8px 10px; font-size: 27px; }
+.user-app.page-withdrawal .account-card .amount-label { margin-top: 8px; font-size: 12px; line-height: 1.2; }
+.user-app.page-withdrawal .account-card input { min-height: 40px; margin-top: 5px; padding: 8px 11px; font-size: 15px; }
+.user-app.page-withdrawal .account-card .amount-input { min-height: 46px; margin-top: 5px; padding-left: 12px; }
+.user-app.page-withdrawal .account-card .amount-input > span { font-size: 23px; }
+.user-app.page-withdrawal .account-card .amount-input input { min-height: 44px; padding: 6px 10px; font-size: 23px; }
 .user-app.page-withdrawal .account-card input,
 .user-app.page-withdrawal .account-card .amount-input { background: #091923; color: var(--portal-text); }
 
