@@ -44,10 +44,10 @@ export function LoginView({ admin, busy, configured, feedback, onLogin, onDemo, 
   return <main className={`login ${admin ? 'admin-login' : 'user-login'}`}>
     <Brand panel={admin} />
     {admin ? <p className="eyebrow">PANEL DE ADMINISTRACIÓN</p> : <div className={`login-character ${settings.login_image_path === 'brand/panda-login-transparent.png' ? 'transparent-character' : settings.login_image_layout === 'reference' ? 'reference-character' : ''}`}><StorageImage path={settings.login_image_path} fallbackPath="brand/panda-login-transparent.png" alt="Panda GANA777 con gorra y campera azul" /></div>}
-    <section className="card login-card"><h1>Bienvenido</h1><p>Ingresá a tu cuenta</p>
+    <section className="card login-card"><h1>Bienvenido</h1>{admin ? <p>Ingresá a tu cuenta</p> : <p className="login-domain">gana777bet.com</p>}
       <form onSubmit={submit}>
-        <label htmlFor="email">Usuario o correo electrónico</label>
-        <div className="icon-input"><span className="input-icon"><UserRound /></span><input id="email" name="email" type="text" autoComplete="username" placeholder={admin ? 'Ejemplo: carlos' : 'Usuario'} maxLength={254} autoCapitalize="none" spellCheck={false} required /></div>
+        {admin && <label htmlFor="email">Usuario o correo electrónico</label>}
+        <div className="icon-input"><span className="input-icon"><UserRound /></span><input id="email" name="email" type="text" autoComplete="username" aria-label={admin ? undefined : 'Usuario'} placeholder={admin ? 'Ejemplo: carlos' : 'Usuario'} maxLength={254} autoCapitalize="none" spellCheck={false} required /></div>
         <label htmlFor="password">Contraseña</label>
         <div className="icon-input password"><span className="input-icon"><LockKeyhole /></span><input id="password" name="password" type={visible ? 'text' : 'password'} autoComplete="current-password" placeholder={admin ? 'Tu contraseña' : 'Contraseña'} maxLength={1024} required /><button type="button" aria-label={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setVisible(!visible)}>{visible ? <EyeOff /> : <Eye />}</button></div>
         {siteKey && <Turnstile siteKey={siteKey} resetKey={captchaReset} onToken={setCaptchaToken} />}
