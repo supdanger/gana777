@@ -7,9 +7,9 @@ En el login y en Inicio aparece **Instalar GANA777**. Si el navegador ofrece ins
 ## Despliegue y seguridad
 
 - Publicar el build de jugadores en su dominio HTTPS habitual, separado del panel; no requiere migraciones ni funciones nuevas.
-- Mantener accesibles `/pwa/manifest.webmanifest` y los tres PNG como archivos reales, sin reescribirlos al HTML de la SPA. El manifiesto debe servirse como `application/manifest+json` o JSON.
+- Mantener accesibles `/pwa/manifest.webmanifest`, `/pwa/icon-panda-192.png`, `/pwa/icon-panda-512.png`, `/pwa/icon-panda-maskable-512.png` y `/pwa/apple-touch-icon-panda.png` como archivos reales. El manifiesto debe servirse como `application/manifest+json` o JSON.
 - Si el hosting configura CSP, permitir el manifiesto y los íconos desde el mismo origen (`manifest-src 'self'` e `img-src 'self'` junto a los orígenes ya requeridos por el portal).
-- No hay service worker, modo sin conexión, caché adicional de solicitudes, pagos, datos personales ni comprobantes. El portal sigue necesitando internet. El almacenamiento de sesión existente no cambia.
+- El service worker solo recibe notificaciones push; no agrega modo sin conexión ni caché de solicitudes, pagos, datos personales o comprobantes. El portal sigue necesitando internet para operar.
 - El navegador y el dispositivo deciden cuándo ofrecer la instalación; el botón no puede forzarla. Una ventana privada o el navegador integrado de WhatsApp puede no admitirla.
 
 ## Comprobación manual al publicar
@@ -26,7 +26,7 @@ Comprobar primero la publicación, no asumir que el problema es el navegador:
 
 - El HTML de la raíz debe incluir `<link rel="manifest" href="/pwa/manifest.webmanifest">`.
 - Abrir `/pwa/manifest.webmanifest` en el dominio utilizado por el teléfono: debe devolver JSON, no un error, una pantalla de autenticación o el HTML del portal.
-- `/pwa/icon-192.png` y `/pwa/icon-512.png` deben mostrar imágenes PNG reales y accesibles sin iniciar sesión.
+- `/pwa/icon-panda-192.png` y `/pwa/icon-panda-512.png` deben mostrar imágenes PNG reales y accesibles sin iniciar sesión.
 - Repetir estas comprobaciones tanto en el dominio personalizado como en el dominio Vercel, si se utilizan ambos. La instalación corresponde al origen visitado.
 - Si Vercel compila con `vite build`, antes de esta corrección se omitían los metadatos PWA aunque el portal mostrara el botón. Volver a publicar con el código corregido. El panel debe conservar `npm run build:admin`.
 - Después del despliegue, cerrar y volver a abrir la pestaña por HTTPS. Probar en una pestaña normal, no incógnita, y verificar si el acceso ya está instalado. El navegador decide cuándo ofrecer su confirmación.

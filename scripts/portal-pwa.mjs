@@ -7,9 +7,11 @@ export function portalPwaPlugin(mode) {
   if (mode === 'admin') return null;
   const files = new Map([
     ['manifest.webmanifest', 'application/manifest+json'],
-    ['icon-192.png', 'image/png'],
-    ['icon-512.png', 'image/png'],
-    ['apple-touch-icon.png', 'image/png'],
+    ['icon-panda-192.png', 'image/png'],
+    ['icon-panda-512.png', 'image/png'],
+    ['icon-panda-master.png', 'image/png'],
+    ['icon-panda-maskable-512.png', 'image/png'],
+    ['apple-touch-icon-panda.png', 'image/png'],
     ['sw.js', 'text/javascript'],
   ].map(([name, type]) => [`/pwa/${name}`, {
     type, source: readFileSync(new URL(`../src/pwa/${name}`, import.meta.url)),
@@ -22,7 +24,8 @@ export function portalPwaPlugin(mode) {
     transformIndexHtml() {
       return [
         { tag: 'link', attrs: { rel: 'manifest', href: '/pwa/manifest.webmanifest' }, injectTo: 'head' },
-        { tag: 'link', attrs: { rel: 'apple-touch-icon', sizes: '180x180', href: '/pwa/apple-touch-icon.png' }, injectTo: 'head' },
+        { tag: 'link', attrs: { rel: 'icon', type: 'image/png', href: '/pwa/icon-panda-192.png' }, injectTo: 'head' },
+        { tag: 'link', attrs: { rel: 'apple-touch-icon', sizes: '180x180', href: '/pwa/apple-touch-icon-panda.png' }, injectTo: 'head' },
         { tag: 'meta', attrs: { name: 'apple-mobile-web-app-capable', content: 'yes' }, injectTo: 'head' },
         { tag: 'meta', attrs: { name: 'mobile-web-app-capable', content: 'yes' }, injectTo: 'head' },
         { tag: 'meta', attrs: { name: 'apple-mobile-web-app-title', content: 'GANA777' }, injectTo: 'head' },
