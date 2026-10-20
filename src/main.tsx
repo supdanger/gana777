@@ -78,6 +78,7 @@ function App() {
   const [userHistoryPages, setUserHistoryPages] = useState<Record<RequestRow['kind'], number>>({ deposit: 0, withdrawal: 0 });
   const [profileHistoryTarget, setProfileHistoryTarget] = useState<RequestRow['kind'] | null>(null);
   const [playerWhatsAppUrl, setPlayerWhatsAppUrl] = useState<string | null>(null);
+  const [playerUsername, setPlayerUsername] = useState<string | null>(null);
   const loginInFlight = useRef(false);
   const depositTrigger = useRef<HTMLButtonElement | null>(null);
   const userId = session?.user.id ?? 'demo';
@@ -153,7 +154,7 @@ function App() {
     });
     const { data } = supabase.auth.onAuthStateChange((_event, value) => {
       setSession(value);
-      if (!value) { setRequests([]); setMessages([]); setBank(null); setBankOperation(null); setIsAdmin(false); setStaffContext({ superAdmin: false, username: '', displayName: '', avatarPath: null, permissions: noStaffPermissions }); setThread(''); setDepositRows([]); setDepositTotal(0); setDepositPage(0); setPendingDepositCount(0); setLiveBonusCounters([]); setPlayerWhatsAppUrl(null); }
+      if (!value) { setRequests([]); setMessages([]); setBank(null); setBankOperation(null); setIsAdmin(false); setStaffContext({ superAdmin: false, username: '', displayName: '', avatarPath: null, permissions: noStaffPermissions }); setThread(''); setDepositRows([]); setDepositTotal(0); setDepositPage(0); setPendingDepositCount(0); setLiveBonusCounters([]); setPlayerWhatsAppUrl(null); setPlayerUsername(null); }
     });
     return () => { alive = false; data.subscription.unsubscribe(); };
   }, []);
@@ -181,13 +182,15 @@ function App() {
         : Promise.resolve({ count: 0, error: null });
       const contextQuery = adminApp ? db.rpc('get_admin_context').single() : Promise.resolve({ data: null, error: null });
       const playerContactQuery = adminApp ? Promise.resolve({ data: null, error: null }) : db.rpc('get_my_whatsapp_url');
-      const [r, m, role, pending, context, playerContact] = await Promise.all([
+      const playerProfileQuery = adminApp ? Promise.resolve({ data: null, error: null }) : db.from('user_profiles').select('username').eq('user_id', session!.user.id).maybeSingle();
+      const [r, m, role, pending, context, playerContact, playerProfile] = await Promise.all([
         requestPromise,
         messageQuery,
         db.rpc('is_admin'),
         pendingDepositsQuery,
         contextQuery,
         playerContactQuery,
+        playerProfileQuery,
       ]);
       if (!alive) return;
       const failure = r.error ?? m.error ?? role.error ?? pending.error ?? context.error;
@@ -195,6 +198,7 @@ function App() {
       setRequests(r.data as RequestRow[]); setMessages(m.data as Message[]);
       setIsAdmin(role.data === true);
       if (!adminApp) setPlayerWhatsAppUrl(!playerContact.error && typeof playerContact.data === 'string' ? playerContact.data : null);
+      if (!adminApp) setPlayerUsername(!playerProfile.error && typeof playerProfile.data?.username === 'string' ? playerProfile.data.username : null);
       if (adminApp) {
         const row = context.data as null | { is_super_admin: boolean; username: string | null; display_name: string | null; avatar_path: string | null; permissions: Partial<StaffPermissions> | null };
         if (row) setStaffContext({
@@ -565,7 +569,7 @@ function App() {
     {demo && <div className="demo">Vista previa · las operaciones no se envían</div>}
     {adminApp && !isAdmin && !demo ? <section className="card"><h1>Acceso restringido</h1><p>Esta cuenta no tiene permisos de administración.</p>{feedback}</section> : !canOpenCurrentPage ? <section className="card"><h1>Sin acceso</h1><p>Este apartado no está habilitado para tu usuario.</p>{feedback}</section> : <>
       {(adminApp || (page !== 'deposit' && page !== 'withdrawal')) && feedback}
-      {page === 'home' && (adminApp ? <><div className="welcome"><h1>Resumen del turno</h1><p>Revisá rápidamente las operaciones que necesitan atención.</p></div><div className="stats">{(['deposit', 'withdrawal'] as const).map(kind => <section className="card" key={kind}><p>{kind === 'deposit' ? 'Cargas pendientes' : 'Retiros pendientes'}</p><h1>{kind === 'deposit' ? pendingCounts.deposit : pendingCounts.withdrawal}</h1></section>)}</div>{bonusBoard()}</> : <UserHome name={name} navigate={navigate} whatsappUrl={demo ? undefined : playerWhatsAppUrl} />)}
+      {page === 'home' && (adminApp ? <><div className="welcome"><h1>Resumen del turno</h1><p>Revisá rápidamente las operaciones que necesitan atención.</p></div><div className="stats">{(['deposit', 'withdrawal'] as const).map(kind => <section className="card" key={kind}><p>{kind === 'deposit' ? 'Cargas pendientes' : 'Retiros pendientes'}</p><h1>{kind === 'deposit' ? pendingCounts.deposit : pendingCounts.withdrawal}</h1></section>)}</div>{bonusBoard()}</> : <UserHome name={name} navigate={navigate} whatsappUrl={demo ? undefined : playerWhatsAppUrl} username={demo ? null : playerUsername} />)}
       {!adminApp && page === 'profile' && <><UserProfile name={name} busy={busy} logout={() => void logout()} />{history('deposit')}{history('withdrawal')}<ReferralBonusHistory userId={userId} demo={demo} /></>}
       {(page === 'deposit' || page === 'withdrawal') && !adminApp && <RequestForm key={page} kind={page} requests={requests.filter(r => r.user_id === userId)} bank={bank} bankOperation={bankOperation} retryAt={page === 'deposit' ? depositRetryAt : 0} busy={busy} demo={demo} feedback={feedback} onSubmit={submitRequest} onCopy={(text, label) => void action(async () => { await navigator.clipboard.writeText(text); setNotice(`${label} copiado.`); })} onOpenWithdrawalHistory={() => { setProfileHistoryTarget('withdrawal'); navigate('profile'); }} />}
       {adminApp && page === 'deposit' && depositList()}

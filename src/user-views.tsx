@@ -12,6 +12,7 @@ import { BankTransferCard } from './bank-transfer-card';
 import { PlayerFooter } from './player-legal';
 import { PortalInstall } from './portal-install';
 import { homeBannerLink } from './home-banner';
+import { referralShareUrl } from './share-referral';
 
 export type Page = 'home' | 'profile' | 'deposit' | 'withdrawal' | 'referrals' | 'history' | 'users' | 'contacts' | 'portal' | 'bonuses' | 'accounts' | 'shifts' | 'chat' | 'cashiers';
 export const titles = { home: 'Inicio', profile: 'Mi perfil', deposit: 'Cargas', withdrawal: 'Retiros', referrals: 'Recomendados', history: 'Historial', users: 'Usuarios', contacts: 'Contactos', portal: 'Portal', bonuses: 'Bonos', accounts: 'Cuentas', shifts: 'Turnos', chat: 'Chat', cashiers: 'Cajeros' };
@@ -95,9 +96,10 @@ function playerGreeting() {
   const hour = Number(greetingHourFormatter.format(new Date()));
   return hour >= 6 && hour < 12 ? 'Buenos días' : hour >= 12 && hour < 20 ? 'Buenas tardes' : 'Buenas noches';
 }
-export function UserHome({ name, navigate, whatsappUrl }: { name: string; navigate: (page: Page) => void; whatsappUrl?: string | null }) {
+export function UserHome({ name, navigate, whatsappUrl, username }: { name: string; navigate: (page: Page) => void; whatsappUrl?: string | null; username?: string | null }) {
   const { settings, contactAnimations } = useContent();
   const bannerUrl = homeBannerLink(settings);
+  const shareUrl = referralShareUrl(username ?? null, whatsappUrl ?? null);
   const [greeting, setGreeting] = useState(playerGreeting);
   useEffect(() => {
     const refreshGreeting = () => setGreeting(playerGreeting());
@@ -107,6 +109,7 @@ export function UserHome({ name, navigate, whatsappUrl }: { name: string; naviga
   }, []);
   const contacts = [
     { name: 'WhatsApp', url: safeHttpsLink(whatsappUrl === undefined ? settings.whatsapp_url : whatsappUrl, ['wa.me', 'api.whatsapp.com']), mark: <WhatsAppMark />, className: 'whatsapp', animation: contactAnimations.whatsapp, visible: settings.show_whatsapp },
+    { name: 'Recomendar', url: shareUrl, mark: <Send />, className: 'recommend', animation: null, visible: !!shareUrl && settings.show_whatsapp },
     { name: 'Telegram', url: safeHttpsLink(settings.telegram_url, ['t.me']), mark: <TelegramMark />, className: 'telegram', animation: contactAnimations.telegram, visible: settings.show_telegram },
     { name: 'Instagram', url: safeHttpsLink(settings.instagram_url, ['instagram.com', 'www.instagram.com']), mark: <InstagramMark />, className: 'instagram', animation: contactAnimations.instagram, visible: settings.show_instagram },
   ].filter(contact => contact.visible);
