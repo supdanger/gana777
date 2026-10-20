@@ -12,7 +12,8 @@ import { BankTransferCard } from './bank-transfer-card';
 import { PlayerFooter } from './player-legal';
 import { PortalInstall } from './portal-install';
 import { homeBannerLink } from './home-banner';
-import { referralShareUrl } from './share-referral';
+import { referralShareMessage, referralShareUrl } from './share-referral';
+import referralBannerUrl from './assets/home-casino-banner-v3.png';
 
 export type Page = 'home' | 'profile' | 'deposit' | 'withdrawal' | 'referrals' | 'history' | 'users' | 'contacts' | 'portal' | 'bonuses' | 'accounts' | 'shifts' | 'chat' | 'cashiers';
 export const titles = { home: 'Inicio', profile: 'Mi perfil', deposit: 'Cargas', withdrawal: 'Retiros', referrals: 'Recomendados', history: 'Historial', users: 'Usuarios', contacts: 'Contactos', portal: 'Portal', bonuses: 'Bonos', accounts: 'Cuentas', shifts: 'Turnos', chat: 'Chat', cashiers: 'Cajeros' };
@@ -100,7 +101,28 @@ export function UserHome({ name, navigate, whatsappUrl, username }: { name: stri
   const { settings, contactAnimations } = useContent();
   const bannerUrl = homeBannerLink(settings);
   const shareUrl = referralShareUrl(username ?? null, whatsappUrl ?? null);
+  const shareMessage = referralShareMessage(username ?? null, whatsappUrl ?? null);
+  const [referralImage, setReferralImage] = useState<File | null>(null);
   const [greeting, setGreeting] = useState(playerGreeting);
+  useEffect(() => {
+    if (!shareUrl) return;
+    const controller = new AbortController();
+    void fetch(referralBannerUrl, { signal: controller.signal })
+      .then(response => { if (!response.ok) throw new Error('Imagen no disponible'); return response.blob(); })
+      .then(blob => { if (!controller.signal.aborted) setReferralImage(new File([blob], 'gana777bet.png', { type: 'image/png' })); })
+      .catch(() => { if (!controller.signal.aborted) setReferralImage(null); });
+    return () => controller.abort();
+  }, [shareUrl]);
+  async function shareReferral(event: React.MouseEvent<HTMLAnchorElement>) {
+    if (!shareUrl || !shareMessage || !referralImage || !navigator.share || !navigator.canShare?.({ files: [referralImage] })) return;
+    event.preventDefault();
+    try {
+      await navigator.share({ files: [referralImage], text: shareMessage });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      window.location.assign(shareUrl);
+    }
+  }
   useEffect(() => {
     const refreshGreeting = () => setGreeting(playerGreeting());
     const timer = window.setInterval(refreshGreeting, 60_000);
@@ -128,7 +150,7 @@ export function UserHome({ name, navigate, whatsappUrl, username }: { name: stri
     {contacts.length > 0 && <section className="card contacts"><h2>Contactanos</h2><div className="contact-links">{contacts.map(({ name, url, mark, className, animation }) => {
       const icon = <span className="social-mark"><ContactAnimation path={animation} fallback={mark} /></span>;
       return url
-        ? <a key={name} className={`social ${className}`} href={url} target="_blank" rel="noopener noreferrer">{icon}<span className="social-name">{name}</span></a>
+        ? <a key={name} className={`social ${className}`} href={url} target="_blank" rel="noopener noreferrer" onClick={className === 'recommend' ? event => void shareReferral(event) : undefined} aria-label={className === 'recommend' ? 'Recomendar Gana777 con imagen por WhatsApp' : undefined} title={className === 'recommend' ? 'Elegí WhatsApp para enviar la imagen y el mensaje' : undefined}>{icon}<span className="social-name">{name}</span></a>
         : <span key={name} className={`social ${className} unavailable`} role="img" aria-label={`${name}, próximamente`} title={`${name}, próximamente`}>{icon}<span className="social-name" aria-hidden="true">{name}</span></span>;
     })}</div></section>}
     <PortalInstall />

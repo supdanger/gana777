@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { referralShareUrl } from '../src/share-referral.ts';
+import { referralShareMessage, referralShareUrl } from '../src/share-referral.ts';
 
 test('el enlace recomienda con usuario y WhatsApp asignado sin nombres internos', () => {
   const url = referralShareUrl('max', 'https://wa.me/595981123456');
   assert.ok(url?.startsWith('https://wa.me/?text='));
   const message = new URL(url).searchParams.get('text');
+  assert.equal(referralShareMessage('max', 'https://wa.me/595981123456'), message);
   assert.equal(message, [
     '*Te recomiendo gana777bet.com* 🎰',
     '',
