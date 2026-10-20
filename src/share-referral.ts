@@ -6,8 +6,8 @@ export function referralShareUrl(username: string | null, whatsappUrl: string | 
   const message = [
     '*Te recomiendo gana777bet.com* 🎰',
     '',
-    '*Agendá este contacto*',
-    `Gana777 · +${phone}`,
+    '*Agendá este número*',
+    `+${phone} como Gana777`,
     '',
     '*¿Todavía no tenés usuario?*',
     'Pedilo al instante por WhatsApp:',

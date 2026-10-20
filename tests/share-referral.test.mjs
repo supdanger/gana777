@@ -9,8 +9,8 @@ test('el enlace recomienda con usuario y WhatsApp asignado sin nombres internos'
   assert.equal(message, [
     '*Te recomiendo gana777bet.com* 🎰',
     '',
-    '*Agendá este contacto*',
-    'Gana777 · +595981123456',
+    '*Agendá este número*',
+    '+595981123456 como Gana777',
     '',
     '*¿Todavía no tenés usuario?*',
     'Pedilo al instante por WhatsApp:',
