@@ -44,6 +44,8 @@ Copiar el mismo código fuente a los dos repositorios, con `package-lock.json`. 
 | Usuarios | `npm run build` | `dist` |
 | Administración | `npm run build:admin` | `dist` |
 
+En Vercel, `vercel.json` selecciona automáticamente el comando correcto según el repositorio (`gana777` o `gana777panel`). Para esto, las variables de sistema de Vercel deben estar habilitadas; un origen desconocido detiene la compilación en lugar de publicar la interfaz equivocada.
+
 Los secretos de Cloudinary se configuran únicamente en las Edge Functions del proyecto Supabase, una sola vez. Los permisos se aplican en la base mediante RLS; el dominio del panel no concede acceso por sí mismo.
 
 ## Alcance
