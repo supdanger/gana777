@@ -22,6 +22,8 @@ export async function removeDeviceSubscription() {
 export function PlayerNotifications({ userId, showSettings }: { userId: string; showSettings: boolean }) {
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [supported, setSupported] = useState(false);
+  const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
+  const [existingSubscription, setExistingSubscription] = useState<PushSubscription | null>(null);
   const [enabled, setEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -45,33 +47,47 @@ export function PlayerNotifications({ userId, showSettings }: { userId: string; 
     const canPush = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && window.isSecureContext;
     setSupported(canPush);
     if (canPush) {
-      void navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(async registration => {
-        const subscription = await registration.pushManager.getSubscription();
-        if (!alive || !subscription || Notification.permission !== 'granted') return;
+      void navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(async () => {
+        // register() can resolve before Chrome activates the worker. Push requires an active worker.
+        const activeRegistration = await navigator.serviceWorker.ready;
+        const subscription = await activeRegistration.pushManager.getSubscription();
+        if (!alive) return;
+        setRegistration(activeRegistration);
+        setExistingSubscription(subscription);
+        if (!subscription || Notification.permission !== 'granted') return;
         const json = subscription.toJSON();
         if (json.keys?.p256dh && json.keys.auth) {
           const { error } = await db.rpc('register_push_subscription', { p_endpoint: subscription.endpoint, p_p256dh: json.keys.p256dh, p_auth: json.keys.auth });
-          if (alive && !error) setEnabled(true);
+          if (alive && !error) { setEnabled(true); setError(''); }
         }
-      }).catch(() => { /* In-app notices still work. */ });
+      }).catch(() => { if (alive) setError('No se pudo preparar el servicio de avisos de esta app. Cerrala y abrila de nuevo.'); });
     }
     return () => { alive = false; window.removeEventListener('focus', onFocus); window.clearInterval(timer); void db.removeChannel(channel); };
   }, [userId]);
 
   async function activate() {
-    if (!supabase) return;
+    if (!supabase || !registration) return;
     setBusy(true); setError('');
+    let step: 'permission' | 'subscription' | 'save' = 'permission';
     try {
-      const permission = await Notification.requestPermission();
+      const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
       if (permission !== 'granted') { setError('Habilitá las notificaciones en los permisos del navegador.'); return; }
-      const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-      const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: applicationServerKey() });
+      step = 'subscription';
+      const subscription = existingSubscription ?? await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: applicationServerKey() });
       const json = subscription.toJSON();
       if (!json.keys?.p256dh || !json.keys.auth) throw new Error('El dispositivo no devolvió una suscripción válida.');
+      step = 'save';
       const { error } = await supabase.rpc('register_push_subscription', { p_endpoint: subscription.endpoint, p_p256dh: json.keys.p256dh, p_auth: json.keys.auth });
       if (error) throw error;
+      setExistingSubscription(subscription);
       setEnabled(true);
-    } catch { setError('No pudimos activar los avisos en este dispositivo. Intentá nuevamente.'); }
+    } catch (cause) {
+      const code = cause instanceof Error ? cause.name : '';
+      if (step === 'save') setError(`El dispositivo aceptó los avisos, pero no pudimos guardarlo en tu cuenta. Intentá nuevamente. ${cause instanceof Error ? cause.message : ''}`);
+      else if (code === 'NotAllowedError') setError('Chrome bloqueó los avisos para esta app. Habilitalos desde los permisos del sitio o de Android.');
+      else if (code === 'AbortError' || code === 'NetworkError') setError('Chrome no pudo conectarse al servicio de notificaciones. Revisá la conexión e intentá nuevamente.');
+      else setError(`No pudimos activar los avisos en este dispositivo. Intentá nuevamente${code ? ` (código: ${code})` : ''}.`);
+    }
     finally { setBusy(false); }
   }
 
@@ -89,7 +105,7 @@ export function PlayerNotifications({ userId, showSettings }: { userId: string; 
       <strong>{item.title}</strong><p>{item.body}</p><small>{date(item.created_at)}</small>
       {!item.read_at && <button type="button" onClick={() => void markRead(item.id)}><Check size={15} /> Marcar como leída</button>}
     </article>)}
-    {showSettings && supported && !enabled && <div className="player-notification-settings"><p>Activá los avisos para enterarte cuando se acredite una carga, incluso con la app cerrada.</p><button type="button" disabled={busy} onClick={() => void activate()}>{busy ? <LoaderCircle size={16} /> : <Bell size={16} />} Activar notificaciones</button></div>}
+    {showSettings && supported && !enabled && <div className="player-notification-settings"><p>Activá los avisos para enterarte cuando se acredite una carga, incluso con la app cerrada.</p><button type="button" disabled={busy || !registration} onClick={() => void activate()}>{busy || !registration ? <LoaderCircle size={16} /> : <Bell size={16} />} {registration ? 'Activar notificaciones' : 'Preparando avisos…'}</button></div>}
     {error && <p className="player-notification-error" role="alert">{error}</p>}
   </section>;
 }
