@@ -6,10 +6,11 @@ test('el enlace recomienda con usuario y WhatsApp asignado sin nombres internos'
   const url = referralShareUrl('max', 'https://wa.me/595981123456');
   assert.ok(url?.startsWith('https://wa.me/?text='));
   const message = new URL(url).searchParams.get('text');
-  assert.match(message, /Gana777/);
+  assert.ok(message.startsWith('¡Hola! Te recomiendo gana777bet.com 🎰\n\n'));
+  assert.match(message, /Agendá este número como Gana777/);
   assert.match(message, /\+595981123456/);
   assert.match(message, /usuario max/);
-  assert.match(message, /solicitar uno al instante/);
+  assert.match(message, /solicitá uno al instante/);
   assert.doesNotMatch(message, /principal/i);
 });
 
