@@ -33,6 +33,7 @@ import { CashierAdmin } from './cashier-admin';
 import { ContactAdmin } from './contact-admin';
 import { PlayerAdmin } from './player-admin';
 import { PortalAdmin } from './portal-admin';
+import { AdminWithdrawals } from './admin-withdrawals';
 import { playerSignInEmail } from './players';
 import { allStaffPermissions, canOpenAdminPage, noStaffPermissions, staffPermissionPages, staffSignInEmail, type StaffPermissions } from './staff';
 import './styles.css';
@@ -344,6 +345,7 @@ function App() {
       form.set('amount', canonicalMoney(parseAmount(form.get('amount'))));
       let row: RequestRow;
       if (page === 'deposit') {
+        if (requests.some(request => request.kind === 'deposit' && request.status === 'pending')) throw new InputError('Ya tenés una carga pendiente. Esperá a que sea aprobada o rechazada.');
         assertFormFields(form, ['amount', 'bonus_id', 'bank_assignment_id', 'receipt']);
         if (!bank) throw new InputError('Todavía no hay una cuenta habilitada para recibir cargas.');
         if (parseUuid(form.get('bank_assignment_id')) !== bank.assignment_id) throw new InputError('La cuenta asignada no es válida.');
@@ -571,9 +573,15 @@ function App() {
       {(adminApp || (page !== 'deposit' && page !== 'withdrawal')) && feedback}
       {page === 'home' && (adminApp ? <><div className="welcome"><h1>Resumen del turno</h1><p>Revisá rápidamente las operaciones que necesitan atención.</p></div><div className="stats">{(['deposit', 'withdrawal'] as const).map(kind => <section className="card" key={kind}><p>{kind === 'deposit' ? 'Cargas pendientes' : 'Retiros pendientes'}</p><h1>{kind === 'deposit' ? pendingCounts.deposit : pendingCounts.withdrawal}</h1></section>)}</div>{bonusBoard()}</> : <UserHome name={name} navigate={navigate} whatsappUrl={demo ? undefined : playerWhatsAppUrl} username={demo ? null : playerUsername} />)}
       {!adminApp && page === 'profile' && <><UserProfile name={name} busy={busy} logout={() => void logout()} />{history('deposit')}{history('withdrawal')}<ReferralBonusHistory userId={userId} demo={demo} /></>}
-      {(page === 'deposit' || page === 'withdrawal') && !adminApp && <RequestForm key={page} kind={page} requests={requests.filter(r => r.user_id === userId)} bank={bank} bankOperation={bankOperation} retryAt={page === 'deposit' ? depositRetryAt : 0} busy={busy} demo={demo} feedback={feedback} onSubmit={submitRequest} onCopy={(text, label) => void action(async () => { await navigator.clipboard.writeText(text); setNotice(`${label} copiado.`); })} onOpenWithdrawalHistory={() => { setProfileHistoryTarget('withdrawal'); navigate('profile'); }} />}
+      {(page === 'deposit' || page === 'withdrawal') && !adminApp && <RequestForm key={page} kind={page} requests={requests.filter(r => r.user_id === userId)} bank={bank} bankOperation={bankOperation} retryAt={page === 'deposit' ? depositRetryAt : 0} busy={busy} demo={demo} feedback={feedback} onSubmit={submitRequest} onCopy={(text, label) => void action(async () => { await navigator.clipboard.writeText(text); setNotice(`${label} copiado.`); })} onOpenWithdrawalHistory={() => { setProfileHistoryTarget('withdrawal'); navigate('profile'); }} onOpenDepositHistory={() => { setProfileHistoryTarget('deposit'); navigate('profile'); }} />}
       {adminApp && page === 'deposit' && depositList()}
-      {adminApp && page === 'withdrawal' && history('withdrawal')}
+      {adminApp && page === 'withdrawal' && <AdminWithdrawals requests={requests} busy={busy} demo={demo} onReview={(request, status) => void action(async () => {
+        if (!canOpenAdminPage('withdrawal', staffContext.permissions, staffContext.superAdmin)) throw new InputError('No tenés permiso para revisar retiros.');
+        const { data, error } = await supabase!.from('requests').update({ status }).eq('id', parseUuid(request.id)).eq('status', 'pending').select('id,status').single();
+        if (error) throw error;
+        setRequests(old => old.map(item => item.id === request.id ? { ...item, status: data.status as RequestRow['status'] } : item));
+        setNotice(status === 'approved' ? 'Retiro marcado como acreditado.' : 'Retiro rechazado.');
+      })} />}
       {adminApp && page === 'history' && history()}
       {adminApp && page === 'users' && <PlayerAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'contacts' && <ContactAdmin demo={demo} busy={busy} action={action} />}

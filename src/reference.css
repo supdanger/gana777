@@ -61,6 +61,11 @@
 .user-app .action-card .icon-circle svg { width: 30px; height: 30px; stroke-width: 2; }
 .user-app .action-card > svg { width: 24px; height: 24px; stroke-width: 2.5; color: #a0baf4; }
 .user-app .contacts { margin-top: 14px; padding: 14px 12px 12px; }
+.deposit-pending-notice { display: grid; gap: 12px; justify-items: start; }
+.deposit-pending-notice > svg { color: #63d5ff; }
+.deposit-pending-notice h2 { margin: 0 0 5px; }
+.deposit-pending-notice p { margin: 0; }
+.deposit-pending-notice button { width: 100%; justify-content: space-between; border-color: #258bd0; }
 .user-app .contacts h2 { display: block; font-size: 20px; margin-bottom: 12px; }
 .contact-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 8px; }
 .social { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; width: auto; min-width: 0; min-height: 98px; padding: 12px 4px 11px; border: 1px solid #173d5a; border-radius: 10px; background: #000; color: #fff; text-decoration: none; }

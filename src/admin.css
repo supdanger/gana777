@@ -698,6 +698,33 @@
 .admin-content .composer input { background: #081722; }
 .admin-content .empty { color: #9fb4c7; }
 
+.admin-withdrawals { display: grid; gap: 28px; }
+.withdrawal-page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.withdrawal-page-heading h1 { margin: 0 0 5px; }
+.withdrawal-page-heading p { margin: 0; color: var(--panel-muted); font-size: 14px; }
+.withdrawal-page-heading > strong { flex-shrink: 0; padding: 9px 12px; border: 1px solid #3b6780; border-radius: 999px; color: #9fddff; font-size: 12px; }
+.admin-withdrawals section > h2 { margin: 0 0 12px; font-size: 19px; }
+.admin-withdrawals section > h2 span { margin-left: auto; color: var(--panel-muted); font-size: 14px; }
+.withdrawal-review-list { display: grid; gap: 14px; }
+.withdrawal-review-card { overflow: hidden; border: 1px solid var(--panel-border); border-radius: 13px; background: #102536; }
+.withdrawal-review-card.is-pending { border-color: #39789f; }
+.withdrawal-review-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin: 0; padding: 16px 18px; border-bottom: 1px solid var(--panel-border-soft); }
+.withdrawal-review-header .badge { display: inline-block; }
+.withdrawal-review-header small { margin-top: 8px; color: var(--panel-muted); }
+.withdrawal-review-header > strong { color: #fff; font-size: 27px; white-space: nowrap; }
+.withdrawal-review-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 16px 18px; }
+.withdrawal-field { min-width: 0; padding: 11px 12px; border: 1px solid #35556c; border-radius: 9px; background: #0b1d2a; }
+.withdrawal-field > span { color: #9db5c9; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.withdrawal-field > div { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; }
+.withdrawal-field strong { min-width: 0; overflow-wrap: anywhere; color: #fff; font-size: 16px; }
+.withdrawal-field button { flex-shrink: 0; padding: 7px 9px; border-color: #39789f; color: #92ddff; font-size: 11px; }
+.withdrawal-review-actions { display: grid; gap: 11px; margin: 0; padding: 15px 18px 18px; border-top: 1px solid var(--panel-border-soft); }
+.withdrawal-review-actions p { margin: 0; color: #a9bdd0; font-size: 13px; }
+.withdrawal-review-actions > div { display: flex; flex-wrap: wrap; gap: 9px; }
+.withdrawal-review-actions button { min-height: 43px; font-weight: 700; }
+.withdrawal-approve { border-color: #259b8a; background: #11685d; }
+.withdrawal-reject { border-color: #a45969; color: #ffd4db; }
+
 @media (max-width: 1100px) {
   .admin-shell { grid-template-columns: 248px minmax(0, 1fr); }
   .player-create-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -714,6 +741,11 @@
 }
 
 @media (max-width: 600px) {
+  .withdrawal-page-heading { flex-direction: column; }
+  .withdrawal-review-header > strong { font-size: 22px; }
+  .withdrawal-review-fields { grid-template-columns: 1fr; padding: 12px; }
+  .withdrawal-review-actions { padding: 12px; }
+  .withdrawal-review-actions > div button { flex: 1 1 180px; }
   .admin-shell .admin-content { padding-top: 24px; }
   .admin-topbar > div:first-of-type small { font-size: 9px; }
   .admin-topbar > div:first-of-type strong { font-size: 19px; }

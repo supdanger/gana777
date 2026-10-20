@@ -16,6 +16,9 @@ Deno.serve(async request => {
     const amount = parseAmount(form.get('amount'));
     const file = await validateReceipt(form.get('receipt'));
     const bankAssignmentId = parseUuid(form.get('bank_assignment_id'));
+    const { data: pendingDeposit, error: pendingError } = await db.from('requests').select('id').eq('user_id', user.id).eq('kind', 'deposit').eq('status', 'pending').limit(1).maybeSingle();
+    if (pendingError) return json({ error: 'No pudimos verificar tus cargas pendientes. Intentá nuevamente.' }, 503);
+    if (pendingDeposit) return json({ error: 'Ya tenés una carga pendiente. Esperá a que sea aprobada o rechazada.' }, 409);
     const rawBonusId = form.get('bonus_id');
     const bonusId = rawBonusId === null || rawBonusId === '' ? null : parseUuid(rawBonusId);
     if (bonusId) {
@@ -49,6 +52,7 @@ Deno.serve(async request => {
       if ((error.message ?? '').includes('El bono no está habilitado')) return json({ error: 'El bono no está habilitado para ese monto.' }, 400);
       if ((error.message ?? '').includes('asignación de la cuenta venció')) return json({ error: 'La asignación de la cuenta venció. Volvé a iniciar la carga.' }, 400);
       if ((error.message ?? '').includes('cuenta asignada ya no está disponible')) return json({ error: 'La cuenta asignada ya no está disponible.' }, 400);
+      if ((error.message ?? '').includes('Ya tenés una carga pendiente')) return json({ error: 'Ya tenés una carga pendiente. Esperá a que sea aprobada o rechazada.' }, 409);
       throw new Error('No pudimos registrar la carga. Verificá el bono y volvé a intentar.');
     }
     saved = true;

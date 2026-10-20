@@ -179,9 +179,9 @@ function BankPause({ status, now }: { status: BankOperationStatus; now: number }
     </div>
   </section>;
 }
-export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, busy, demo, onSubmit, onCopy, onOpenWithdrawalHistory, feedback }: {
+export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, busy, demo, onSubmit, onCopy, onOpenWithdrawalHistory, onOpenDepositHistory, feedback }: {
   kind: 'deposit' | 'withdrawal'; requests: RequestRow[]; bank: Bank | null; bankOperation: BankOperationStatus | null; retryAt?: number; busy: boolean; demo: boolean;
-  onSubmit: (event: FormEvent<HTMLFormElement>, receipt?: File | null) => void; onCopy: (text: string, label: string) => void; onOpenWithdrawalHistory: () => void; feedback?: ReactNode;
+  onSubmit: (event: FormEvent<HTMLFormElement>, receipt?: File | null) => void; onCopy: (text: string, label: string) => void; onOpenWithdrawalHistory: () => void; onOpenDepositHistory: () => void; feedback?: ReactNode;
 }) {
   const { promotions, reloadPromotions } = useContent();
   const [now, setNow] = useState(Date.now);
@@ -192,6 +192,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     return () => window.clearInterval(timer);
   }, [kind, bankOperation?.mode, retryAt]);
   const pending = requests.some(r => r.kind === 'withdrawal' && r.status === 'pending');
+  const pendingDeposit = kind === 'deposit' && requests.some(r => r.kind === 'deposit' && r.status === 'pending');
   const nextAt = Math.max(0, ...requests.filter(r => r.kind === 'withdrawal' && r.status === 'approved' && r.approved_at).map(r => Date.parse(r.approved_at!) + 86400000));
   const seconds = Math.max(0, Math.ceil((nextAt - now) / 1000));
   const countdown = [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60].map(v => String(v).padStart(2, '0')).join(':');
@@ -252,6 +253,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     setCompressing(false);
   }
   const amount = <label className="amount-label">Monto a {kind === 'deposit' ? 'cargar' : 'retirar'}<span className="amount-input">{(kind !== 'deposit' || rawAmount) && <span aria-hidden="true">$</span>}<input className="amount" name="amount" inputMode="decimal" type="text" pattern={moneyInputPattern} maxLength={moneyInputMaxLength} placeholder={kind === 'deposit' ? 'Carga mínima 3.000' : '10.000'} aria-label={`Monto a ${kind === 'deposit' ? 'cargar' : 'retirar'} en pesos argentinos`} required value={kind === 'deposit' ? rawAmount : undefined} onChange={kind === 'deposit' ? event => setRawAmount(event.target.value) : undefined} />{bonusCreditLabel && <span className="amount-bonus">{bonusCreditLabel}</span>}</span></label>;
+  if (pendingDeposit) return <section className="card deposit-pending-notice" role="status"><FileText size={32} /><div><h2>Ya tenés una carga pendiente</h2><p>Podrás solicitar otra cuando esta carga sea aprobada o rechazada.</p></div><button type="button" onClick={onOpenDepositHistory}>Ver estado de mi carga <ChevronRight size={18} /></button></section>;
   return <form className="request-form" onSubmit={event => onSubmit(event, kind === 'deposit' ? file : null)}>
     {kind === 'deposit' ? <>
       <input type="hidden" name="bank_assignment_id" value={bank?.assignment_id ?? ''} />
