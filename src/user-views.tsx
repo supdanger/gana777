@@ -11,9 +11,10 @@ import { compressReceipt, readableFileSize } from './image-compression';
 import { BankTransferCard } from './bank-transfer-card';
 import { PlayerFooter } from './player-legal';
 import { PortalInstall } from './portal-install';
+import { homeBannerLink } from './home-banner';
 
-export type Page = 'home' | 'profile' | 'deposit' | 'withdrawal' | 'referrals' | 'history' | 'users' | 'contacts' | 'bonuses' | 'accounts' | 'shifts' | 'chat' | 'cashiers';
-export const titles = { home: 'Inicio', profile: 'Mi perfil', deposit: 'Cargas', withdrawal: 'Retiros', referrals: 'Recomendados', history: 'Historial', users: 'Usuarios', contacts: 'Contactos', bonuses: 'Bonos', accounts: 'Cuentas', shifts: 'Turnos', chat: 'Chat', cashiers: 'Cajeros' };
+export type Page = 'home' | 'profile' | 'deposit' | 'withdrawal' | 'referrals' | 'history' | 'users' | 'contacts' | 'portal' | 'bonuses' | 'accounts' | 'shifts' | 'chat' | 'cashiers';
+export const titles = { home: 'Inicio', profile: 'Mi perfil', deposit: 'Cargas', withdrawal: 'Retiros', referrals: 'Recomendados', history: 'Historial', users: 'Usuarios', contacts: 'Contactos', portal: 'Portal', bonuses: 'Bonos', accounts: 'Cuentas', shifts: 'Turnos', chat: 'Chat', cashiers: 'Cajeros' };
 export function Brand({ panel = false }: { panel?: boolean }) {
   const { settings } = useContent();
   const name = panel ? 'GANA777 Panel' : 'GANA777';
@@ -96,6 +97,7 @@ function playerGreeting() {
 }
 export function UserHome({ name, navigate, whatsappUrl }: { name: string; navigate: (page: Page) => void; whatsappUrl?: string | null }) {
   const { settings, contactAnimations } = useContent();
+  const bannerUrl = homeBannerLink(settings);
   const [greeting, setGreeting] = useState(playerGreeting);
   useEffect(() => {
     const refreshGreeting = () => setGreeting(playerGreeting());
@@ -112,11 +114,14 @@ export function UserHome({ name, navigate, whatsappUrl }: { name: string; naviga
     <h1 className="home-welcome">¡{greeting}, {name}!</h1>
     <BonusBanner />
     <h2 className="section-title">¿Qué querés hacer?</h2>
-    <div className="quick-actions">{([
-      { id: 'deposit', title: 'Cargar', description: 'Hacé tu depósito y subí el comprobante', Icon: Landmark },
-      { id: 'withdrawal', title: 'Retiros', description: 'Solicitá tu retiro', Icon: Link2 },
-      { id: 'chat', title: 'Chat', description: 'Hablá con soporte', Icon: MessageCircle },
-    ] as const).map(({ id, title, description, Icon }) => <button className="action-card" key={id} onClick={() => navigate(id)}><span className="icon-circle"><Icon /></span><span><strong>{title}</strong><small>{description}</small></span><ChevronRight /></button>)}</div>
+    <div className="quick-actions">
+      {bannerUrl && <a className="action-card home-link-banner" href={bannerUrl} target="_blank" rel="noopener noreferrer" aria-label={`${settings.home_banner_title} (abre en otra pestaña)`}><StorageImage path={settings.home_banner_path!} alt={settings.home_banner_title} /></a>}
+      {([
+        { id: 'deposit', title: 'Cargar', description: 'Hacé tu depósito y subí el comprobante', Icon: Landmark },
+        { id: 'withdrawal', title: 'Retiros', description: 'Solicitá tu retiro', Icon: Link2 },
+        { id: 'chat', title: 'Chat', description: 'Hablá con soporte', Icon: MessageCircle },
+      ] as const).map(({ id, title, description, Icon }) => <button className="action-card" key={id} onClick={() => navigate(id)}><span className="icon-circle"><Icon /></span><span><strong>{title}</strong><small>{description}</small></span><ChevronRight /></button>)}
+    </div>
     {contacts.length > 0 && <section className="card contacts"><h2>Contactanos</h2><div className="contact-links">{contacts.map(({ name, url, mark, className, animation }) => {
       const icon = <span className="social-mark"><ContactAnimation path={animation} fallback={mark} /></span>;
       return url

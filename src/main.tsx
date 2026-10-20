@@ -32,6 +32,7 @@ import { pendingConversationCount, pendingRequestCount } from './admin-navigatio
 import { CashierAdmin } from './cashier-admin';
 import { ContactAdmin } from './contact-admin';
 import { PlayerAdmin } from './player-admin';
+import { PortalAdmin } from './portal-admin';
 import { playerSignInEmail } from './players';
 import { allStaffPermissions, canOpenAdminPage, noStaffPermissions, staffPermissionPages, staffSignInEmail, type StaffPermissions } from './staff';
 import './styles.css';
@@ -572,6 +573,7 @@ function App() {
       {adminApp && page === 'history' && history()}
       {adminApp && page === 'users' && <PlayerAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'contacts' && <ContactAdmin demo={demo} busy={busy} action={action} />}
+      {adminApp && page === 'portal' && <PortalAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'bonuses' && <BonusAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'referrals' && <ReferralRewardsAdmin demo={demo} busy={busy} action={action} userId={userId} superAdmin={demo || staffContext.superAdmin} />}
       {adminApp && page === 'accounts' && <AccountAdmin demo={demo} busy={busy} action={action} />}

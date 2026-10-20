@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   ArrowDownToLine, ArrowUpFromLine, Clock3, Gift, History, Landmark,
-  LayoutDashboard, LogOut, Menu, MessagesSquare, PhoneCall, UserCog, Users, X,
+  LayoutDashboard, LogOut, Menu, MessagesSquare, PhoneCall, UserCog, Users, X, PanelsTopLeft,
 } from 'lucide-react';
 import { Brand, titles, type Page } from './user-views';
 import { canOpenAdminPage, type StaffPermissions } from './staff';
@@ -22,6 +22,7 @@ const groups: Array<{ label: string; items: Array<{ page: Page; Icon: typeof Lay
     { page: 'chat', Icon: MessagesSquare, count: 'chat' },
   ] },
   { label: 'Configuración', items: [
+    { page: 'portal', Icon: PanelsTopLeft },
     { page: 'bonuses', Icon: Gift },
     { page: 'accounts', Icon: Landmark },
     { page: 'shifts', Icon: Clock3 },

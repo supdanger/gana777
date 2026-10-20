@@ -23,3 +23,10 @@ test('Recomendados conserva los permisos de Usuarios o Bonos', () => {
   assert.equal(canOpenAdminPage('referrals', { ...noStaffPermissions, bonuses: true }, false), true);
   assert.equal(canOpenAdminPage('referrals', noStaffPermissions, true), true);
 });
+
+test('solo el superadmin o el permiso Contactos permiten configurar el portal', () => {
+  assert.equal(canOpenAdminPage('portal', noStaffPermissions, false), false);
+  assert.equal(canOpenAdminPage('portal', { ...noStaffPermissions, users: true, bonuses: true }, false), false);
+  assert.equal(canOpenAdminPage('portal', { ...noStaffPermissions, contacts: true }, false), true);
+  assert.equal(canOpenAdminPage('portal', noStaffPermissions, true), true);
+});

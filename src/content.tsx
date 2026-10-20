@@ -1,10 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { asBonusRule } from '../supabase/functions/_shared/bonus-rule';
 import { supabase } from './lib';
+import { defaultHomeBanner, type HomeBannerSettings } from './home-banner';
 import pandaLogin from './assets/panda-login-transparent.png';
 import pandaAvatar from './assets/panda-user-avatar.png';
 
-export type AppContent = {
+export type AppContent = HomeBannerSettings & {
   id: boolean;
   logo_path: string | null;
   login_image_path: string;
@@ -26,6 +27,7 @@ export type Promotion = {
 export type ContactChannel = 'whatsapp' | 'telegram' | 'instagram';
 const emptyAnimations: Record<ContactChannel, string | null> = { whatsapp: null, telegram: null, instagram: null };
 const defaults: AppContent = {
+  ...defaultHomeBanner,
   id: true, logo_path: null, login_image_path: 'brand/panda-login-transparent.png',
   login_image_layout: 'image', whatsapp_url: null, telegram_url: null,
   instagram_url: null, help_url: null, show_whatsapp: true, show_telegram: true, show_instagram: true,
