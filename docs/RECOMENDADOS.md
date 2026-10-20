@@ -2,7 +2,7 @@
 
 ## Regla
 
-Al crear un jugador en **Usuarios**, seleccionar opcionalmente **Recomendado por**. El recomendador debe ser otro jugador existente. Se permite recomendar entre distintos principales de WhatsApp; el teléfono conserva la unicidad global existente.
+Al crear un jugador en **Usuarios**, buscar opcionalmente al recomendador por usuario o ID de plataforma y seleccionarlo entre las coincidencias. El recomendador debe ser otro jugador existente; escribir un nombre sin seleccionarlo no registra el vínculo. Se permite recomendar entre distintos principales de WhatsApp; el teléfono conserva la unicidad global existente.
 
 La primera carga **aprobada** del recomendado genera, en la misma transacción, dos premios independientes de $1.000. Las cargas pendientes o rechazadas, los retiros y las cargas posteriores no generan premios. Los bonos ordinarios de carga siguen intactos: este diseño trata la recomendación como premio adicional.
 

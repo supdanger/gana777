@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { KeyRound, Pencil, Phone, UserPlus, UserRound } from 'lucide-react';
+import { KeyRound, Pencil, Phone, Search, UserPlus, UserRound, X } from 'lucide-react';
 import { InputError } from '../supabase/functions/_shared/validation';
 import { supabase } from './lib';
 
@@ -31,6 +31,9 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
   const [loadError, setLoadError] = useState('');
   const [editId, setEditId] = useState<string | null>(null);
   const [passwordId, setPasswordId] = useState<string | null>(null);
+  const [referrerQuery, setReferrerQuery] = useState('');
+  const [referrerId, setReferrerId] = useState<string | null>(null);
+  const [referrerOpen, setReferrerOpen] = useState(false);
 
   async function refresh() {
     if (demo || !supabase) { setLoading(false); return; }
@@ -59,7 +62,7 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
     const form = new FormData(element);
     await action(async () => {
       if (demo || !supabase) throw new InputError('La vista previa no modifica jugadores.');
-      const referrerId = form.get('referrer_user_id') || null;
+      if (referrerQuery.trim() && !referrerId) throw new InputError('Seleccioná un recomendador de los resultados o borrá la búsqueda.');
       if (referrerId) {
         // Older deployments silently ignore referrer_user_id. Check before creating an account.
         const capability = await supabase!.functions.invoke('manage-players', { body: { action: 'referral-capabilities' } });
@@ -73,6 +76,7 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
         referrer_user_id: referrerId,
       }, 'No se pudo crear el jugador.');
       element.reset();
+      setReferrerQuery(''); setReferrerId(null); setReferrerOpen(false);
       await refresh();
       if (referrerId) {
         const link = await supabase!.from('player_referrals').select('referrer_user_id').eq('referred_user_id', created.user_id).maybeSingle();
@@ -100,6 +104,10 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
     });
   }
   const activePrincipals = principals.filter(item => item.active);
+  const referrerTerm = referrerQuery.trim().replace(/^@/, '').toLocaleLowerCase('es');
+  const referrerMatches = referrerTerm && !referrerId ? players.filter(player =>
+    [player.username, player.display_name, player.external_user_id].some(value => value?.toLocaleLowerCase('es').includes(referrerTerm))
+  ).slice(0, 8) : [];
 
   return <section className="player-admin" aria-labelledby="players-title">
     <div className="account-heading"><div><h1 id="players-title">Jugadores</h1><p>Creá sus accesos y asigná el WhatsApp principal que los atenderá.</p></div><strong>{players.length} jugadores</strong></div>
@@ -111,7 +119,20 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
         <label>Teléfono del jugador<input name="phone" type="tel" maxLength={30} placeholder="Ej.: +595981123456" required /></label>
         <label>ID de la plataforma <span>(opcional)</span><input name="external_user_id" maxLength={80} placeholder="ID externo" /></label>
         <label>WhatsApp principal<select name="whatsapp_principal_slot" required defaultValue=""><option value="" disabled>Seleccionar principal</option>{activePrincipals.map(item => <option key={item.slot} value={item.slot}>Principal {item.slot} · +{item.phone}</option>)}</select></label>
-        <label>Recomendado por <span>(opcional)</span><select name="referrer_user_id" defaultValue=""><option value="">Sin recomendador</option>{players.map(player => <option key={player.user_id} value={player.user_id}>{player.username || player.display_name}{player.external_user_id ? ` · ID ${player.external_user_id}` : ''}</option>)}</select><small>Al aprobar su primera carga se generarán $1.000 para cada uno. Elegilo al crear la cuenta; la relación no se puede cambiar después.</small></label>
+        <div className="player-referrer-field" onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setReferrerOpen(false); }}>
+          <label htmlFor="player-referrer-search">Recomendado por <span>(opcional)</span></label>
+          <div className="player-referrer-input">
+            <Search size={18} aria-hidden="true" />
+            <input id="player-referrer-search" type="search" role="combobox" aria-autocomplete="list" aria-expanded={referrerOpen && !!referrerTerm && !referrerId} aria-controls={referrerOpen && referrerTerm && !referrerId ? 'player-referrer-results' : undefined} autoComplete="off" spellCheck={false} value={referrerQuery} placeholder="Buscar usuario o ID de plataforma" onFocus={() => setReferrerOpen(true)} onChange={event => { setReferrerQuery(event.target.value); setReferrerId(null); setReferrerOpen(true); }} onKeyDown={event => { if (event.key === 'Escape') setReferrerOpen(false); if (event.key === 'ArrowDown' && referrerOpen && referrerMatches.length) { event.preventDefault(); document.getElementById('player-referrer-option-0')?.focus(); } }} />
+            {referrerId && <button type="button" className="player-referrer-clear" aria-label="Quitar recomendador" onClick={() => { setReferrerQuery(''); setReferrerId(null); setReferrerOpen(false); document.getElementById('player-referrer-search')?.focus(); }}><X size={17} /></button>}
+          </div>
+          <input type="hidden" name="referrer_user_id" value={referrerId ?? ''} />
+          {referrerOpen && referrerTerm && !referrerId && <div id="player-referrer-results" className="player-referrer-results" role="listbox" aria-label="Usuarios encontrados">
+            {referrerMatches.length ? referrerMatches.map((player, index) => <button id={`player-referrer-option-${index}`} type="button" role="option" aria-selected={false} key={player.user_id} onClick={() => { setReferrerId(player.user_id); setReferrerQuery(player.username ? `@${player.username}` : player.display_name); setReferrerOpen(false); }} onKeyDown={event => { if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); const next = index + (event.key === 'ArrowDown' ? 1 : -1); if (next < 0) document.getElementById('player-referrer-search')?.focus(); else document.getElementById(`player-referrer-option-${Math.min(next, referrerMatches.length - 1)}`)?.focus(); } }}><strong>{player.username ? `@${player.username}` : player.display_name}</strong>{player.external_user_id && <small>ID {player.external_user_id}</small>}</button>) : <p>No encontramos jugadores con esa búsqueda.</p>}
+          </div>}
+          {referrerId && <small className="player-referrer-selected">Recomendador seleccionado</small>}
+          <small>Al aprobar la primera carga del nuevo jugador se generarán $1.000 para cada uno. Elegilo ahora; el vínculo no se puede cambiar después.</small>
+        </div>
       </div>
       {!activePrincipals.length && <p className="player-form-warning">Primero cargá al menos un número en Contactos.</p>}
       <button className="cashier-create-submit" disabled={busy || loading || !activePrincipals.length}>Crear jugador</button>

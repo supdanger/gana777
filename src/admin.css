@@ -93,6 +93,20 @@
 .player-create label, .player-edit-form label, .contact-link-form label, .principal-create label { margin: 0; }
 .player-create label > span { color: #6f8da8; font-size: 9px; }
 .player-create input, .player-create select, .player-edit-form input, .player-edit-form select, .contact-link-form input, .principal-create input { margin-top: 6px; }
+.player-referrer-field { grid-column: 1 / -1; min-width: 0; }
+.player-referrer-field > label { display: block; }
+.player-referrer-field > label span { color: #6f8da8; font-size: 9px; }
+.player-referrer-field > small { display: block; margin-top: 6px; color: #9db5ca; font-size: 12px; line-height: 1.45; }
+.player-referrer-input { position: relative; }
+.player-referrer-input > svg { position: absolute; top: 50%; left: 13px; color: #80a5c2; transform: translateY(-50%); pointer-events: none; }
+.player-referrer-input input { width: 100%; padding-left: 40px; padding-right: 42px; }
+.player-referrer-input .player-referrer-clear { position: absolute; top: 50%; right: 6px; width: 34px; height: 34px; padding: 6px; border: 0; transform: translateY(-50%); }
+.player-referrer-results { display: grid; gap: 3px; max-height: 248px; margin-top: 6px; padding: 5px; overflow-y: auto; border: 1px solid #24517d; border-radius: 9px; background: #071b2a; }
+.player-referrer-results button { display: flex; justify-content: space-between; min-height: 42px; padding: 9px 11px; border: 0; border-radius: 6px; color: #ecf7ff; text-align: left; }
+.player-referrer-results button:hover, .player-referrer-results button:focus-visible { background: #123d58; }
+.player-referrer-results button small { color: #9db5ca; }
+.player-referrer-results p { margin: 6px; font-size: 13px; }
+.player-referrer-field > .player-referrer-selected { color: #6de4bb; font-weight: 700; }
 .player-form-warning { margin: 0; padding: 9px 11px; border: 1px solid #74542d; border-radius: 8px; background: #24190c; color: #ffd28c; font-size: 12px; }
 .player-list, .principal-list { display: grid; gap: 12px; }
 .player-card { overflow: hidden; border: 1px solid #24517d; border-radius: 10px; background: #000; }
@@ -420,7 +434,6 @@
   .cashier-create-fields { grid-template-columns: 1fr 1fr; }
   .cashier-permissions, .cashier-access-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .player-create-fields { grid-template-columns: 1fr 1fr; }
-  .player-create-fields label:last-child { grid-column: 1 / -1; }
 }
 
 @media (max-width: 430px) {
@@ -437,7 +450,6 @@
   .cashier-password input { grid-column: 1 / -1; }
   .cashier-card-actions > *, .cashier-card-actions .cashier-delete { width: 100%; margin-left: 0; }
   .player-create-fields, .player-edit-form, .contact-link-form { grid-template-columns: 1fr; }
-  .player-create-fields label:last-child { grid-column: auto; }
   .player-details { grid-template-columns: 1fr; }
   .player-details > div, .player-details > div:first-child { padding: 9px 0; border-top: 1px solid #173d5a; border-left: 0; }
   .player-details > div:first-child { padding-top: 0; border-top: 0; }
@@ -689,7 +701,6 @@
 @media (max-width: 1100px) {
   .admin-shell { grid-template-columns: 248px minmax(0, 1fr); }
   .player-create-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .player-create-fields label:last-child { grid-column: 1 / -1; }
   .cash-close-form { grid-template-columns: minmax(180px, 1fr) 120px 160px; }
   .cash-close-form > button { grid-column: 1 / -1; }
 }
