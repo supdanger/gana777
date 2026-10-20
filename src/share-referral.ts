@@ -10,7 +10,7 @@ export function referralShareUrl(username: string | null, whatsappUrl: string | 
     `+${phone} como Gana777`,
     '',
     '*¿Todavía no tenés usuario?*',
-    'Pedilo al instante por WhatsApp:',
+    'Escribinos por WhatsApp con tu nombre y te creamos la cuenta al instante:',
     `https://wa.me/${phone}`,
     '',
     `*Recomendado por:* ${user}`,

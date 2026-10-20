@@ -13,7 +13,7 @@ test('el enlace recomienda con usuario y WhatsApp asignado sin nombres internos'
     '+595981123456 como Gana777',
     '',
     '*¿Todavía no tenés usuario?*',
-    'Pedilo al instante por WhatsApp:',
+    'Escribinos por WhatsApp con tu nombre y te creamos la cuenta al instante:',
     'https://wa.me/595981123456',
     '',
     '*Recomendado por:* max',
