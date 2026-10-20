@@ -20,7 +20,7 @@ Una reserva impide que otro operador tome o confirme el premio. No vence automá
 
 La confirmación repetida no vuelve a generar registros de acreditación. La base no puede verificar por sí sola si un operador cargó dinero en la plataforma externa; esa comprobación sigue siendo una responsabilidad operativa.
 
-El modal de una carga aprobada avisa si se generaron premios; su total copiable **no los incluye**, porque se tramitan desde la cola separada. Cada jugador puede consultar exclusivamente sus propios premios en Perfil, con paginación de cinco registros. La cola administrativa pagina de a diez.
+El modal de una carga aprobada avisa si se generaron premios; su total copiable **no los incluye**, porque se tramitan desde la cola separada. En Recomendados, los premios de una misma recomendación se presentan juntos cuando están en la página y el filtro actual. Cada beneficiario tiene un botón para copiar su usuario y controles de acreditación independientes. Cada jugador puede consultar exclusivamente sus propios premios en Perfil, con paginación de cinco registros. La cola administrativa pagina de a diez premios.
 
 ## Despliegue
 

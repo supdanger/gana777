@@ -752,13 +752,24 @@
 .referral-admin button { min-height: 44px; padding: 8px 12px; border: 1px solid #3b617c; border-radius: 8px; background: #142c3f; color: #e3edf5; font-size: 14px; }
 .referral-filters button[aria-pressed="true"] { border-color: #289ee0; background: #134a74; }
 .referral-reward-list { display: grid; gap: 12px; }
-.referral-reward-card { padding: 16px; border: 1px solid #304a60; border-radius: 10px; background: #091b28; }
-.referral-reward-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.referral-reward-heading > div { display: grid; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
-.referral-reward-heading strong { font-size: 18px; }
-.referral-reward-heading small, .referral-reward-card p { color: #b5c7da; font-size: 13px; line-height: 1.4; }
+.referral-reward-card { overflow: hidden; border: 1px solid #304a60; border-radius: 10px; background: #091b28; }
+.referral-pair-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 14px 16px; border-bottom: 1px solid #304a60; }
+.referral-pair-heading > div { min-width: 0; }
+.referral-pair-heading small, .referral-reward-card p { color: #b5c7da; font-size: 13px; line-height: 1.4; }
+.referral-pair-heading > div > small { display: block; margin-bottom: 4px; color: #79cdea; font-weight: 700; }
+.referral-pair-heading strong { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; overflow-wrap: anywhere; font-size: 17px; }
+.referral-pair-heading strong svg { flex: 0 0 auto; color: #77bfd9; }
+.referral-pair-rewards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.referral-beneficiary { min-width: 0; padding: 16px; }
+.referral-beneficiary + .referral-beneficiary { border-left: 1px solid #304a60; }
+.referral-beneficiary-heading, .referral-beneficiary-user { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.referral-beneficiary-heading > span { color: #8dc5db; font-size: 12px; font-weight: 700; }
+.referral-beneficiary-heading > strong { white-space: nowrap; font-size: 16px; }
+.referral-beneficiary-user { justify-content: flex-start; margin-top: 7px; }
+.referral-beneficiary-user > strong { min-width: 0; overflow-wrap: anywhere; font-size: 18px; }
+.referral-admin .referral-beneficiary-user button { flex: 0 0 auto; min-height: 34px; gap: 5px; padding: 5px 8px; font-size: 12px; }
 .referral-reward-card p { margin: 8px 0; }
-.referral-copy-actions { margin: 12px 0; }
+.referral-copy-actions { margin: 10px 0; }
 .referral-reward-actions { margin-top: 12px; }
 .referral-reward-actions .referral-confirm { border-color: #31ad86; background: #125341; }
 .referral-reward-actions > span { color: #e9c477; font-size: 14px; }
@@ -771,7 +782,11 @@
 @media (max-width: 560px) {
   .referral-admin { padding: 14px; }
   .referral-heading { flex-direction: column; }
-  .referral-reward-card { padding: 12px; }
+  .referral-pair-heading { align-items: flex-start; padding: 12px; }
+  .referral-pair-heading > small { white-space: nowrap; }
+  .referral-pair-rewards { grid-template-columns: 1fr; }
+  .referral-beneficiary { padding: 12px; }
+  .referral-beneficiary + .referral-beneficiary { border-top: 1px solid #304a60; border-left: 0; }
 }
 .portal-banner-form { padding: 20px; border: 1px solid #304a60; border-radius: 12px; background: #142a39; }
 .portal-banner-form fieldset { display: grid; gap: 16px; min-width: 0; margin: 0; padding: 0; border: 0; }

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Copy, Gift, RefreshCw } from 'lucide-react';
+import { ArrowRight, Copy, Gift, RefreshCw } from 'lucide-react';
 import { InputError, parseUuid } from '../supabase/functions/_shared/validation';
 import { date, money, supabase } from './lib';
+import { groupReferralRewards } from './referral-groups';
 
 type RewardStatus = 'pending' | 'reserved' | 'credited';
 type Reward = {
@@ -86,29 +87,31 @@ export function ReferralRewardsAdmin({ demo, busy, action, userId, superAdmin }:
 
   return <section className="referral-admin" aria-labelledby="referral-rewards-title">
     <div className="referral-heading"><div><h2 id="referral-rewards-title"><Gift size={23} /> Recomendados</h2><p>Primera carga aprobada: {money(1000)} para quien recomienda y {money(1000)} para el nuevo jugador.</p></div><button type="button" disabled={busy || loading || demo} onClick={() => setReload(value => value + 1)}><RefreshCw size={17} />Actualizar</button></div>
-    <p className="referral-instructions">Estos premios son adicionales a los bonos de carga. Tomá el bono, acreditalo en la plataforma externa y recién después confirmá la acreditación. No se carga dinero automáticamente desde esta web.</p>
-    <p className="referral-instructions">Para generar premios, elegí «Recomendado por» al crear el jugador y aprobá su primera carga. En su tarjeta debe figurar el recomendador. Crear la cuenta o enviar una carga pendiente no genera premios; las cuentas sin recomendador no los generan.</p>
+    <p className="referral-instructions">Tomá y acreditá cada bono en la plataforma externa antes de confirmarlo aquí. La acreditación no es automática.</p>
     <div className="referral-filters" role="group" aria-label="Estado de los premios">
       <button type="button" aria-pressed={status === 'pending'} onClick={() => { setStatus('pending'); setPage(0); }}>Pendientes</button>
       <button type="button" aria-pressed={status === 'credited'} onClick={() => { setStatus('credited'); setPage(0); }}>Acreditados</button>
     </div>
     {demo ? <p className="empty">Las recomendaciones y los premios se registran al trabajar con jugadores reales.</p> : loading ? <p className="empty" role="status">Cargando premios…</p> : failure ? <p className="empty" role="alert">{failure}</p> : !rows.length ? <p className="empty">No hay premios {status === 'pending' ? 'pendientes' : 'acreditados'}.</p> : <>
-      <div className="referral-reward-list">{rows.map(row => {
-        const mine = row.status === 'reserved' && row.reserved_by === userId;
-        return <article className="referral-reward-card" key={row.id}>
-          <div className="referral-reward-heading"><div><strong>{row.username}</strong><small>{row.beneficiary_role === 'referrer' ? 'Premio del recomendador' : 'Premio del recomendado'}</small></div><strong>{money(row.amount)}</strong></div>
-          <p>{row.referrer_name} recomendó a {row.referred_name}.</p>
-          <p className="referral-reward-state">{rewardStatus[row.status]} · {date(row.credited_at || row.created_at)}</p>
-          {row.external_user_id && <p>ID plataforma: <strong>{row.external_user_id}</strong></p>}
-          {mine && <div className="referral-copy-actions"><button type="button" disabled={busy} onClick={() => void copy(row.username, `${row.id}-user`)}><Copy size={15} />{copied === `${row.id}-user` ? 'Usuario copiado' : 'Copiar usuario'}</button>{row.external_user_id && <button type="button" disabled={busy} onClick={() => void copy(row.external_user_id!, `${row.id}-external`)}><Copy size={15} />{copied === `${row.id}-external` ? 'ID copiado' : 'Copiar ID'}</button>}<button type="button" disabled={busy} onClick={() => void copy(String(Number(row.amount)), `${row.id}-amount`)}><Copy size={15} />{copied === `${row.id}-amount` ? 'Monto copiado' : 'Copiar monto'}</button></div>}
-          <div className="referral-reward-actions">
-            {row.status === 'pending' && <button type="button" disabled={busy} onClick={() => void updateReward('reserve_referral_reward', row)}>Tomar bono para acreditar</button>}
-            {mine && <button type="button" className="referral-confirm" disabled={busy} onClick={() => void updateReward('mark_referral_reward_credited', row)}>Ya acredité este bono</button>}
-            {row.status === 'reserved' && !mine && <span>Reservado por otro operador</span>}
-            {row.status === 'reserved' && (mine || superAdmin) && <button type="button" disabled={busy} onClick={() => void updateReward('release_referral_reward', row)}>Liberar sin acreditar</button>}
-          </div>
-        </article>;
-      })}</div>
+      <div className="referral-reward-list">{groupReferralRewards(rows).map(group => <article className="referral-reward-card" key={group[0].id}>
+        <header className="referral-pair-heading"><div><small>Recomendación</small><strong><span>{group[0].referrer_name}</span><ArrowRight size={17} aria-label="recomendó a" /><span>{group[0].referred_name}</span></strong></div><small>{date(group[0].created_at)}</small></header>
+        <div className="referral-pair-rewards">{group.map(row => {
+          const mine = row.status === 'reserved' && row.reserved_by === userId;
+          return <section className="referral-beneficiary" key={row.id} aria-label={`Bono de ${row.username}`}>
+            <div className="referral-beneficiary-heading"><span>{row.beneficiary_role === 'referrer' ? 'Recomendador' : 'Recomendado'}</span><strong>{money(row.amount)}</strong></div>
+            <div className="referral-beneficiary-user"><strong>{row.username}</strong><button type="button" disabled={busy} aria-label={`Copiar usuario ${row.username}`} onClick={() => void copy(row.username, `${row.id}-user`)}><Copy size={15} />{copied === `${row.id}-user` ? 'Copiado' : 'Copiar'}</button></div>
+            <p className="referral-reward-state">{rewardStatus[row.status]} · {date(row.credited_at || row.created_at)}</p>
+            {row.external_user_id && <p>ID plataforma: <strong>{row.external_user_id}</strong></p>}
+            {mine && <div className="referral-copy-actions">{row.external_user_id && <button type="button" disabled={busy} onClick={() => void copy(row.external_user_id!, `${row.id}-external`)}><Copy size={15} />{copied === `${row.id}-external` ? 'ID copiado' : 'Copiar ID'}</button>}<button type="button" disabled={busy} onClick={() => void copy(String(Number(row.amount)), `${row.id}-amount`)}><Copy size={15} />{copied === `${row.id}-amount` ? 'Monto copiado' : 'Copiar monto'}</button></div>}
+            <div className="referral-reward-actions">
+              {row.status === 'pending' && <button type="button" disabled={busy} onClick={() => void updateReward('reserve_referral_reward', row)}>Tomar bono para acreditar</button>}
+              {mine && <button type="button" className="referral-confirm" disabled={busy} onClick={() => void updateReward('mark_referral_reward_credited', row)}>Ya acredité este bono</button>}
+              {row.status === 'reserved' && !mine && <span>Reservado por otro operador</span>}
+              {row.status === 'reserved' && (mine || superAdmin) && <button type="button" disabled={busy} onClick={() => void updateReward('release_referral_reward', row)}>Liberar sin acreditar</button>}
+            </div>
+          </section>;
+        })}</div>
+      </article>)}</div>
       <div className="referral-pagination"><button type="button" disabled={busy || page === 0} onClick={() => setPage(value => value - 1)}>Anterior</button><span>Página {page + 1} de {Math.max(1, Math.ceil(total / 10))} · {total} premios</span><button type="button" disabled={busy || (page + 1) * 10 >= total} onClick={() => setPage(value => value + 1)}>Siguiente</button></div>
     </>}
   </section>;
