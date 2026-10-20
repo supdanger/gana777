@@ -6,14 +6,14 @@ const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 export const configError = key && !isPublicSupabaseKey(key) ? 'Configurá una clave pública de Supabase (publishable o anon). Las claves secretas no pueden usarse en la app.' : '';
 export const supabase = url && key && !configError ? createClient(url, key) : null;
-export type RequestRow = { id: string; user_id: string; user_name: string; kind: 'deposit' | 'withdrawal'; amount: number; status: 'pending' | 'approved' | 'rejected'; created_at: string; approved_at: string | null; holder: string | null; cbu: string | null; alias: string | null; receipt_path: string | null; receipt_url: string | null; cloudinary_asset_id: string | null; bonus_id: string | null; bonus_percent: number; bonus_amount?: number };
+export type RequestRow = { id: string; user_id: string; user_name: string; kind: 'deposit' | 'withdrawal'; amount: number; status: 'pending' | 'approved' | 'rejected'; created_at: string; approved_at: string | null; credited_at?: string | null; holder: string | null; cbu: string | null; alias: string | null; receipt_path: string | null; receipt_url: string | null; cloudinary_asset_id: string | null; bonus_id: string | null; bonus_percent: number; bonus_amount?: number };
 export type Message = { id: string; user_id: string; sender_id: string; body: string; created_at: string };
 export type Bank = {
   assignment_id: string; id: string; bank: string; holder: string; cbu: string; alias: string;
   theme_key?: string; theme_background_path?: string | null; theme_logo_path?: string | null;
 };
 export type BankOperationStatus = { mode: 'online' | 'closing' | 'maintenance'; resumes_at: string | null; outgoing_shift_key: string | null; next_shift_key: string | null; active_shift_key: string | null };
-export const REQUEST_COLUMNS = 'id,user_id,user_name,kind,amount,status,created_at,holder,cbu,alias,receipt_path,receipt_url,bonus_id,bonus_percent,bonus_amount,approved_at' as const;
+export const REQUEST_COLUMNS = 'id,user_id,user_name,kind,amount,status,created_at,holder,cbu,alias,receipt_path,receipt_url,bonus_id,bonus_percent,bonus_amount,approved_at,credited_at' as const;
 export const REQUEST_COLUMNS_LEGACY = 'id,user_id,user_name,kind,amount,status,created_at,holder,cbu,alias,receipt_path,receipt_url,bonus_id,bonus_percent,approved_at' as const;
 export const money = (amount: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(amount);
 export const date = (value: string) => new Intl.DateTimeFormat('es-AR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date(value));

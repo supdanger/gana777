@@ -10,9 +10,13 @@ export function portalPwaPlugin(mode) {
     ['icon-192.png', 'image/png'],
     ['icon-512.png', 'image/png'],
     ['apple-touch-icon.png', 'image/png'],
+    ['sw.js', 'text/javascript'],
   ].map(([name, type]) => [`/pwa/${name}`, {
     type, source: readFileSync(new URL(`../src/pwa/${name}`, import.meta.url)),
   }]));
+  const worker = files.get('/pwa/sw.js');
+  files.delete('/pwa/sw.js');
+  files.set('/sw.js', worker);
   return {
     name: 'player-portal-install',
     transformIndexHtml() {

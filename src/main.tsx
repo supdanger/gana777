@@ -35,6 +35,7 @@ import { PlayerAdmin } from './player-admin';
 import { PortalAdmin } from './portal-admin';
 import { AdminWithdrawals } from './admin-withdrawals';
 import { playerSignInEmail } from './players';
+import { PlayerNotifications, removeDeviceSubscription } from './notifications';
 import { allStaffPermissions, canOpenAdminPage, noStaffPermissions, staffPermissionPages, staffSignInEmail, type StaffPermissions } from './staff';
 import './styles.css';
 import './mobile.css';
@@ -334,6 +335,7 @@ function App() {
   }
   async function logout() {
     await action(async () => {
+      if (!adminApp && !demo) await removeDeviceSubscription().catch(() => undefined);
       if (supabase && !demo) { const { error } = await supabase.auth.signOut(); if (error) throw error; }
       setDemo(false); navigate('home');
     });
@@ -483,6 +485,39 @@ function App() {
         if (status === 'approved') { setApprovedDeposit(reviewed); setCopiedCreditField(null); setSelectedDepositId(null); }
       });
     }
+    async function confirmCredit() {
+      if (!approvedDeposit) return;
+      if (demo) {
+        setRequests(old => old.map(item => item.id === approvedDeposit.id ? { ...item, credited_at: new Date().toISOString() } : item));
+        setApprovedDeposit(null);
+        return;
+      }
+      await action(async () => {
+        const db = supabase!;
+        const { data, error } = await db.rpc('confirm_deposit_credit', { p_request_id: approvedDeposit.id });
+        if (error) throw error;
+        const result = data as { notification_id: string; newly_credited: boolean };
+        const creditedAt = new Date().toISOString();
+        setDepositRows(old => old.map(item => item.id === approvedDeposit.id ? { ...item, credited_at: creditedAt } : item));
+        setApprovedDeposit(null);
+        setNotice('Carga acreditada. El aviso quedó guardado para el usuario.');
+        if (result.newly_credited) {
+          const { error: pushError } = await db.functions.invoke('send-deposit-push', { body: { notification_id: result.notification_id } });
+          if (pushError) setNotice('Carga acreditada y aviso visible en la web. No pudimos enviar el push; podés reintentarlo desde esta carga.');
+          else setNotice('Carga acreditada. El usuario recibió el aviso en la web y, si lo activó, en su dispositivo.');
+        }
+        setDepositReload(value => value + 1);
+      });
+    }
+    async function retryCreditPush(requestId: string) {
+      await action(async () => {
+        if (!supabase) return;
+        const { data, error } = await supabase.functions.invoke('send-deposit-push', { body: { request_id: requestId } });
+        if (error) throw error;
+        const result = data as { sent?: number; already_sent?: boolean; no_devices?: boolean };
+        setNotice(result.already_sent ? 'El aviso push ya se envió.' : result.no_devices ? 'El usuario todavía no activó los avisos en un dispositivo. El aviso está en su cuenta.' : `Aviso enviado a ${result.sent ?? 0} dispositivo(s).`);
+      });
+    }
     async function copyCreditValue(value: string, field: 'user' | 'amount') {
       try { await navigator.clipboard.writeText(value); setCopiedCreditField(field); }
       catch { setError('No pudimos copiar el dato. Seleccionalo y copialo manualmente.'); }
@@ -502,7 +537,7 @@ function App() {
           return <button className="load-request-button" key={request.id} onClick={event => { depositTrigger.current = event.currentTarget; setSelectedDepositId(request.id); }} aria-haspopup="dialog">
               <span className="request-avatar" aria-hidden="true">{name.charAt(0).toLocaleUpperCase('es')}</span>
               <span className="request-summary-user"><strong>{name}</strong><small>{date(request.created_at)}</small></span>
-              <span className="request-summary-amount"><strong>{money(request.amount)}</strong><span className={`badge ${request.status}`}>{statusLabel[request.status]}</span></span>
+              <span className="request-summary-amount"><strong>{money(request.amount)}</strong><span className={`badge ${request.status}`}>{request.credited_at ? 'Acreditada' : statusLabel[request.status]}</span></span>
               <ChevronRight className="request-chevron" aria-hidden="true" />
             </button>;
         })}
@@ -516,7 +551,7 @@ function App() {
             <div className="summary-field"><span><UserRound size={16} /> Nombre del usuario</span><strong>{selectedName}</strong></div>
             <div className="summary-field"><span><Hash size={16} /> ID USER</span></div>
             <div className="summary-field"><span><CalendarClock size={16} /> Fecha y hora</span><strong>{date(selected.created_at)}</strong></div>
-            <div className="summary-review-meta"><span>Estado <span className={`badge ${selected.status}`}>{statusLabel[selected.status]}</span></span>{selectedBonus && <span>Bono solicitado: <strong>{selectedBonus}</strong></span>}</div>
+            <div className="summary-review-meta"><span>Estado <span className={`badge ${selected.status}`}>{selected.credited_at ? 'Acreditada' : statusLabel[selected.status]}</span></span>{selectedBonus && <span>Bono solicitado: <strong>{selectedBonus}</strong></span>}</div>
           </div>
           <div className="request-detail">
             <section className="receipt-viewer" aria-label="Comprobante de transferencia">
@@ -529,6 +564,8 @@ function App() {
             </section>
           </div>
           {selected.status === 'pending' && <div className="load-decision-footer"><button className="approve-load" disabled={busy} onClick={() => void reviewSelected('approved')}>Aceptar carga</button><button className="reject-load" disabled={busy} onClick={() => { if (window.confirm('¿Confirmás que querés rechazar esta carga? Esta acción no se puede deshacer.')) void reviewSelected('rejected'); }}>Rechazar</button></div>}
+          {selected.status === 'approved' && !selected.credited_at && <div className="load-decision-footer"><button className="approve-load" disabled={busy} onClick={() => { setApprovedDeposit(selected); setSelectedDepositId(null); }}>Ver datos para acreditar</button></div>}
+          {selected.credited_at && <div className="load-decision-footer"><button className="approve-load" disabled={busy} onClick={() => void retryCreditPush(selected.id)}>Comprobar o reenviar aviso</button></div>}
         </section>
       </div>}
       {approvedDeposit && <div className="load-modal-backdrop" role="presentation" onClick={event => { if (event.target === event.currentTarget) setApprovedDeposit(null); }}>
@@ -542,7 +579,7 @@ function App() {
           </div>
           <div className="credit-copy-field credit-total"><span>Total a acreditar</span><div><strong>{money(credit.total)}</strong><button aria-label="Copiar total a acreditar" onClick={() => void copyCreditValue(credit.copyValue, 'amount')}>{copiedCreditField === 'amount' ? <><Check size={17} /> Copiado</> : <><Copy size={17} /> Copiar monto</>}</button></div><small>Se copiará {credit.copyValue}, listo para pegar.</small></div>
           {!demo && <ApprovedReferralNotice requestId={approvedDeposit.id} />}
-          <button className="credit-done" onClick={() => setApprovedDeposit(null)}>Listo</button>
+          <div className="credit-confirm-actions"><button className="credit-done" disabled={busy} onClick={() => void confirmCredit()}>Ya acredité la carga</button><button type="button" disabled={busy} onClick={() => setApprovedDeposit(null)}>Cerrar sin confirmar</button></div>
         </section>
       </div>}
     </section>;
@@ -571,9 +608,10 @@ function App() {
     {demo && <div className="demo">Vista previa · las operaciones no se envían</div>}
     {adminApp && !isAdmin && !demo ? <section className="card"><h1>Acceso restringido</h1><p>Esta cuenta no tiene permisos de administración.</p>{feedback}</section> : !canOpenCurrentPage ? <section className="card"><h1>Sin acceso</h1><p>Este apartado no está habilitado para tu usuario.</p>{feedback}</section> : <>
       {(adminApp || (page !== 'deposit' && page !== 'withdrawal')) && feedback}
+      {!adminApp && !demo && session && <PlayerNotifications userId={session.user.id} showSettings={page === 'home' || page === 'profile'} />}
       {page === 'home' && (adminApp ? <><div className="welcome"><h1>Resumen del turno</h1><p>Revisá rápidamente las operaciones que necesitan atención.</p></div><div className="stats">{(['deposit', 'withdrawal'] as const).map(kind => <section className="card" key={kind}><p>{kind === 'deposit' ? 'Cargas pendientes' : 'Retiros pendientes'}</p><h1>{kind === 'deposit' ? pendingCounts.deposit : pendingCounts.withdrawal}</h1></section>)}</div>{bonusBoard()}</> : <UserHome name={name} navigate={navigate} whatsappUrl={demo ? undefined : playerWhatsAppUrl} username={demo ? null : playerUsername} />)}
       {!adminApp && page === 'profile' && <><UserProfile name={name} busy={busy} logout={() => void logout()} />{history('deposit')}{history('withdrawal')}<ReferralBonusHistory userId={userId} demo={demo} /></>}
-      {(page === 'deposit' || page === 'withdrawal') && !adminApp && <RequestForm key={page} kind={page} requests={requests.filter(r => r.user_id === userId)} bank={bank} bankOperation={bankOperation} retryAt={page === 'deposit' ? depositRetryAt : 0} busy={busy} demo={demo} feedback={feedback} onSubmit={submitRequest} onCopy={(text, label) => void action(async () => { await navigator.clipboard.writeText(text); setNotice(`${label} copiado.`); })} onOpenWithdrawalHistory={() => { setProfileHistoryTarget('withdrawal'); navigate('profile'); }} onOpenDepositHistory={() => { setProfileHistoryTarget('deposit'); navigate('profile'); }} />}
+      {(page === 'deposit' || page === 'withdrawal') && !adminApp && <RequestForm key={page} kind={page} requests={requests.filter(r => r.user_id === userId)} bank={bank} bankOperation={bankOperation} retryAt={page === 'deposit' ? depositRetryAt : 0} busy={busy} demo={demo} feedback={feedback} onSubmit={submitRequest} onCopy={(text, label) => void action(async () => { await navigator.clipboard.writeText(text); setNotice(`${label} copiado.`); })} onOpenWithdrawalHistory={() => { setProfileHistoryTarget('withdrawal'); navigate('profile'); }} />}
       {adminApp && page === 'deposit' && depositList()}
       {adminApp && page === 'withdrawal' && <AdminWithdrawals requests={requests} busy={busy} demo={demo} onReview={(request, status) => void action(async () => {
         if (!canOpenAdminPage('withdrawal', staffContext.permissions, staffContext.superAdmin)) throw new InputError('No tenés permiso para revisar retiros.');

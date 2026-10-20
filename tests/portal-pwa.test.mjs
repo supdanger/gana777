@@ -13,6 +13,7 @@ test('el build predeterminado de Vite también publica una app instalable', () =
     assert.ok(assets.includes('pwa/manifest.webmanifest'));
     assert.ok(assets.includes('pwa/icon-192.png'));
     assert.ok(assets.includes('pwa/icon-512.png'));
+    assert.ok(assets.includes('sw.js'));
   }
   assert.equal(portalPwaPlugin('admin'), null);
 });
@@ -25,7 +26,7 @@ test('solo el portal incluye manifiesto y metadatos de instalación', () => {
   assert.ok(tags.some(tag => tag.attrs.rel === 'apple-touch-icon'));
   const assets = [];
   plugin.generateBundle.call({ emitFile: asset => assets.push(asset) });
-  assert.equal(assets.length, 4);
+  assert.equal(assets.length, 5);
   const manifest = JSON.parse(assets.find(asset => asset.fileName.endsWith('.webmanifest')).source.toString());
   assert.equal(manifest.name, 'GANA777');
   assert.equal(manifest.display, 'standalone');

@@ -179,9 +179,9 @@ function BankPause({ status, now }: { status: BankOperationStatus; now: number }
     </div>
   </section>;
 }
-export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, busy, demo, onSubmit, onCopy, onOpenWithdrawalHistory, onOpenDepositHistory, feedback }: {
+export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, busy, demo, onSubmit, onCopy, onOpenWithdrawalHistory, feedback }: {
   kind: 'deposit' | 'withdrawal'; requests: RequestRow[]; bank: Bank | null; bankOperation: BankOperationStatus | null; retryAt?: number; busy: boolean; demo: boolean;
-  onSubmit: (event: FormEvent<HTMLFormElement>, receipt?: File | null) => void; onCopy: (text: string, label: string) => void; onOpenWithdrawalHistory: () => void; onOpenDepositHistory: () => void; feedback?: ReactNode;
+  onSubmit: (event: FormEvent<HTMLFormElement>, receipt?: File | null) => void; onCopy: (text: string, label: string) => void; onOpenWithdrawalHistory: () => void; feedback?: ReactNode;
 }) {
   const { promotions, reloadPromotions } = useContent();
   const [now, setNow] = useState(Date.now);
@@ -253,7 +253,6 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     setCompressing(false);
   }
   const amount = <label className="amount-label">Monto a {kind === 'deposit' ? 'cargar' : 'retirar'}<span className="amount-input">{(kind !== 'deposit' || rawAmount) && <span aria-hidden="true">$</span>}<input className="amount" name="amount" inputMode="decimal" type="text" pattern={moneyInputPattern} maxLength={moneyInputMaxLength} placeholder={kind === 'deposit' ? 'Carga mínima 3.000' : '10.000'} aria-label={`Monto a ${kind === 'deposit' ? 'cargar' : 'retirar'} en pesos argentinos`} required value={kind === 'deposit' ? rawAmount : undefined} onChange={kind === 'deposit' ? event => setRawAmount(event.target.value) : undefined} />{bonusCreditLabel && <span className="amount-bonus">{bonusCreditLabel}</span>}</span></label>;
-  if (pendingDeposit) return <section className="card deposit-pending-notice" role="status"><FileText size={32} /><div><h2>Ya tenés una carga pendiente</h2><p>Podrás solicitar otra cuando esta carga sea aprobada o rechazada.</p></div><button type="button" onClick={onOpenDepositHistory}>Ver estado de mi carga <ChevronRight size={18} /></button></section>;
   return <form className="request-form" onSubmit={event => onSubmit(event, kind === 'deposit' ? file : null)}>
     {kind === 'deposit' ? <>
       <input type="hidden" name="bank_assignment_id" value={bank?.assignment_id ?? ''} />
@@ -294,7 +293,8 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     </>}
     {feedback && <div className="request-feedback">{feedback}</div>}
     {depositRetrySeconds > 0 && <div className="deposit-retry-countdown" role="timer" aria-live="polite"><span>Podés volver a enviar en</span><strong>{depositRetryCountdown}</strong></div>}
-    <button className="primary" disabled={busy || demo || withdrawalBlocked || compressing || depositRetrySeconds > 0 || (kind === 'deposit' && (!file || !bank))}>{compressing ? 'Optimizando…' : busy ? kind === 'deposit' ? 'Enviando solicitud…' : 'Enviando…' : depositRetrySeconds > 0 ? `Esperá ${depositRetryCountdown}` : kind === 'deposit' ? 'Solicitar carga' : 'Solicitar retiro'}</button>
+    <button className="primary" disabled={busy || demo || withdrawalBlocked || pendingDeposit || compressing || depositRetrySeconds > 0 || (kind === 'deposit' && (!file || !bank))} aria-describedby={pendingDeposit ? 'deposit-pending-message' : undefined}>{compressing ? 'Optimizando…' : busy ? kind === 'deposit' ? 'Enviando solicitud…' : 'Enviando…' : depositRetrySeconds > 0 ? `Esperá ${depositRetryCountdown}` : kind === 'deposit' ? 'Solicitar carga' : 'Solicitar retiro'}</button>
+    {pendingDeposit && <p id="deposit-pending-message" className="deposit-pending-message" role="status">Tu carga ya está en proceso. Podrás solicitar otra cuando sea aprobada o rechazada.</p>}
   </form>;
 }
 export function Conversation({ messages, userId, busy, disabled, onSubmit }: { messages: Message[]; userId: string; busy: boolean; disabled: boolean; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
