@@ -4,12 +4,16 @@ export function referralShareUrl(username: string | null, whatsappUrl: string | 
   if (!user || !phone) return null;
 
   const message = [
-    '¡Hola! Te recomiendo gana777bet.com 🎰',
+    '*Te recomiendo gana777bet.com* 🎰',
     '',
-    `Agendá este número como Gana777: +${phone}`,
-    `Si todavía no tenés usuario, escribí y solicitá uno al instante: https://wa.me/${phone}`,
+    '*Agendá este contacto*',
+    `Gana777 · +${phone}`,
     '',
-    `Cuando escribas, decí que te recomendó el usuario ${user}.`,
+    '*¿Todavía no tenés usuario?*',
+    'Pedilo al instante por WhatsApp:',
+    `https://wa.me/${phone}`,
+    '',
+    `*Recomendado por:* ${user}`,
   ].join('\n');
   return `https://wa.me/?text=${encodeURIComponent(message)}`;
 }
