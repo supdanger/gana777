@@ -97,15 +97,15 @@ export function PlayerNotifications({ userId, showSettings }: { userId: string; 
     if (!error) setNotifications(items => items.map(item => item.id === id ? { ...item, read_at: new Date().toISOString() } : item));
   }
 
-  const visible = showSettings ? notifications : notifications.filter(item => !item.read_at);
+  const visible = notifications.filter(item => !item.read_at);
   if (!visible.length && (!showSettings || !supported || enabled)) return null;
   return <section className="player-notifications" aria-label="Notificaciones">
-    <div className="player-notifications-heading"><Bell size={19} /><h2>Notificaciones</h2>{notifications.some(item => !item.read_at) && <span>{notifications.filter(item => !item.read_at).length} nueva{notifications.filter(item => !item.read_at).length === 1 ? '' : 's'}</span>}</div>
-    {visible.map(item => <article className={`player-notification ${item.read_at ? 'is-read' : ''}`} key={item.id}>
-      <strong>{item.title}</strong><p>{item.body}</p><small>{date(item.created_at)}</small>
-      {!item.read_at && <button type="button" onClick={() => void markRead(item.id)}><Check size={15} /> Marcar como leída</button>}
+    {visible.map(item => <article className="player-notification" key={item.id}>
+      <Bell size={18} aria-hidden="true" />
+      <div><strong>{item.title}</strong><p>{item.body}</p><time dateTime={item.created_at} className="sr-only">{date(item.created_at)}</time></div>
+      <button type="button" aria-label={`Marcar como leída: ${item.title}`} title="Marcar como leída" onClick={() => void markRead(item.id)}><Check size={17} /></button>
     </article>)}
-    {showSettings && supported && !enabled && <div className="player-notification-settings"><p>Activá los avisos para enterarte cuando se acredite una carga, incluso con la app cerrada.</p><button type="button" disabled={busy || !registration} onClick={() => void activate()}>{busy || !registration ? <LoaderCircle size={16} /> : <Bell size={16} />} {registration ? 'Activar notificaciones' : 'Preparando avisos…'}</button></div>}
+    {showSettings && supported && !enabled && <div className="player-notification-settings"><div className="player-notifications-heading"><Bell size={19} /><h2>Notificaciones</h2></div><p>Activá los avisos para enterarte cuando se acredite una carga, incluso con la app cerrada.</p><button type="button" disabled={busy || !registration} onClick={() => void activate()}>{busy || !registration ? <LoaderCircle size={16} /> : <Bell size={16} />} {registration ? 'Activar notificaciones' : 'Preparando avisos…'}</button></div>}
     {error && <p className="player-notification-error" role="alert">{error}</p>}
   </section>;
 }

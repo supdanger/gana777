@@ -83,6 +83,7 @@ function App() {
   const [playerUsername, setPlayerUsername] = useState<string | null>(null);
   const loginInFlight = useRef(false);
   const depositTrigger = useRef<HTMLButtonElement | null>(null);
+  const bankAssignmentId = useRef<string | null>(null);
   const userId = session?.user.id ?? 'demo';
 
   function navigate(nextPage: Page) { setPage(nextPage); setSelectedDepositId(null); setApprovedDeposit(null); setError(''); setNotice(''); }
@@ -251,7 +252,10 @@ function App() {
         if (status.mode === 'online') setError(publicError(assignment.error));
         return;
       }
-      setBank(assignment.data as Bank);
+      const nextBank = assignment.data as Bank;
+      if (bankAssignmentId.current && bankAssignmentId.current !== nextBank.assignment_id) setError('');
+      bankAssignmentId.current = nextBank.assignment_id;
+      setBank(nextBank);
     })();
     return () => { alive = false; };
   }, [session, page, demo, bankReload]);
@@ -372,7 +376,8 @@ function App() {
       }
       setRequests(old => [row, ...old.filter(r => r.id !== row.id)]);
       if (page === 'deposit') setDepositRetryAt(0);
-      element.reset(); setNotice('Tu solicitud fue enviada. Podés seguir su estado en el historial.');
+      element.reset();
+      if (page === 'withdrawal') setNotice('Tu solicitud fue enviada. Podés seguir su estado en el historial.');
       if (page === 'deposit') { setBank(null); setBankReload(value => value + 1); }
     });
   }
