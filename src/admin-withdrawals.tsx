@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type MouseEvent, type ReactNode } from 'react';
-import { Check, ChevronRight, ClipboardPaste, Clock3, Copy, Eye, WalletCards, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, ClipboardPaste, Clock3, Copy, Eye, WalletCards, X } from 'lucide-react';
 import { date, money, type RequestRow, type WithdrawalPart } from './lib';
 import { compressReceipt } from './image-compression';
 import { BankTransferCard } from './bank-transfer-card';
@@ -28,12 +28,12 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay,
   const [pendingPage, setPendingPage] = useState(0);
   const [resolvedPage, setResolvedPage] = useState(0);
   const [sourceAccounts, setSourceAccounts] = useState<WithdrawalSourceAccount[]>([]);
+  const [sourceAccountsOpen, setSourceAccountsOpen] = useState(false);
   const [sourceStatus, setSourceStatus] = useState<BankOperationStatus | null>(null);
   const [sourceLoading, setSourceLoading] = useState(!demo);
   const [sourceError, setSourceError] = useState('');
   const [serverOffset, setServerOffset] = useState(0);
   const [paymentSelection, setPaymentSelection] = useState<{ requestId: string; partNumber: number } | null>(null);
-  const [selectedBank, setSelectedBank] = useState('');
   const [selectedSourceId, setSelectedSourceId] = useState('');
   const [paymentError, setPaymentError] = useState('');
   const [now, setNow] = useState(Date.now);
@@ -109,14 +109,13 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay,
   }, [demo]);
 
   const serverTime = now + serverOffset;
-  const banks = Array.from(new Set(sourceAccounts.map(account => account.bank))).sort((a, b) => a.localeCompare(b, 'es'));
   const paymentRequest = withdrawals.find(request => request.id === paymentSelection?.requestId);
   const paymentPart = parts.find(part => part.request_id === paymentSelection?.requestId && part.part_number === paymentSelection?.partNumber);
   const paymentFile = paymentSelection ? receiptFiles[`${paymentSelection.requestId}-${paymentSelection.partNumber}`] : undefined;
   const selectedSource = sourceAccounts.find(account => account.id === selectedSourceId);
 
   function openPaymentSelection(request: RequestRow, part: WithdrawalPart) {
-    setPaymentError(''); setSelectedBank(''); setSelectedSourceId('');
+    setPaymentError(''); setSelectedSourceId('');
     setPaymentSelection({ requestId: request.id, partNumber: part.part_number });
     void loadSources();
   }
@@ -128,7 +127,7 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay,
     setPaymentError('');
     const result = await onPay(paymentRequest, paymentPart, paymentFile, selectedSource);
     await loadSources();
-    if (result.ok) { setPaymentSelection(null); setSelectedBank(''); setSelectedSourceId(''); }
+    if (result.ok) { setPaymentSelection(null); setSelectedSourceId(''); }
     else setPaymentError(result.error || 'No pudimos confirmar el pago. Revisá la cuenta e intentá nuevamente.');
   }
 
@@ -271,12 +270,14 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay,
     {!selected && copyError && <p className="alert error" role="alert">{copyError}</p>}
     {!selected && receiptError && <p className="alert error" role="alert">{receiptError}</p>}
     <section className="withdrawal-source-section" aria-labelledby="withdrawal-source-title">
-      <div className="withdrawal-source-heading"><div><h2 id="withdrawal-source-title">Cuentas para retiros</h2><p>Se puede confirmar un pago por cuenta cada 10 minutos. Solo aparecen las cuentas activas del turno.</p></div><strong>{sourceAccounts.filter(account => cooldownSeconds(account, serverTime) === 0).length} disponibles</strong></div>
+      <button type="button" className="withdrawal-source-toggle" aria-expanded={sourceAccountsOpen} aria-controls="withdrawal-source-content" onClick={() => setSourceAccountsOpen(open => !open)}>
+        <span className="withdrawal-source-heading"><span><h2 id="withdrawal-source-title">Cuentas para retiros</h2><small>{sourceAccounts.length} cuentas activas del turno</small></span><span className="withdrawal-source-toggle-end"><strong>{sourceAccounts.filter(account => cooldownSeconds(account, serverTime) === 0).length} disponibles</strong><ChevronDown size={18} className={sourceAccountsOpen ? 'is-open' : ''} /></span></span>
+      </button>
       {sourceError && <p className="alert error" role="alert">{sourceError}</p>}
-      {sourceLoading ? <p className="withdrawal-source-empty">Cargando cuentas del turno…</p> : sourceAccounts.length ? <div className="withdrawal-source-grid">{sourceAccounts.map(account => {
+      {sourceAccountsOpen && <div id="withdrawal-source-content" className="withdrawal-source-content"><p className="withdrawal-source-description">Se puede confirmar un pago por cuenta cada 10 minutos. Solo aparecen las cuentas activas del turno.</p>{sourceLoading ? <p className="withdrawal-source-empty">Cargando cuentas del turno…</p> : sourceAccounts.length ? <div className="withdrawal-source-grid">{sourceAccounts.map(account => {
         const remaining = cooldownSeconds(account, serverTime);
         return <article className={`withdrawal-source-card${remaining ? ' is-cooling' : ''}`} key={account.id}><BankTransferCard bank={account} compact /><div className={`withdrawal-source-state${remaining ? ' is-cooling' : ''}`}><Clock3 size={15} /><span>{remaining ? `Disponible en ${cooldownLabel(remaining)}` : 'Disponible ahora'}</span></div></article>;
-      })}</div> : <p className="withdrawal-source-empty">{sourceStatus?.mode === 'closing' ? 'Cierre de caja en curso. Las cuentas del próximo turno aparecerán al finalizar.' : sourceStatus?.mode === 'maintenance' ? 'Las cuentas están en mantenimiento.' : 'No hay cuentas activas en el turno actual.'}</p>}
+      })}</div> : <p className="withdrawal-source-empty">{sourceStatus?.mode === 'closing' ? 'Cierre de caja en curso. Las cuentas del próximo turno aparecerán al finalizar.' : sourceStatus?.mode === 'maintenance' ? 'Las cuentas están en mantenimiento.' : 'No hay cuentas activas en el turno actual.'}</p>}</div>}
     </section>
     {section(pending, pendingPage, setPendingPage, 'En proceso', 'withdrawals-pending-title', <Clock3 size={22} />, 'No hay retiros en proceso.')}
     {section(resolved, resolvedPage, setResolvedPage, 'Resueltos', 'withdrawals-resolved-title', <WalletCards size={22} />, 'Todavía no hay retiros resueltos.')}
@@ -292,19 +293,14 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay,
       <section className="withdrawal-source-modal" role="dialog" aria-modal="true" aria-label="Elegir cuenta de origen para el retiro">
         <header><div><strong>Elegí la cuenta de origen</strong><small>Retiro {paymentPart.part_number} · {money(Number(paymentPart.amount))} · {paymentRequest.user_name || 'Usuario'}</small></div><button type="button" aria-label="Cerrar selección de cuenta" autoFocus disabled={busy} onClick={() => setPaymentSelection(null)}><X size={20} /></button></header>
         <div className="withdrawal-source-modal-body">
-          <p>Primero elegí el banco y después la cuenta desde la que hiciste la transferencia. El contador empieza cuando confirmás el pago.</p>
+          <p>Elegí la cuenta desde la que hiciste la transferencia. El contador de 10 minutos empieza cuando confirmás el pago.</p>
           {paymentError && <p className="alert error" role="alert">{paymentError}</p>}
           {sourceError && <p className="alert error" role="alert">{sourceError}</p>}
-          <h3>1. Banco</h3>
-          {banks.length ? <div className="withdrawal-bank-options">{banks.map(bank => {
-            const bankAccounts = sourceAccounts.filter(account => account.bank === bank);
-            const available = bankAccounts.filter(account => cooldownSeconds(account, serverTime) === 0).length;
-            return <button type="button" key={bank} className={selectedBank === bank ? 'selected' : ''} aria-pressed={selectedBank === bank} onClick={() => { setSelectedBank(bank); setSelectedSourceId(''); setPaymentError(''); }}><strong>{bank}</strong><small>{available} de {bankAccounts.length} disponibles</small></button>;
-          })}</div> : <p className="withdrawal-source-empty">No hay cuentas activas para retiros en este turno.</p>}
-          {selectedBank && <><h3>2. Cuenta de {selectedBank}</h3><div className="withdrawal-source-grid is-selector">{sourceAccounts.filter(account => account.bank === selectedBank).map(account => {
+          <h3>Cuentas disponibles</h3>
+          {sourceAccounts.length ? <div className="withdrawal-source-grid is-selector">{sourceAccounts.map(account => {
             const remaining = cooldownSeconds(account, serverTime);
             return <article key={account.id} className={`withdrawal-source-card${remaining ? ' is-cooling' : ''}${selectedSourceId === account.id ? ' is-selected' : ''}`}><BankTransferCard bank={account} compact /><span className={`withdrawal-source-state${remaining ? ' is-cooling' : ''}`}><Clock3 size={15} />{remaining ? `Disponible en ${cooldownLabel(remaining)}` : selectedSourceId === account.id ? 'Cuenta seleccionada' : 'Disponible ahora'}</span><button type="button" className="withdrawal-source-select" aria-label={`Elegir ${account.bank}, ${account.alias}`} aria-pressed={selectedSourceId === account.id} disabled={!!remaining || busy} onClick={() => { setSelectedSourceId(account.id); setPaymentError(''); }} /></article>;
-          })}</div></>}
+          })}</div> : <p className="withdrawal-source-empty">No hay cuentas activas para retiros en este turno.</p>}
         </div>
         <footer><span>{selectedSource ? `${selectedSource.bank} · ${selectedSource.alias}` : 'Seleccioná una cuenta disponible.'}</span><button type="button" className="withdrawal-approve" disabled={!selectedSource || (selectedSource ? cooldownSeconds(selectedSource, serverTime) > 0 : true) || busy || !paymentFile} onClick={() => void confirmPayment()}>{busy ? 'Confirmando…' : 'Confirmar pago con esta cuenta'}</button></footer>
       </section>

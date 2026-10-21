@@ -28,7 +28,7 @@ export function BankTransferCard({ bank, onCopy, compact = false }: { bank: Disp
   return <section className={`bank-transfer-card ${theme.className}${theme.defaultBanner ? ' branded-bank-banner' : ''}${hasBankArt ? ' has-bank-art' : ''}${compact ? ' bank-transfer-compact' : ''}`} data-bank-theme={theme.key} style={style} aria-label={compact ? `Cuenta de origen ${bank.bank}, ${bank.alias}` : `Datos para transferir a ${bank.bank}`}>
     <div className="bank-theme-art" aria-hidden="true" style={background ? { backgroundImage: `url(${JSON.stringify(background).slice(1, -1)})` } : undefined} />
     <div className="bank-theme-overlay" aria-hidden="true" />
-    {compact ? <div className="bank-transfer-content"><header className="bank-transfer-heading"><div><strong>{bank.bank}</strong><small>Cuenta de origen</small></div>{logo && <img src={logo} alt="" />}</header><div className="bank-compact-details"><strong>{bank.holder}</strong><span>{bank.alias}</span><small>CBU/CVU ···· {bank.cbu.slice(-4)}</small></div></div> :
+    {compact ? <div className={`bank-transfer-content${hasBankArt ? ' has-art' : ''}`}>{!hasBankArt && <header className="bank-transfer-heading"><div><strong>{bank.bank}</strong><small>Cuenta de origen</small></div>{logo && <img src={logo} alt="" />}</header>}<div className="bank-compact-details"><strong>{bank.holder}</strong><span>{bank.alias}</span><small>CBU/CVU ···· {bank.cbu.slice(-4)}</small></div></div> :
     <div className="bank-transfer-content">
       {theme.defaultBanner && hasBankArt && <small className="bank-art-subtitle">Datos para transferir</small>}
       <header className="bank-transfer-heading">

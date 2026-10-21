@@ -811,7 +811,9 @@
 .withdrawal-review-actions p { margin: 0; color: #a9bdd0; font-size: 13px; }
 .withdrawal-review-actions > div { display: flex; flex-wrap: wrap; gap: 9px; }
 .withdrawal-review-actions button { min-height: 43px; font-weight: 700; }
-.withdrawal-approve { border-color: #259b8a; background: #11685d; }
+.withdrawal-approve { border-color: #29c982; background: linear-gradient(135deg, #07844d, #08745c); color: #f2fff8; box-shadow: 0 4px 14px #00c87830, inset 0 1px #ffffff24; font-weight: 800; }
+.withdrawal-approve:not(:disabled):hover { border-color: #6af0ae; background: linear-gradient(135deg, #0aa65f, #07896a); box-shadow: 0 5px 18px #00d98245, inset 0 1px #ffffff30; }
+.withdrawal-approve:disabled { border-color: #258765; background: linear-gradient(135deg, #176b4d, #145d50); color: #a7ddc2; opacity: .9; }
 .withdrawal-reject { border-color: #a45969; color: #ffd4db; }
 .withdrawal-parts { display: grid; gap: 10px; padding: 15px 18px; border-top: 1px solid var(--panel-border-soft); }
 .withdrawal-parts-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 5px 12px; }
@@ -828,29 +830,40 @@
 .withdrawal-paste { border-color: #39789f; color: #bde7ff; font-weight: 700; }
 .withdrawal-inspect { border-color: #39789f; color: #bde7ff; font-weight: 700; }
 .withdrawal-parts-missing { margin: 0; padding: 15px 18px; color: #ffd1df; }
-.withdrawal-source-section { display: grid; gap: 14px; }
-.withdrawal-source-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.withdrawal-source-heading h2 { margin: 0 0 4px; font-size: 19px; }
-.withdrawal-source-heading p { margin: 0; color: var(--panel-muted); font-size: 12px; }
-.withdrawal-source-heading > strong { flex-shrink: 0; padding: 7px 10px; border: 1px solid #2c795f; border-radius: 999px; background: #123c34; color: #8bf1c5; font-size: 11px; }
-.withdrawal-source-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 11px; }
-.withdrawal-source-card { position: relative; display: block; min-width: 0; overflow: hidden; border: 1px solid #3a6680; border-radius: 11px; background: #0b2030; text-align: left; box-shadow: 0 8px 22px #0003; }
-.withdrawal-source-card.is-cooling { border-color: #695238; }
-.withdrawal-source-card.is-selected { border-color: #55d8ff; box-shadow: 0 0 0 2px #34bdf566; }
-.withdrawal-source-card .bank-transfer-card { position: relative; isolation: isolate; min-height: 120px; overflow: hidden; border: 0; border-radius: 0; background: #102436; }
+.withdrawal-source-section { display: grid; gap: 14px; padding: 14px; border: 1px solid #35566d; border-radius: 12px; background: #142a39; box-shadow: 0 8px 24px #0002; }
+.withdrawal-source-toggle { width: 100%; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.withdrawal-source-toggle:focus-visible { outline: 2px solid #55d8ff; outline-offset: 4px; }
+.withdrawal-source-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.withdrawal-source-heading > span:first-child { display: grid; gap: 4px; }
+.withdrawal-source-heading h2 { margin: 0; color: #f4f9ff; font-size: 19px; font-weight: 800; }
+.withdrawal-source-heading small { color: var(--panel-muted); font-size: 12px; }
+.withdrawal-source-toggle-end { display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
+.withdrawal-source-toggle-end > strong { padding: 7px 10px; border: 1px solid #2c795f; border-radius: 999px; background: #123c34; color: #8bf1c5; font-size: 11px; }
+.withdrawal-source-toggle-end > svg { color: #9db9ca; transition: transform .18s ease; }
+.withdrawal-source-toggle-end > svg.is-open { transform: rotate(180deg); }
+.withdrawal-source-description { margin: 0; color: var(--panel-muted); font-size: 12px; }
+.withdrawal-source-content { display: grid; gap: 14px; }
+.withdrawal-source-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 250px)); gap: 11px; }
+.withdrawal-source-card { position: relative; display: block; min-width: 0; overflow: hidden; border: 0; border-radius: 0; background: transparent; text-align: left; box-shadow: none; }
+.withdrawal-source-card.is-cooling { border-color: transparent; }
+.withdrawal-source-card.is-selected { border-color: transparent; box-shadow: 0 0 0 2px #34bdf566; }
+.withdrawal-source-card .bank-transfer-card { position: relative; isolation: isolate; min-height: 122px; overflow: hidden; border: 0; border-radius: 10px; background: transparent; }
 .withdrawal-source-card .bank-theme-art, .withdrawal-source-card .bank-theme-overlay { position: absolute; z-index: -1; inset: 0; pointer-events: none; }
-.withdrawal-source-card .bank-theme-art { background-size: cover; background-position: var(--bank-background-position, center); background-repeat: no-repeat; }
-.withdrawal-source-card .bank-theme-overlay { background: linear-gradient(90deg, #061520ee, #061520a8); }
-.withdrawal-source-card .bank-transfer-content { display: grid; gap: 13px; min-height: 120px; padding: 14px; }
+.withdrawal-source-card .bank-theme-art, .withdrawal-source-card .bank-theme-overlay { clip-path: inset(4.5% 1.4% round 12px); }
+.withdrawal-source-card .bank-theme-art { background-size: 102% 102%; background-position: center; background-repeat: no-repeat; }
+.withdrawal-source-card .bank-theme-overlay { background: transparent; }
+.withdrawal-source-card .bank-transfer-content { display: grid; gap: 8px; min-height: 122px; padding: 10px 12px; }
+.withdrawal-source-card .bank-transfer-content.has-art { position: absolute; inset: 0; display: block; min-height: 0; padding: 0; }
 .withdrawal-source-card .bank-transfer-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin: 0; }
 .withdrawal-source-card .bank-transfer-heading strong { display: block; overflow: hidden; color: #fff; font-size: 16px; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
 .withdrawal-source-card .bank-transfer-heading small { margin-top: 3px; color: #b4d2e1; font-size: 10px; }
 .withdrawal-source-card .bank-transfer-heading img { width: 45px; height: 30px; object-fit: contain; }
-.withdrawal-source-card .bank-compact-details { display: grid; gap: 2px; min-width: 0; }
-.withdrawal-source-card .bank-compact-details strong, .withdrawal-source-card .bank-compact-details span { overflow: hidden; color: #f2faff; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.withdrawal-source-card .bank-compact-details small { color: #a9c3d2; font-size: 10px; }
-.withdrawal-source-state { display: flex; align-items: center; gap: 6px; min-height: 33px; padding: 8px 12px; border-top: 1px solid #2d665b; background: #123b32; color: #93f3c9; font-size: 11px; font-weight: 800; }
-.withdrawal-source-state.is-cooling { border-top-color: #6b5336; background: #3a2e21; color: #ffd28c; }
+.withdrawal-source-card .bank-compact-details { display: grid; gap: 1px; min-width: 0; }
+.withdrawal-source-card .bank-transfer-content.has-art .bank-compact-details { position: absolute; right: 12px; bottom: 42px; left: 12px; }
+.withdrawal-source-card .bank-compact-details strong, .withdrawal-source-card .bank-compact-details span { overflow: hidden; color: #f2faff; font-size: 10px; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
+.withdrawal-source-card .bank-compact-details small { color: #a9c3d2; font-size: 9px; line-height: 1.1; }
+.withdrawal-source-state { position: absolute; bottom: 12px; left: 12px; display: inline-flex; align-items: center; gap: 6px; width: fit-content; max-width: calc(100% - 24px); min-height: 22px; padding: 3px 9px; border: 1px solid #20a977; border-radius: 999px; background: #073b34d9; color: #83f2c2; font-size: 10px; font-weight: 800; line-height: 1.15; }
+.withdrawal-source-state.is-cooling { border-color: #a16d32; background: #3a2e21e8; color: #ffd28c; }
 .withdrawal-source-state svg { flex: 0 0 auto; }
 .withdrawal-source-empty { margin: 0; padding: 15px; border: 1px solid #35566a; border-radius: 10px; background: #102536; color: #a9c3d2; font-size: 13px; }
 .withdrawal-source-backdrop { z-index: 120; }
@@ -893,9 +906,9 @@
 }
 
 @media (max-width: 600px) {
-  .withdrawal-source-heading { flex-direction: column; }
-  .withdrawal-source-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .withdrawal-source-card .bank-transfer-content { padding: 11px; }
+  .withdrawal-source-heading { align-items: flex-start; }
+  .withdrawal-source-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 250px)); }
+  .withdrawal-source-card .bank-transfer-content { padding: 8px 10px; }
   .withdrawal-source-modal { max-height: calc(100dvh - 24px); }
   .withdrawal-source-modal-body { padding: 12px; }
   .withdrawal-source-modal > footer { align-items: stretch; flex-direction: column; }
