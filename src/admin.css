@@ -828,6 +828,54 @@
 .withdrawal-paste { border-color: #39789f; color: #bde7ff; font-weight: 700; }
 .withdrawal-inspect { border-color: #39789f; color: #bde7ff; font-weight: 700; }
 .withdrawal-parts-missing { margin: 0; padding: 15px 18px; color: #ffd1df; }
+.withdrawal-source-section { display: grid; gap: 14px; }
+.withdrawal-source-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.withdrawal-source-heading h2 { margin: 0 0 4px; font-size: 19px; }
+.withdrawal-source-heading p { margin: 0; color: var(--panel-muted); font-size: 12px; }
+.withdrawal-source-heading > strong { flex-shrink: 0; padding: 7px 10px; border: 1px solid #2c795f; border-radius: 999px; background: #123c34; color: #8bf1c5; font-size: 11px; }
+.withdrawal-source-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 11px; }
+.withdrawal-source-card { position: relative; display: block; min-width: 0; overflow: hidden; border: 1px solid #3a6680; border-radius: 11px; background: #0b2030; text-align: left; box-shadow: 0 8px 22px #0003; }
+.withdrawal-source-card.is-cooling { border-color: #695238; }
+.withdrawal-source-card.is-selected { border-color: #55d8ff; box-shadow: 0 0 0 2px #34bdf566; }
+.withdrawal-source-card .bank-transfer-card { position: relative; isolation: isolate; min-height: 120px; overflow: hidden; border: 0; border-radius: 0; background: #102436; }
+.withdrawal-source-card .bank-theme-art, .withdrawal-source-card .bank-theme-overlay { position: absolute; z-index: -1; inset: 0; pointer-events: none; }
+.withdrawal-source-card .bank-theme-art { background-size: cover; background-position: var(--bank-background-position, center); background-repeat: no-repeat; }
+.withdrawal-source-card .bank-theme-overlay { background: linear-gradient(90deg, #061520ee, #061520a8); }
+.withdrawal-source-card .bank-transfer-content { display: grid; gap: 13px; min-height: 120px; padding: 14px; }
+.withdrawal-source-card .bank-transfer-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin: 0; }
+.withdrawal-source-card .bank-transfer-heading strong { display: block; overflow: hidden; color: #fff; font-size: 16px; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
+.withdrawal-source-card .bank-transfer-heading small { margin-top: 3px; color: #b4d2e1; font-size: 10px; }
+.withdrawal-source-card .bank-transfer-heading img { width: 45px; height: 30px; object-fit: contain; }
+.withdrawal-source-card .bank-compact-details { display: grid; gap: 2px; min-width: 0; }
+.withdrawal-source-card .bank-compact-details strong, .withdrawal-source-card .bank-compact-details span { overflow: hidden; color: #f2faff; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.withdrawal-source-card .bank-compact-details small { color: #a9c3d2; font-size: 10px; }
+.withdrawal-source-state { display: flex; align-items: center; gap: 6px; min-height: 33px; padding: 8px 12px; border-top: 1px solid #2d665b; background: #123b32; color: #93f3c9; font-size: 11px; font-weight: 800; }
+.withdrawal-source-state.is-cooling { border-top-color: #6b5336; background: #3a2e21; color: #ffd28c; }
+.withdrawal-source-state svg { flex: 0 0 auto; }
+.withdrawal-source-empty { margin: 0; padding: 15px; border: 1px solid #35566a; border-radius: 10px; background: #102536; color: #a9c3d2; font-size: 13px; }
+.withdrawal-source-backdrop { z-index: 120; }
+.withdrawal-source-modal { display: flex; flex-direction: column; width: min(780px, 100%); max-height: calc(100dvh - 42px); overflow: hidden; border: 1px solid #4780a1; border-radius: 13px; background: #0b1e2c; box-shadow: 0 25px 80px #000d; }
+.withdrawal-source-modal > header { display: flex; align-items: center; gap: 15px; min-height: 65px; margin: 0; padding: 12px 16px; border-bottom: 1px solid #35566a; }
+.withdrawal-source-modal > header > div { flex: 1; min-width: 0; }
+.withdrawal-source-modal > header strong, .withdrawal-source-modal > header small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.withdrawal-source-modal > header strong { color: #fff; font-size: 17px; }
+.withdrawal-source-modal > header small { margin-top: 4px; color: #9db9ca; font-size: 11px; }
+.withdrawal-source-modal > header button { flex: 0 0 auto; width: 38px; height: 38px; padding: 8px; }
+.withdrawal-source-modal-body { display: grid; align-content: start; gap: 13px; min-height: 0; padding: 17px; overflow-y: auto; }
+.withdrawal-source-modal-body > p:first-child { margin: 0; color: #afc6d5; font-size: 13px; }
+.withdrawal-source-modal-body h3 { margin: 3px 0 0; color: #fff; font-size: 14px; }
+.withdrawal-bank-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.admin-content .withdrawal-bank-options button { display: grid; gap: 3px; min-width: 125px; padding: 10px 12px; border-color: #3a6078; background: #102a3b; text-align: left; }
+.admin-content .withdrawal-bank-options button.selected { border-color: #53cbff; background: #17465e; box-shadow: inset 3px 0 #3ac2f9; }
+.withdrawal-bank-options button strong { font-size: 12px; }
+.withdrawal-bank-options button small { color: #a6c2d2; font-size: 10px; }
+.admin-content .withdrawal-source-select { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.admin-content .withdrawal-source-select:hover { background: #4cc9ff12; }
+.admin-content .withdrawal-source-select:focus-visible { outline: 3px solid #65d9ff; outline-offset: -3px; }
+.withdrawal-source-grid.is-selector .withdrawal-source-card.is-cooling { opacity: .68; }
+.withdrawal-source-modal > footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 12px 16px; border-top: 1px solid #35566a; }
+.withdrawal-source-modal > footer span { min-width: 0; overflow: hidden; color: #b2c9d8; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.withdrawal-source-modal > footer button { flex: 0 0 auto; font-weight: 800; }
 
 @media (max-width: 1100px) {
   .admin-shell { grid-template-columns: 248px minmax(0, 1fr); }
@@ -845,6 +893,13 @@
 }
 
 @media (max-width: 600px) {
+  .withdrawal-source-heading { flex-direction: column; }
+  .withdrawal-source-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .withdrawal-source-card .bank-transfer-content { padding: 11px; }
+  .withdrawal-source-modal { max-height: calc(100dvh - 24px); }
+  .withdrawal-source-modal-body { padding: 12px; }
+  .withdrawal-source-modal > footer { align-items: stretch; flex-direction: column; }
+  .withdrawal-source-modal > footer button { width: 100%; }
   .withdrawal-page-heading { flex-direction: column; }
   .withdrawal-summary-button { min-height: 118px; }
   .withdrawal-modal { width: 100%; max-height: calc(100dvh - 24px); }
@@ -883,6 +938,9 @@
   .bonus-offer, .account-offer { align-items: flex-start; flex-direction: column; }
   .bonus-offer-actions, .account-offer-actions { width: 100%; justify-content: stretch; }
   .bonus-offer-actions button, .account-offer-actions button { flex: 1; }
+}
+@media (max-width: 420px) {
+  .withdrawal-source-grid { grid-template-columns: 1fr; }
 }
 /* Gestión de premios por recomendación, compartida por Usuarios y Bonos. */
 .referral-admin { margin-top: 24px; padding: 20px; border: 1px solid #304a60; border-radius: 12px; background: #102332; color: #f5f8fc; }

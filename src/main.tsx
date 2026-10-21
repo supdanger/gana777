@@ -211,7 +211,9 @@ function App() {
       const contextQuery = adminApp ? db.rpc('get_admin_context').single() : Promise.resolve({ data: null, error: null });
       const playerContactQuery = adminApp ? Promise.resolve({ data: null, error: null }) : db.rpc('get_my_whatsapp_url');
       const playerProfileQuery = adminApp ? Promise.resolve({ data: null, error: null }) : db.from('user_profiles').select('username').eq('user_id', session!.user.id).maybeSingle();
-      const partsQuery = db.from('withdrawal_parts').select('request_id,part_number,amount,receipt_path,paid_at');
+      const partsQuery = adminApp
+        ? db.from('withdrawal_parts').select('request_id,part_number,amount,receipt_path,paid_at,source_bank_account_id,source_bank_name,source_alias')
+        : db.from('withdrawal_parts').select('request_id,part_number,amount,receipt_path,paid_at');
       const [r, m, role, pending, context, playerContact, playerProfile, partsResult] = await Promise.all([
         requestPromise,
         messageQuery,
@@ -709,28 +711,41 @@ function App() {
       {!adminApp && page === 'profile' && <>{history('deposit')}{history('withdrawal')}<ReferralBonusHistory userId={userId} demo={demo} /></>}
       {(page === 'deposit' || page === 'withdrawal') && !adminApp && <RequestForm key={page} kind={page} requests={requests.filter(r => r.user_id === userId)} bank={bank} bankOperation={bankOperation} retryAt={page === 'deposit' ? depositRetryAt : 0} busy={busy} demo={demo} feedback={feedback} onSubmit={submitRequest} onCopy={(text, label) => void action(async () => { await navigator.clipboard.writeText(text); setNotice(`${label} copiado.`); })} onOpenWithdrawalHistory={() => { setUserHistoryOpen(old => ({ ...old, withdrawal: true })); setProfileHistoryTarget('withdrawal'); navigate('profile'); }} />}
       {adminApp && page === 'deposit' && depositList()}
-      {adminApp && page === 'withdrawal' && <AdminWithdrawals requests={requests} parts={withdrawalParts} busy={busy} demo={demo} onViewReceipt={part => void viewWithdrawalPart(part)} onPay={(request, part, file) => void action(async () => {
-        if (!supabase || demo || !canOpenAdminPage('withdrawal', staffContext.permissions, staffContext.superAdmin)) throw new InputError('No tenés permiso para acreditar retiros.');
-        const ext = file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : '';
-        if (!ext || file.size > 5 * 1024 * 1024) throw new InputError('El comprobante debe ser una foto JPG, PNG o WebP de hasta 5 MB.');
-        const path = `${parseUuid(request.id)}/${part.part_number}/${crypto.randomUUID()}.${ext}`;
-        const bucket = supabase.storage.from('withdrawal-receipts');
-        const uploaded = await bucket.upload(path, file, { contentType: file.type, upsert: false });
-        if (uploaded.error) throw uploaded.error;
-        const result = await supabase.rpc('confirm_withdrawal_part', { p_request_id: request.id, p_part_number: part.part_number, p_receipt_path: path });
-        if (result.error) {
-          await bucket.remove([path]);
-          throw result.error;
-        }
-        const paidAt = new Date().toISOString();
-        setWithdrawalParts(old => old.map(item => item.request_id === request.id && item.part_number === part.part_number ? { ...item, receipt_path: path, paid_at: paidAt } : item));
-        if (withdrawalParts.filter(item => item.request_id === request.id && !item.paid_at).length === 1) {
-          setRequests(old => old.map(item => item.id === request.id ? { ...item, status: 'approved', approved_at: paidAt } : item));
-          setNotice('Retiro completado. El usuario ya puede ver todos los comprobantes.');
-        } else setNotice(`Retiro ${part.part_number} de ${withdrawalParts.filter(item => item.request_id === request.id).length} realizado. Faltan transferencias para completar la solicitud.`);
-        const { error: pushError } = await supabase.functions.invoke('send-user-push', { body: { request_id: request.id, part_number: part.part_number } });
-        if (pushError) setNotice(`Retiro ${part.part_number} realizado. El aviso está en la cuenta del usuario, pero no pudimos enviar el push.`);
-      })} onReview={(request, status) => void action(async () => {
+      {adminApp && page === 'withdrawal' && <AdminWithdrawals requests={requests} parts={withdrawalParts} busy={busy} demo={demo} onViewReceipt={part => void viewWithdrawalPart(part)} onPay={async (request, part, file, sourceAccount) => {
+        setBusy(true); setError(''); setNotice('');
+        try {
+          if (!supabase || demo || !canOpenAdminPage('withdrawal', staffContext.permissions, staffContext.superAdmin)) throw new InputError('No tenés permiso para acreditar retiros.');
+          const ext = file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : '';
+          if (!ext || file.size > 5 * 1024 * 1024) throw new InputError('El comprobante debe ser una foto JPG, PNG o WebP de hasta 5 MB.');
+          const path = `${parseUuid(request.id)}/${part.part_number}/${crypto.randomUUID()}.${ext}`;
+          const bucket = supabase.storage.from('withdrawal-receipts');
+          const uploaded = await bucket.upload(path, file, { contentType: file.type, upsert: false });
+          if (uploaded.error) throw uploaded.error;
+          const result = await supabase.rpc('confirm_withdrawal_part', {
+            p_request_id: request.id, p_part_number: part.part_number, p_receipt_path: path, p_source_account_id: sourceAccount.id,
+          });
+          if (result.error) {
+            await bucket.remove([path]);
+            throw result.error;
+          }
+          const paidAt = new Date().toISOString();
+          setWithdrawalParts(old => old.map(item => item.request_id === request.id && item.part_number === part.part_number ? {
+            ...item, receipt_path: path, paid_at: paidAt, source_bank_account_id: sourceAccount.id,
+            source_bank_name: sourceAccount.bank, source_alias: sourceAccount.alias,
+          } : item));
+          if (withdrawalParts.filter(item => item.request_id === request.id && !item.paid_at).length === 1) {
+            setRequests(old => old.map(item => item.id === request.id ? { ...item, status: 'approved', approved_at: paidAt } : item));
+            setNotice('Retiro completado. El usuario ya puede ver todos los comprobantes.');
+          } else setNotice(`Retiro ${part.part_number} de ${withdrawalParts.filter(item => item.request_id === request.id).length} realizado. Faltan transferencias para completar la solicitud.`);
+          const { error: pushError } = await supabase.functions.invoke('send-user-push', { body: { request_id: request.id, part_number: part.part_number } });
+          if (pushError) setNotice(`Retiro ${part.part_number} realizado. El aviso está en la cuenta del usuario, pero no pudimos enviar el push.`);
+          return { ok: true };
+        } catch (cause) {
+          const message = publicError(cause);
+          setError(message);
+          return { ok: false, error: message };
+        } finally { setBusy(false); }
+      }} onReview={(request, status) => void action(async () => {
         if (!canOpenAdminPage('withdrawal', staffContext.permissions, staffContext.superAdmin)) throw new InputError('No tenés permiso para revisar retiros.');
         const { data, error } = await supabase!.from('requests').update({ status }).eq('id', parseUuid(request.id)).eq('status', 'pending').select('id,status').single();
         if (error) throw error;

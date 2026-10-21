@@ -25,6 +25,12 @@ const publicDatabaseMessages = new Set([
   'La asignación de la cuenta venció. Volvé a iniciar la carga.',
   'Estamos realizando el cierre de caja.',
   'Las cargas están temporalmente en mantenimiento.',
+  'Seleccioná la cuenta desde la que realizaste la transferencia.',
+  'No se pueden confirmar retiros durante el cierre o mantenimiento.',
+  'Esta cuenta no está activa en el turno actual.',
+  'Esta cuenta sigue en enfriamiento. Elegí otra o esperá a que termine el contador.',
+  'El retiro ya no está pendiente.',
+  'Este pago ya fue confirmado.',
 ]);
 export function publicError(error: unknown): string {
   if (error instanceof InputError) return error.message;

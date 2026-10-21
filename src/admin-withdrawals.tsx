@@ -2,6 +2,9 @@ import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type 
 import { Check, ChevronRight, ClipboardPaste, Clock3, Copy, Eye, WalletCards, X } from 'lucide-react';
 import { date, money, type RequestRow, type WithdrawalPart } from './lib';
 import { compressReceipt } from './image-compression';
+import { BankTransferCard } from './bank-transfer-card';
+import { supabase, type BankOperationStatus } from './lib';
+import { cooldownLabel, cooldownSeconds, type WithdrawalSourceAccount } from './withdrawal-sources';
 
 type ReviewStatus = 'rejected';
 const PAGE_SIZE = 10;
@@ -12,7 +15,7 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay,
   busy: boolean;
   demo: boolean;
   onReview: (request: RequestRow, status: ReviewStatus) => void;
-  onPay: (request: RequestRow, part: WithdrawalPart, file: File) => void;
+  onPay: (request: RequestRow, part: WithdrawalPart, file: File, sourceAccount: WithdrawalSourceAccount) => Promise<{ ok: boolean; error?: string }>;
   onViewReceipt: (part: WithdrawalPart) => void;
 }) {
   const [copied, setCopied] = useState('');
@@ -24,10 +27,24 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay,
   const [inspection, setInspection] = useState<{ url: string; name: string; number: number; total: number; amount: number } | null>(null);
   const [pendingPage, setPendingPage] = useState(0);
   const [resolvedPage, setResolvedPage] = useState(0);
+  const [sourceAccounts, setSourceAccounts] = useState<WithdrawalSourceAccount[]>([]);
+  const [sourceStatus, setSourceStatus] = useState<BankOperationStatus | null>(null);
+  const [sourceLoading, setSourceLoading] = useState(!demo);
+  const [sourceError, setSourceError] = useState('');
+  const [serverOffset, setServerOffset] = useState(0);
+  const [paymentSelection, setPaymentSelection] = useState<{ requestId: string; partNumber: number } | null>(null);
+  const [selectedBank, setSelectedBank] = useState('');
+  const [selectedSourceId, setSelectedSourceId] = useState('');
+  const [paymentError, setPaymentError] = useState('');
+  const [now, setNow] = useState(Date.now);
   const trigger = useRef<HTMLButtonElement | null>(null);
   const inspectionTrigger = useRef<HTMLButtonElement | null>(null);
   const inspectionRef = useRef(inspection);
+  const selectionRef = useRef(paymentSelection);
+  const busyRef = useRef(busy);
   inspectionRef.current = inspection;
+  selectionRef.current = paymentSelection;
+  busyRef.current = busy;
   const withdrawals = requests.filter(request => request.kind === 'withdrawal');
   const pending = withdrawals.filter(request => request.status === 'pending').sort((a, b) => a.created_at.localeCompare(b.created_at));
   const resolved = withdrawals.filter(request => request.status !== 'pending').sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -40,6 +57,7 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay,
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         if (inspectionRef.current) setInspection(null);
+        else if (selectionRef.current) { if (!busyRef.current) setPaymentSelection(null); }
         else setSelectedId(null);
       }
     };
@@ -58,8 +76,64 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay,
     }
   }, [inspection]);
 
+  async function loadSources() {
+    if (demo || !supabase) { setSourceLoading(false); return; }
+    const [accounts, status] = await Promise.all([
+      supabase.rpc('get_withdrawal_source_accounts'),
+      supabase.rpc('get_bank_operation_status').single(),
+    ]);
+    setSourceLoading(false);
+    if (accounts.error || status.error) {
+      setSourceError('No pudimos cargar las cuentas de este turno. Actualizá el panel e intentá nuevamente.');
+      return;
+    }
+    setSourceError('');
+    const rows = (accounts.data ?? []) as WithdrawalSourceAccount[];
+    if (rows[0]?.server_now) setServerOffset(Date.parse(rows[0].server_now) - Date.now());
+    setSourceAccounts(rows);
+    setSourceStatus(status.data as BankOperationStatus);
+  }
+
+  useEffect(() => {
+    void loadSources();
+    const clock = window.setInterval(() => setNow(Date.now()), 1000);
+    const refresh = window.setInterval(() => void loadSources(), 15000);
+    const onFocus = () => void loadSources();
+    window.addEventListener('focus', onFocus);
+    const channel = !demo && supabase ? supabase.channel('withdrawal-sources')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'withdrawal_parts' }, () => void loadSources())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bank_operation_state' }, () => void loadSources())
+      .subscribe() : null;
+    return () => { window.clearInterval(clock); window.clearInterval(refresh); window.removeEventListener('focus', onFocus); if (channel) void supabase?.removeChannel(channel); };
+  }, [demo]);
+
+  const serverTime = now + serverOffset;
+  const banks = Array.from(new Set(sourceAccounts.map(account => account.bank))).sort((a, b) => a.localeCompare(b, 'es'));
+  const paymentRequest = withdrawals.find(request => request.id === paymentSelection?.requestId);
+  const paymentPart = parts.find(part => part.request_id === paymentSelection?.requestId && part.part_number === paymentSelection?.partNumber);
+  const paymentFile = paymentSelection ? receiptFiles[`${paymentSelection.requestId}-${paymentSelection.partNumber}`] : undefined;
+  const selectedSource = sourceAccounts.find(account => account.id === selectedSourceId);
+
+  function openPaymentSelection(request: RequestRow, part: WithdrawalPart) {
+    setPaymentError(''); setSelectedBank(''); setSelectedSourceId('');
+    setPaymentSelection({ requestId: request.id, partNumber: part.part_number });
+    void loadSources();
+  }
+
+  async function confirmPayment() {
+    if (!paymentRequest || !paymentPart || !paymentFile || !selectedSource || busy) return;
+    if (cooldownSeconds(selectedSource, Date.now() + serverOffset) > 0) { setPaymentError('La cuenta sigue en enfriamiento. Elegí otra.'); return; }
+    if (!window.confirm(`¿Confirmás que transferiste ${money(Number(paymentPart.amount))} desde ${selectedSource.bank} · ${selectedSource.alias} y que el comprobante corresponde a este pago?`)) return;
+    setPaymentError('');
+    const result = await onPay(paymentRequest, paymentPart, paymentFile, selectedSource);
+    await loadSources();
+    if (result.ok) { setPaymentSelection(null); setSelectedBank(''); setSelectedSourceId(''); }
+    else setPaymentError(result.error || 'No pudimos confirmar el pago. Revisá la cuenta e intentá nuevamente.');
+  }
+
   function closeDetail() {
     setInspection(null);
+    setPaymentSelection(null);
     setSelectedId(null);
   }
 
@@ -153,12 +227,12 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay,
           const key = `${request.id}-${part.part_number}`;
           const file = receiptFiles[key];
           return <div className="withdrawal-part" key={part.part_number}>
-            <div><strong>Retiro {part.part_number} de {payments.length}</strong><span>{money(Number(part.amount))}</span><small>{part.paid_at ? `Realizado el ${date(part.paid_at)}` : 'Pendiente de transferencia'}</small></div>
+            <div><strong>Retiro {part.part_number} de {payments.length}</strong><span>{money(Number(part.amount))}</span><small>{part.paid_at ? `Realizado el ${date(part.paid_at)}` : 'Pendiente de transferencia'}</small>{part.source_bank_name && <small>Desde {part.source_bank_name}{part.source_alias ? ` · ${part.source_alias}` : ''}</small>}</div>
             {part.paid_at ? <button type="button" onClick={() => onViewReceipt(part)}><Eye size={16} /> Ver comprobante</button> : isPending && <div className="withdrawal-part-actions" onPaste={event => onPasteReceipt(event, key)}>
               <label className="withdrawal-file-picker" onDragOver={event => event.preventDefault()} onDrop={event => onDropReceipt(event, key)}>{file?.name || 'Elegir o arrastrar foto'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy || demo || !!preparing} onChange={event => void selectReceipt(key, event.target.files?.[0])} /></label>
               <button type="button" className="withdrawal-paste" title="También podés presionar Ctrl+V sobre este botón" disabled={busy || demo || !!preparing} onClick={() => void pasteReceipt(key)}><ClipboardPaste size={16} /> Pegar</button>
               <button type="button" className="withdrawal-inspect" disabled={!file || !!preparing} onClick={event => { if (file) inspectReceipt(event, file, part.part_number, payments.length, Number(part.amount)); }}><Eye size={16} /> Inspeccionar</button>
-              <button type="button" className="withdrawal-approve" disabled={busy || demo || !!preparing || !file} onClick={() => { if (file && window.confirm(`¿Confirmás que transferiste ${money(Number(part.amount))} y que este es su comprobante?`)) onPay(request, part, file); }}>{preparing === key ? 'Preparando…' : 'Confirmar pago'}</button>
+              <button type="button" className="withdrawal-approve" disabled={busy || demo || !!preparing || !file} onClick={() => openPaymentSelection(request, part)}>{preparing === key ? 'Preparando…' : 'Confirmar pago'}</button>
             </div>}
           </div>;
         })}
@@ -195,6 +269,14 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay,
     <div className="withdrawal-page-heading"><div><h1>Retiros</h1><p>Abrí un retiro para revisar los datos y completar sus pagos.</p></div><strong>{withdrawals.length} solicitudes</strong></div>
     {!selected && copyError && <p className="alert error" role="alert">{copyError}</p>}
     {!selected && receiptError && <p className="alert error" role="alert">{receiptError}</p>}
+    <section className="withdrawal-source-section" aria-labelledby="withdrawal-source-title">
+      <div className="withdrawal-source-heading"><div><h2 id="withdrawal-source-title">Cuentas para retiros</h2><p>Se puede confirmar un pago por cuenta cada 10 minutos. Solo aparecen las cuentas activas del turno.</p></div><strong>{sourceAccounts.filter(account => cooldownSeconds(account, serverTime) === 0).length} disponibles</strong></div>
+      {sourceError && <p className="alert error" role="alert">{sourceError}</p>}
+      {sourceLoading ? <p className="withdrawal-source-empty">Cargando cuentas del turno…</p> : sourceAccounts.length ? <div className="withdrawal-source-grid">{sourceAccounts.map(account => {
+        const remaining = cooldownSeconds(account, serverTime);
+        return <article className={`withdrawal-source-card${remaining ? ' is-cooling' : ''}`} key={account.id}><BankTransferCard bank={account} compact /><div className={`withdrawal-source-state${remaining ? ' is-cooling' : ''}`}><Clock3 size={15} /><span>{remaining ? `Disponible en ${cooldownLabel(remaining)}` : 'Disponible ahora'}</span></div></article>;
+      })}</div> : <p className="withdrawal-source-empty">{sourceStatus?.mode === 'closing' ? 'Cierre de caja en curso. Las cuentas del próximo turno aparecerán al finalizar.' : sourceStatus?.mode === 'maintenance' ? 'Las cuentas están en mantenimiento.' : 'No hay cuentas activas en el turno actual.'}</p>}
+    </section>
     {section(pending, pendingPage, setPendingPage, 'En proceso', 'withdrawals-pending-title', <Clock3 size={22} />, 'No hay retiros en proceso.')}
     {section(resolved, resolvedPage, setResolvedPage, 'Resueltos', 'withdrawals-resolved-title', <WalletCards size={22} />, 'Todavía no hay retiros resueltos.')}
     {selected && <div className="load-modal-backdrop" role="presentation" onClick={event => { if (event.target === event.currentTarget) closeDetail(); }}>
@@ -203,6 +285,27 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay,
         {copyError && <p className="alert error" role="alert">{copyError}</p>}
         {receiptError && <p className="alert error" role="alert">{receiptError}</p>}
         {card(selected)}
+      </section>
+    </div>}
+    {paymentSelection && paymentRequest && paymentPart && <div className="load-modal-backdrop withdrawal-source-backdrop" role="presentation" onClick={event => { if (event.target === event.currentTarget && !busy) setPaymentSelection(null); }}>
+      <section className="withdrawal-source-modal" role="dialog" aria-modal="true" aria-label="Elegir cuenta de origen para el retiro">
+        <header><div><strong>Elegí la cuenta de origen</strong><small>Retiro {paymentPart.part_number} · {money(Number(paymentPart.amount))} · {paymentRequest.user_name || 'Usuario'}</small></div><button type="button" aria-label="Cerrar selección de cuenta" disabled={busy} onClick={() => setPaymentSelection(null)}><X size={20} /></button></header>
+        <div className="withdrawal-source-modal-body">
+          <p>Primero elegí el banco y después la cuenta desde la que hiciste la transferencia. El contador empieza cuando confirmás el pago.</p>
+          {paymentError && <p className="alert error" role="alert">{paymentError}</p>}
+          {sourceError && <p className="alert error" role="alert">{sourceError}</p>}
+          <h3>1. Banco</h3>
+          {banks.length ? <div className="withdrawal-bank-options">{banks.map(bank => {
+            const bankAccounts = sourceAccounts.filter(account => account.bank === bank);
+            const available = bankAccounts.filter(account => cooldownSeconds(account, serverTime) === 0).length;
+            return <button type="button" key={bank} className={selectedBank === bank ? 'selected' : ''} aria-pressed={selectedBank === bank} onClick={() => { setSelectedBank(bank); setSelectedSourceId(''); setPaymentError(''); }}><strong>{bank}</strong><small>{available} de {bankAccounts.length} disponibles</small></button>;
+          })}</div> : <p className="withdrawal-source-empty">No hay cuentas activas para retiros en este turno.</p>}
+          {selectedBank && <><h3>2. Cuenta de {selectedBank}</h3><div className="withdrawal-source-grid is-selector">{sourceAccounts.filter(account => account.bank === selectedBank).map(account => {
+            const remaining = cooldownSeconds(account, serverTime);
+            return <article key={account.id} className={`withdrawal-source-card${remaining ? ' is-cooling' : ''}${selectedSourceId === account.id ? ' is-selected' : ''}`}><BankTransferCard bank={account} compact /><span className={`withdrawal-source-state${remaining ? ' is-cooling' : ''}`}><Clock3 size={15} />{remaining ? `Disponible en ${cooldownLabel(remaining)}` : selectedSourceId === account.id ? 'Cuenta seleccionada' : 'Disponible ahora'}</span><button type="button" className="withdrawal-source-select" aria-label={`Elegir ${account.bank}, ${account.alias}`} aria-pressed={selectedSourceId === account.id} disabled={!!remaining || busy} onClick={() => { setSelectedSourceId(account.id); setPaymentError(''); }} /></article>;
+          })}</div></>}
+        </div>
+        <footer><span>{selectedSource ? `${selectedSource.bank} · ${selectedSource.alias}` : 'Seleccioná una cuenta disponible.'}</span><button type="button" className="withdrawal-approve" disabled={!selectedSource || (selectedSource ? cooldownSeconds(selectedSource, serverTime) > 0 : true) || busy || !paymentFile} onClick={() => void confirmPayment()}>{busy ? 'Confirmando…' : 'Confirmar pago con esta cuenta'}</button></footer>
       </section>
     </div>}
     {inspection && <div className="load-modal-backdrop withdrawal-inspection-backdrop" role="presentation" onClick={event => { if (event.target === event.currentTarget) setInspection(null); }}>
