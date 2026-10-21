@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { KeyRound, Pencil, Phone, Search, UserPlus, UserRound, X } from 'lucide-react';
+import { ChevronDown, KeyRound, Pencil, Phone, Search, UserPlus, UserRound, X } from 'lucide-react';
 import { InputError } from '../supabase/functions/_shared/validation';
 import { supabase } from './lib';
 
@@ -34,6 +34,8 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
   const [referrerQuery, setReferrerQuery] = useState('');
   const [referrerId, setReferrerId] = useState<string | null>(null);
   const [referrerOpen, setReferrerOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [playerQuery, setPlayerQuery] = useState('');
 
   async function refresh() {
     if (demo || !supabase) { setLoading(false); return; }
@@ -84,6 +86,7 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
           throw new InputError('El jugador se creó, pero no pudimos confirmar su recomendación. No vuelvas a crear la cuenta: revisá el vínculo y el despliegue de manage-players antes de aprobar su primera carga.');
         }
       }
+      setCreateOpen(false);
     });
   }
   async function updatePlayer(event: FormEvent<HTMLFormElement>, player: Player) {
@@ -104,6 +107,13 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
     });
   }
   const activePrincipals = principals.filter(item => item.active);
+  const normalizedPlayerQuery = playerQuery.trim().replace(/^@/, '').toLocaleLowerCase('es');
+  const phoneQuery = playerQuery.replace(/\D/g, '');
+  const filteredPlayers = normalizedPlayerQuery ? players.filter(player =>
+    [player.username, player.display_name, player.external_user_id, player.user_id]
+      .some(value => value?.toLocaleLowerCase('es').includes(normalizedPlayerQuery)) ||
+    (!!phoneQuery && (player.phone ?? '').replace(/\D/g, '').includes(phoneQuery))
+  ) : players.slice(0, 6);
   const referrerTerm = referrerQuery.trim().replace(/^@/, '').toLocaleLowerCase('es');
   const referrerMatches = referrerTerm && !referrerId ? players.filter(player =>
     [player.username, player.display_name, player.external_user_id].some(value => value?.toLocaleLowerCase('es').includes(referrerTerm))
@@ -111,9 +121,9 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
 
   return <section className="player-admin" aria-labelledby="players-title">
     <div className="account-heading"><div><h1 id="players-title">Jugadores</h1><p>Creá sus accesos y asigná el WhatsApp principal que los atenderá.</p></div><strong>{players.length} jugadores</strong></div>
-    <form className="player-create" onSubmit={createPlayer}>
-      <div className="player-form-title"><UserPlus /><div><strong>Nuevo jugador</strong><small>El teléfono y el principal son obligatorios.</small></div></div>
-      <div className="player-create-fields">
+    <form className={`player-create${createOpen ? ' is-open' : ' is-collapsed'}`} onSubmit={createPlayer}>
+      <button type="button" className="player-form-toggle" aria-expanded={createOpen} aria-controls="player-create-fields" onClick={() => setCreateOpen(open => !open)}><span className="player-form-title"><UserPlus /><span><strong>Nuevo jugador</strong><small>{createOpen ? 'El teléfono y el principal son obligatorios.' : 'Abrí para crear una cuenta.'}</small></span></span><ChevronDown size={19} className={createOpen ? 'is-open' : ''} /></button>
+      {createOpen && <div id="player-create-fields" className="player-create-content"><div className="player-create-fields">
         <label>Nombre de usuario<input name="username" minLength={3} maxLength={32} pattern={'[a-zA-Z0-9._\\-]+'} autoCapitalize="none" spellCheck={false} placeholder="juanito" required /></label>
         <label>Contraseña<input name="password" type="password" minLength={8} maxLength={72} autoComplete="new-password" placeholder="Mínimo 8 caracteres" required /></label>
         <label>Teléfono del jugador<input name="phone" type="tel" maxLength={30} placeholder="Ej.: +595981123456" required /></label>
@@ -135,9 +145,11 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
         </div>
       </div>
       {!activePrincipals.length && <p className="player-form-warning">Primero cargá al menos un número en Contactos.</p>}
-      <button className="cashier-create-submit" disabled={busy || loading || !activePrincipals.length}>Crear jugador</button>
+      <button className="cashier-create-submit" disabled={busy || loading || !activePrincipals.length}>Crear jugador</button></div>}
     </form>
-    {loading ? <p className="empty">Cargando jugadores…</p> : loadError ? <p className="empty">{loadError}</p> : !players.length ? <p className="empty">Todavía no hay jugadores registrados.</p> : <div className="player-list">{players.map(player => <article className="player-card" key={player.user_id}>
+    <label className="player-directory-search"><Search size={18} aria-hidden="true" /><input type="search" value={playerQuery} onChange={event => setPlayerQuery(event.target.value)} placeholder="Buscar por usuario, ID o teléfono" aria-label="Buscar jugadores por nombre de usuario, ID o teléfono" /></label>
+    {!normalizedPlayerQuery && players.length > 6 && <small className="player-list-hint">Mostrando los 6 jugadores más recientes.</small>}
+    {loading ? <p className="empty">Cargando jugadores…</p> : loadError ? <p className="empty">{loadError}</p> : !filteredPlayers.length ? <p className="empty">{normalizedPlayerQuery ? 'No encontramos jugadores con esa búsqueda.' : 'Todavía no hay jugadores registrados.'}</p> : <div className="player-list">{filteredPlayers.map(player => <article className="player-card" key={player.user_id}>
       <header className="player-card-header"><span className="player-avatar"><UserRound /></span><div><strong>{player.username ? `@${player.username}` : player.display_name}</strong><small>{player.phone ? `+${player.phone}` : 'Teléfono pendiente'}</small></div><span className={player.phone && player.whatsapp_principal_slot ? 'player-complete' : 'player-incomplete'}>{player.phone && player.whatsapp_principal_slot ? 'Completo' : 'Completar'}</span></header>
       <dl className="player-details"><div><dt>Principal</dt><dd>{player.whatsapp_principal_slot ? `Principal ${player.whatsapp_principal_slot}` : 'Sin asignar'}</dd></div><div><dt>ID plataforma</dt><dd>{player.external_user_id || 'Sin cargar'}</dd></div><div><dt>Actividad</dt><dd>{player.deposits} cargas · {player.withdrawals} retiros</dd></div></dl>
       <p className="player-referrer">{player.referrer_user_id ? <>Recomendado por <strong>{player.referrer_name || 'Jugador registrado'}</strong></> : 'Sin recomendador registrado · No genera premios por recomendación.'}</p>

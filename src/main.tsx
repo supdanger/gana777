@@ -73,7 +73,15 @@ function App() {
   const [depositTotal, setDepositTotal] = useState(0);
   const [depositLoading, setDepositLoading] = useState(false);
   const [depositReload, setDepositReload] = useState(0);
+  const [historyKind, setHistoryKind] = useState<RequestRow['kind']>('deposit');
+  const [historyPage, setHistoryPage] = useState(0);
+  const [historyRows, setHistoryRows] = useState<RequestRow[]>([]);
+  const [historyTotal, setHistoryTotal] = useState(0);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState('');
+  const [historyReload, setHistoryReload] = useState(0);
   const [pendingDepositCount, setPendingDepositCount] = useState(0);
+  const [pendingWithdrawalCount, setPendingWithdrawalCount] = useState(0);
   const [liveBonusCounters, setLiveBonusCounters] = useState<BonusCounter[]>([]);
   const [approvedDeposit, setApprovedDeposit] = useState<RequestRow | null>(null);
   const [copiedCreditField, setCopiedCreditField] = useState<'user' | 'amount' | null>(null);
@@ -182,7 +190,7 @@ function App() {
     });
     const { data } = supabase.auth.onAuthStateChange((_event, value) => {
       setSession(value);
-      if (!value) { setRequests([]); setWithdrawalParts([]); setPartPreview(null); setMessages([]); setChatInbox([]); setBank(null); setBankOperation(null); setIsAdmin(false); setStaffContext({ superAdmin: false, username: '', displayName: '', avatarPath: null, permissions: noStaffPermissions }); setThread(''); setDepositRows([]); setDepositTotal(0); setDepositPage(0); setPendingDepositCount(0); setLiveBonusCounters([]); setPlayerWhatsAppUrl(null); setPlayerUsername(null); }
+      if (!value) { setRequests([]); setWithdrawalParts([]); setPartPreview(null); setMessages([]); setChatInbox([]); setBank(null); setBankOperation(null); setIsAdmin(false); setStaffContext({ superAdmin: false, username: '', displayName: '', avatarPath: null, permissions: noStaffPermissions }); setThread(''); setDepositRows([]); setDepositTotal(0); setDepositPage(0); setPendingDepositCount(0); setPendingWithdrawalCount(0); setLiveBonusCounters([]); setPlayerWhatsAppUrl(null); setPlayerUsername(null); }
     });
     return () => { alive = false; data.subscription.unsubscribe(); };
   }, []);
@@ -191,7 +199,7 @@ function App() {
     const db = supabase;
     let alive = true;
     async function refresh() {
-      const requestPromise = (async () => {
+      const requestPromise = adminApp && page === 'history' ? Promise.resolve({ data: [] as RequestRow[], error: null }) : (async () => {
         let requestQuery = db.from('request_summaries').select(REQUEST_COLUMNS).order('created_at', { ascending: false });
         if (adminApp) requestQuery = requestQuery.neq('kind', 'deposit');
         else requestQuery = requestQuery.eq('user_id', session!.user.id);
@@ -208,24 +216,30 @@ function App() {
       const pendingDepositsQuery = adminApp
         ? db.from('request_summaries').select('id', { count: 'exact', head: true }).eq('kind', 'deposit').eq('status', 'pending')
         : Promise.resolve({ count: 0, error: null });
+      const pendingWithdrawalsQuery = adminApp
+        ? db.from('request_summaries').select('id', { count: 'exact', head: true }).eq('kind', 'withdrawal').eq('status', 'pending')
+        : Promise.resolve({ count: 0, error: null });
       const contextQuery = adminApp ? db.rpc('get_admin_context').single() : Promise.resolve({ data: null, error: null });
       const playerContactQuery = adminApp ? Promise.resolve({ data: null, error: null }) : db.rpc('get_my_whatsapp_url');
       const playerProfileQuery = adminApp ? Promise.resolve({ data: null, error: null }) : db.from('user_profiles').select('username').eq('user_id', session!.user.id).maybeSingle();
-      const partsQuery = adminApp
+      const partsQuery = adminApp && page === 'history'
+        ? Promise.resolve({ data: [] as WithdrawalPart[], error: null })
+        : adminApp
         ? db.from('withdrawal_parts').select('request_id,part_number,amount,receipt_path,paid_at,source_bank_account_id,source_bank_name,source_alias')
         : db.from('withdrawal_parts').select('request_id,part_number,amount,receipt_path,paid_at');
-      const [r, m, role, pending, context, playerContact, playerProfile, partsResult] = await Promise.all([
+      const [r, m, role, pending, pendingWithdrawals, context, playerContact, playerProfile, partsResult] = await Promise.all([
         requestPromise,
         messageQuery,
         db.rpc('is_admin'),
         pendingDepositsQuery,
+        pendingWithdrawalsQuery,
         contextQuery,
         playerContactQuery,
         playerProfileQuery,
         partsQuery,
       ]);
       if (!alive) return;
-      const failure = r.error ?? m.error ?? role.error ?? pending.error ?? context.error ?? partsResult.error;
+      const failure = r.error ?? m.error ?? role.error ?? pending.error ?? pendingWithdrawals.error ?? context.error ?? partsResult.error;
       if (failure) { setError(publicError(failure)); return; }
       setRequests(r.data as RequestRow[]); setWithdrawalParts((partsResult.data ?? []) as WithdrawalPart[]); setMessages(m.data as Message[]);
       setIsAdmin(role.data === true);
@@ -241,6 +255,7 @@ function App() {
           permissions: { ...noStaffPermissions, ...(row.permissions ?? {}) },
         });
         setPendingDepositCount(pending.count ?? 0);
+        setPendingWithdrawalCount(pendingWithdrawals.count ?? 0);
         let bonus = await db.from('deposit_bonus_totals').select('bonus_percent,bonus_amount,title,loads,bonus_total');
         if (missingBonusAmount(bonus.error)) bonus = await db.from('deposit_bonus_totals').select('bonus_percent,title,loads,bonus_total');
         if (!bonus.error) setLiveBonusCounters((bonus.data ?? []).map(row => {
@@ -259,7 +274,7 @@ function App() {
     const onFocus = () => { if (!adminApp) void refresh(); };
     window.addEventListener('focus', onFocus);
     const channel = db.channel(`updates-${session.user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => { void refresh(); setDepositReload(value => value + 1); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => { void refresh(); setDepositReload(value => value + 1); setHistoryReload(value => value + 1); })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'withdrawal_parts' }, () => void refresh())
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => { if (!adminApp) void refresh(); })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'admin_permissions', filter: `user_id=eq.${session.user.id}` }, () => void refresh())
@@ -363,6 +378,34 @@ function App() {
     })();
     return () => { alive = false; };
   }, [session, page, demo, depositPage, depositReload]);
+  useEffect(() => {
+    if (!adminApp || page !== 'history' || demo || !session || !supabase) return;
+    const db = supabase;
+    let alive = true;
+    const pageSize = 35;
+    const from = historyPage * pageSize;
+    setHistoryLoading(true);
+    setHistoryError('');
+    void (async () => {
+      const firstPage = await db.from('request_summaries').select(REQUEST_COLUMNS, { count: 'exact' }).eq('kind', historyKind).order('created_at', { ascending: false }).range(from, from + pageSize - 1);
+      const result = missingBonusAmount(firstPage.error)
+        ? await db.from('request_summaries').select(REQUEST_COLUMNS_LEGACY, { count: 'exact' }).eq('kind', historyKind).order('created_at', { ascending: false }).range(from, from + pageSize - 1)
+        : firstPage;
+      if (!alive) return;
+      if (result.error) {
+        setHistoryRows([]); setHistoryTotal(0); setHistoryError(publicError(result.error)); setHistoryLoading(false);
+        return;
+      }
+      const total = result.count ?? 0;
+      const pages = Math.max(1, Math.ceil(total / pageSize));
+      const current = Math.min(historyPage, pages - 1);
+      setHistoryTotal(total);
+      if (current !== historyPage) { setHistoryPage(current); return; }
+      setHistoryRows((result.data ?? []).map(row => ({ ...row, bonus_amount: Number('bonus_amount' in row ? row.bonus_amount : 0) || 0 })) as RequestRow[]);
+      setHistoryLoading(false);
+    })();
+    return () => { alive = false; };
+  }, [session, page, demo, historyKind, historyPage, historyReload]);
 
   async function action(task: () => Promise<void>) {
     setBusy(true); setError(''); setNotice('');
@@ -513,18 +556,23 @@ function App() {
   if (!session && !demo) return <LoginView admin={adminApp} busy={busy} retryAt={loginRetryAt} siteKey={turnstileSiteKey} configured={!!supabase} feedback={<>{configError && <div role="alert" className="alert error">{configError}</div>}{feedback}</>} onLogin={login} onDemo={startDemo} onHelp={() => setNotice('Si no podés ingresar, comunicate con el soporte que te proporcionó tu cuenta.')} />;
 
   function history(kind?: RequestRow['kind']) {
-    const items = requests.filter(r => (adminApp || r.user_id === userId) && (!kind || r.kind === kind));
+    const adminHistory = adminApp && page === 'history' && kind === undefined;
+    const currentKind = adminHistory ? historyKind : kind;
+    const items = adminHistory ? demo ? requests.filter(r => r.kind === historyKind) : historyRows : requests.filter(r => (adminApp || r.user_id === userId) && (!kind || r.kind === kind));
     const paginated = !adminApp && page === 'profile' && kind !== undefined;
     const window = paginated ? userHistoryWindow(userHistoryPages[kind], items.length) : null;
-    const visibleItems = window ? items.slice(window.from, window.to) : items;
+    const pageSize = 35;
+    const adminPages = Math.max(1, Math.ceil((demo ? requests.filter(r => r.kind === historyKind).length : historyTotal) / pageSize));
+    const adminCurrent = Math.min(historyPage, adminPages - 1);
+    const visibleItems = adminHistory ? demo ? items.slice(adminCurrent * pageSize, (adminCurrent + 1) * pageSize) : items : window ? items.slice(window.from, window.to) : items;
     const heading = adminApp
-      ? kind === 'deposit' ? 'Cargas' : kind === 'withdrawal' ? 'Retiros' : page === 'history' ? 'Historial' : 'Solicitudes'
+      ? currentKind === 'deposit' ? 'Cargas' : currentKind === 'withdrawal' ? 'Retiros' : page === 'history' ? 'Historial' : 'Solicitudes'
       : kind === 'deposit' ? 'Historial de cargas' : 'Tus retiros';
-    const empty = kind === 'deposit' ? adminApp ? 'Todavía no hay cargas.' : 'Todavía no tenés recargas.' : kind === 'withdrawal' ? adminApp ? 'Todavía no hay retiros.' : 'Todavía no tenés retiros.' : 'Todavía no hay solicitudes.';
+    const empty = currentKind === 'deposit' ? adminApp ? 'Todavía no hay cargas.' : 'Todavía no tenés recargas.' : currentKind === 'withdrawal' ? adminApp ? 'Todavía no hay retiros.' : 'Todavía no tenés retiros.' : 'Todavía no hay solicitudes.';
     const isOpen = !paginated || (kind ? userHistoryOpen[kind] : true);
-    return <section className={`card history-card${isOpen ? ' is-open' : ''}`} id={!adminApp && kind ? `user-${kind}-history` : undefined}><h2>{paginated && kind ? <button type="button" className="history-toggle" aria-expanded={isOpen} aria-controls={`user-${kind}-history-content`} onClick={() => setUserHistoryOpen(old => ({ ...old, [kind]: !old[kind] }))}><Clock size={23} /><span>{heading}</span><small>{items.length}</small><ChevronRight className="history-toggle-chevron" size={20} /></button> : <><Clock size={23} />{heading}</>}</h2>
+    return <section className={`card history-card${isOpen ? ' is-open' : ''}`} id={!adminApp && kind ? `user-${kind}-history` : undefined}>{adminHistory ? <><div className="admin-history-heading"><h2><Clock size={23} />Historial</h2><div className="admin-history-tabs" role="tablist" aria-label="Tipo de historial">{(['deposit', 'withdrawal'] as const).map(item => <button type="button" role="tab" aria-selected={historyKind === item} className={historyKind === item ? 'active' : ''} key={item} onClick={() => { setHistoryKind(item); setHistoryPage(0); }}>{item === 'deposit' ? 'Cargas' : 'Retiros'}</button>)}</div></div>{historyError && <p className="alert error" role="alert">{historyError}</p>}</> : <h2>{paginated && kind ? <button type="button" className="history-toggle" aria-expanded={isOpen} aria-controls={`user-${kind}-history-content`} onClick={() => setUserHistoryOpen(old => ({ ...old, [kind]: !old[kind] }))}><Clock size={23} /><span>{heading}</span><small>{items.length}</small><ChevronRight className="history-toggle-chevron" size={20} /></button> : <><Clock size={23} />{heading}</>}</h2>}
       {isOpen && <div id={paginated && kind ? `user-${kind}-history-content` : undefined}>
-      {!items.length ? <p className="empty">{empty}</p> : visibleItems.map(r => {
+      {adminHistory && historyLoading ? <p className="empty">Cargando historial…</p> : !items.length ? <p className="empty">{empty}</p> : visibleItems.map(r => {
         const requestParts = !adminApp && r.kind === 'withdrawal' ? withdrawalParts.filter(part => part.request_id === r.id).sort((a, b) => a.part_number - b.part_number) : [];
         return <article className={`movement${requestParts.length ? ' user-withdrawal-movement' : ''}`} key={r.id}>
         <div><strong>{money(r.amount)}</strong><small>{r.kind === 'deposit' ? 'Carga' : 'Retiro'} · {date(r.created_at)}</small>{requestedBonus(r) && <small>Bono solicitado: {requestedBonus(r)}</small>}
@@ -544,6 +592,7 @@ function App() {
           })}>{status === 'approved' ? (r.kind === 'withdrawal' ? 'Confirmar acreditación' : 'Aprobar') : 'Rechazar'}</button>)}
         </div>}
       </article>})}
+      {adminHistory && adminPages > 1 && <div className="user-history-pager admin-history-pager" aria-label={`Páginas de ${heading.toLowerCase()}`}><button type="button" disabled={adminCurrent === 0 || historyLoading} onClick={() => setHistoryPage(adminCurrent - 1)}>Anterior</button><span>{adminCurrent + 1} de {adminPages} · {historyTotal} registros</span><button type="button" disabled={adminCurrent + 1 >= adminPages || historyLoading} onClick={() => setHistoryPage(adminCurrent + 1)}>Siguiente</button></div>}
       {kind && window && window.pages > 1 && <div className="user-history-pager" aria-label={`Páginas del ${heading.toLowerCase()}`}>
         <button type="button" disabled={window.current === 0} onClick={() => setUserHistoryPages(value => ({ ...value, [kind]: window.current - 1 }))}>Anterior</button>
         <span>{window.current + 1} de {window.pages}</span>
@@ -697,7 +746,7 @@ function App() {
   const name = (typeof displayName === 'string' ? displayName.trim().slice(0, 80) : '') || session?.user.email?.split('@')[0] || 'bienvenido';
   const pendingCounts = {
     deposit: demo ? pendingRequestCount(requests, 'deposit') : pendingDepositCount,
-    withdrawal: pendingRequestCount(requests, 'withdrawal'),
+    withdrawal: adminApp && !demo ? pendingWithdrawalCount : pendingRequestCount(requests, 'withdrawal'),
     chat: pendingChatCount(chatInbox),
   };
   const canOpenCurrentPage = !adminApp || demo || canOpenAdminPage(page, staffContext.permissions, staffContext.superAdmin);
@@ -735,6 +784,7 @@ function App() {
           } : item));
           if (withdrawalParts.filter(item => item.request_id === request.id && !item.paid_at).length === 1) {
             setRequests(old => old.map(item => item.id === request.id ? { ...item, status: 'approved', approved_at: paidAt } : item));
+            setPendingWithdrawalCount(value => Math.max(0, value - 1));
             setNotice('Retiro completado. El usuario ya puede ver todos los comprobantes.');
           } else setNotice(`Retiro ${part.part_number} de ${withdrawalParts.filter(item => item.request_id === request.id).length} realizado. Faltan transferencias para completar la solicitud.`);
           const { error: pushError } = await supabase.functions.invoke('send-user-push', { body: { request_id: request.id, part_number: part.part_number } });
@@ -750,6 +800,8 @@ function App() {
         const { data, error } = await supabase!.from('requests').update({ status }).eq('id', parseUuid(request.id)).eq('status', 'pending').select('id,status').single();
         if (error) throw error;
         setRequests(old => old.map(item => item.id === request.id ? { ...item, status: data.status as RequestRow['status'] } : item));
+        setPendingWithdrawalCount(value => Math.max(0, value - 1));
+        setHistoryReload(value => value + 1);
         setNotice('Retiro rechazado.');
       })} />}
       {adminApp && page === 'history' && history()}

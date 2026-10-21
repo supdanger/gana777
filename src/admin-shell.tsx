@@ -13,15 +13,13 @@ const groups: Array<{ label: string; items: Array<{ page: Page; Icon: typeof Lay
   { label: 'Operaciones', items: [
     { page: 'deposit', Icon: ArrowDownToLine, count: 'deposit' },
     { page: 'withdrawal', Icon: ArrowUpFromLine, count: 'withdrawal' },
+    { page: 'chat', Icon: MessagesSquare, count: 'chat' },
+    { page: 'users', Icon: Users },
     { page: 'referrals', Icon: Gift },
     { page: 'history', Icon: History },
   ] },
-  { label: 'Clientes', items: [
-    { page: 'users', Icon: Users },
-    { page: 'contacts', Icon: PhoneCall },
-    { page: 'chat', Icon: MessagesSquare, count: 'chat' },
-  ] },
   { label: 'Configuración', items: [
+    { page: 'contacts', Icon: PhoneCall },
     { page: 'portal', Icon: PanelsTopLeft },
     { page: 'bonuses', Icon: Gift },
     { page: 'accounts', Icon: Landmark },
@@ -72,7 +70,7 @@ export function AdminShell({ page, counts, permissions, superAdmin, staffName, a
           >
             <Icon aria-hidden="true" />
             <span>{titles[itemPage]}</span>
-            {count && <strong className={`admin-nav-count ${counts[count] > 0 ? 'has-pending' : ''}`} aria-label={`${counts[count]} pendientes`}>{counts[count]}</strong>}
+            {count && counts[count] > 0 && <strong className="admin-nav-count has-pending" aria-label={`${counts[count]} pendientes`}>{counts[count]}</strong>}
           </button>)}
         </section>})}
       </nav>
