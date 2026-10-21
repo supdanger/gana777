@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, type FormEvent } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Session } from '@supabase/supabase-js';
-import { ArrowUpRight, CalendarClock, Check, CheckCircle2, ChevronRight, Clock, Copy, Hash, Send, UserRound, WalletCards, X } from 'lucide-react';
+import { ArrowUpRight, CalendarClock, Check, CheckCircle2, ChevronRight, Clock, Copy, Hash, UserRound, WalletCards, X } from 'lucide-react';
 import { canonicalMoney, percentText } from '../supabase/functions/_shared/bonus-rule';
 import { adminApp, supabase, configError, turnstileSiteKey, REQUEST_COLUMNS, REQUEST_COLUMNS_LEGACY, money, date, statusLabel, type RequestRow, type WithdrawalPart, type Message, type Bank, type BankOperationStatus } from './lib';
 import { DEPOSIT_PAGE_SIZE, depositWindow } from './deposit-page';
@@ -28,12 +28,13 @@ import { AccountAdmin } from './account-admin';
 import { BonusAdmin } from './bonus-admin';
 import { ShiftAdmin } from './shift-admin';
 import { AdminShell } from './admin-shell';
-import { pendingConversationCount, pendingRequestCount } from './admin-navigation';
+import { pendingChatCount, pendingRequestCount } from './admin-navigation';
 import { CashierAdmin } from './cashier-admin';
 import { ContactAdmin } from './contact-admin';
 import { PlayerAdmin } from './player-admin';
 import { PortalAdmin } from './portal-admin';
 import { AdminWithdrawals } from './admin-withdrawals';
+import { AdminChat, type ChatInboxRow } from './admin-chat';
 import { playerSignInEmail } from './players';
 import { PlayerNotifications, unlinkDeviceSubscription } from './notifications';
 import { allStaffPermissions, canOpenAdminPage, noStaffPermissions, staffPermissionPages, staffSignInEmail, type StaffPermissions } from './staff';
@@ -60,6 +61,8 @@ function App() {
   const [withdrawalParts, setWithdrawalParts] = useState<WithdrawalPart[]>([]);
   const [partPreview, setPartPreview] = useState<{ key: string; url: string } | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [chatInbox, setChatInbox] = useState<ChatInboxRow[]>([]);
+  const [chatReload, setChatReload] = useState(0);
   const [bank, setBank] = useState<Bank | null>(null);
   const [bankOperation, setBankOperation] = useState<BankOperationStatus | null>(null);
   const [bankReload, setBankReload] = useState(0);
@@ -179,7 +182,7 @@ function App() {
     });
     const { data } = supabase.auth.onAuthStateChange((_event, value) => {
       setSession(value);
-      if (!value) { setRequests([]); setWithdrawalParts([]); setPartPreview(null); setMessages([]); setBank(null); setBankOperation(null); setIsAdmin(false); setStaffContext({ superAdmin: false, username: '', displayName: '', avatarPath: null, permissions: noStaffPermissions }); setThread(''); setDepositRows([]); setDepositTotal(0); setDepositPage(0); setPendingDepositCount(0); setLiveBonusCounters([]); setPlayerWhatsAppUrl(null); setPlayerUsername(null); }
+      if (!value) { setRequests([]); setWithdrawalParts([]); setPartPreview(null); setMessages([]); setChatInbox([]); setBank(null); setBankOperation(null); setIsAdmin(false); setStaffContext({ superAdmin: false, username: '', displayName: '', avatarPath: null, permissions: noStaffPermissions }); setThread(''); setDepositRows([]); setDepositTotal(0); setDepositPage(0); setPendingDepositCount(0); setLiveBonusCounters([]); setPlayerWhatsAppUrl(null); setPlayerUsername(null); }
     });
     return () => { alive = false; data.subscription.unsubscribe(); };
   }, []);
@@ -200,8 +203,8 @@ function App() {
         const second = await legacyQuery;
         return { ...second, data: (second.data ?? []).map(row => ({ ...row, bonus_amount: 0 })) };
       })();
-      let messageQuery = db.from('messages').select('id,user_id,sender_id,body,created_at').order('created_at');
-      if (!adminApp) messageQuery = messageQuery.eq('user_id', session!.user.id);
+      const messageQuery = adminApp ? Promise.resolve({ data: [] as Message[], error: null })
+        : db.from('messages').select('id,user_id,sender_id,body,created_at').eq('user_id', session!.user.id).order('created_at');
       const pendingDepositsQuery = adminApp
         ? db.from('request_summaries').select('id', { count: 'exact', head: true }).eq('kind', 'deposit').eq('status', 'pending')
         : Promise.resolve({ count: 0, error: null });
@@ -256,11 +259,40 @@ function App() {
     const channel = db.channel(`updates-${session.user.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => { void refresh(); setDepositReload(value => value + 1); })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'withdrawal_parts' }, () => void refresh())
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => void refresh())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => { if (!adminApp) void refresh(); })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'admin_permissions', filter: `user_id=eq.${session.user.id}` }, () => void refresh())
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'cashier_profiles', filter: `user_id=eq.${session.user.id}` }, () => void refresh()).subscribe();
     return () => { alive = false; window.removeEventListener('focus', onFocus); void db.removeChannel(channel); };
   }, [session]);
+  useEffect(() => {
+    if (!adminApp || !session || !supabase) return;
+    const db = supabase;
+    let alive = true;
+    let requestVersion = 0;
+    async function refreshInbox() {
+      const version = ++requestVersion;
+      const rows: ChatInboxRow[] = [];
+      const pageSize = 500;
+      for (let offset = 0; alive; offset += pageSize) {
+        const { data, error } = await db.from('chat_inbox')
+          .select('user_id,username,display_name,last_message_id,last_sender_id,last_body,last_created_at')
+          .order('last_created_at', { ascending: false }).order('last_message_id', { ascending: false })
+          .range(offset, offset + pageSize - 1);
+        if (!alive || version !== requestVersion) return;
+        if (error) { setError('No pudimos cargar la bandeja de chat. Actualizá el panel e intentá de nuevo.'); return; }
+        rows.push(...((data ?? []) as ChatInboxRow[]));
+        if (!data || data.length < pageSize) break;
+      }
+      if (alive && version === requestVersion) setChatInbox(rows);
+    }
+    void refreshInbox();
+    const onFocus = () => void refreshInbox();
+    window.addEventListener('focus', onFocus);
+    const channel = db.channel(`admin-chat-inbox-${session.user.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => void refreshInbox())
+      .subscribe();
+    return () => { alive = false; window.removeEventListener('focus', onFocus); void db.removeChannel(channel); };
+  }, [session?.user.id, chatReload]);
   useEffect(() => {
     if (adminApp || demo || page !== 'deposit' || !session || !supabase) return;
     let alive = true;
@@ -415,14 +447,10 @@ function App() {
       if (!supabase || demo) throw new InputError('Conectá Supabase para conversar con soporte.');
       assertFormFields(form, ['message']);
       const body = parseMessage(form.get('message'));
-      const target = parseUuid(adminApp ? thread : userId);
+      const target = parseUuid(userId);
       const { data, error } = await supabase.from('messages').insert({ user_id: target, sender_id: userId, body }).select('id,user_id,sender_id,body,created_at').single();
       if (error) throw error;
       setMessages(old => [...old.filter(m => m.id !== data.id), data as Message]); element.reset();
-      if (adminApp) {
-        const { error: pushError } = await supabase.functions.invoke('send-user-push', { body: { message_id: data.id } });
-        if (pushError) setNotice('Mensaje enviado. El usuario lo verá en el chat y en sus avisos; no pudimos enviar el push.');
-      }
     });
   }
   async function openReceipt(request: RequestRow) {
@@ -668,7 +696,7 @@ function App() {
   const pendingCounts = {
     deposit: demo ? pendingRequestCount(requests, 'deposit') : pendingDepositCount,
     withdrawal: pendingRequestCount(requests, 'withdrawal'),
-    chat: pendingConversationCount(messages, userId),
+    chat: pendingChatCount(chatInbox),
   };
   const canOpenCurrentPage = !adminApp || demo || canOpenAdminPage(page, staffContext.permissions, staffContext.superAdmin);
   const content = <>
@@ -718,11 +746,7 @@ function App() {
       {adminApp && page === 'accounts' && <AccountAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'shifts' && <ShiftAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'cashiers' && staffContext.superAdmin && <CashierAdmin demo={demo} busy={busy} action={action} />}
-      {page === 'chat' && (adminApp ? <>
-        <h1>Conversaciones</h1><label>Usuario<select value={thread} onChange={e => setThread(e.target.value)}><option value="">Seleccioná una conversación</option>{Array.from(new Set(messages.map(m => m.user_id))).map(id => <option key={id} value={id}>{id}</option>)}</select></label>
-        <section className="card chat-log" aria-live="polite">{!thread && <p className="empty">Seleccioná una conversación existente.</p>}{messages.filter(m => m.user_id === thread).map(m => <div className={`message ${m.sender_id === userId ? 'mine' : ''}`} key={m.id}><p>{m.body}</p><small>{date(m.created_at)}</small></div>)}</section>
-        <form className="composer" onSubmit={sendMessage}><input name="message" aria-label="Mensaje" placeholder="Escribí un mensaje…" maxLength={2000} required /><button className="send" aria-label="Enviar mensaje" disabled={busy || demo || !thread}><Send size={21} /></button></form>
-      </> : <Conversation messages={messages} userId={userId} busy={busy} disabled={demo} onSubmit={sendMessage} />)}
+      {page === 'chat' && (adminApp ? <AdminChat inbox={chatInbox} selectedId={thread} demo={demo} onSelect={setThread} onSent={() => setChatReload(value => value + 1)} /> : <Conversation messages={messages} userId={userId} busy={busy} disabled={demo} onSubmit={sendMessage} />)}
     </>}
   </>;
   const staffAvatarUrl = staffContext.avatarPath && supabase ? supabase.storage.from('cashier-avatars').getPublicUrl(staffContext.avatarPath).data.publicUrl : null;
