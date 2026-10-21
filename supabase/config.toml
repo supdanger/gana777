@@ -9,3 +9,5 @@ verify_jwt = false
 verify_jwt = false
 [functions.send-deposit-push]
 verify_jwt = false
+[functions.send-user-push]
+verify_jwt = false

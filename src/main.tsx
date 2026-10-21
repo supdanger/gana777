@@ -35,7 +35,7 @@ import { PlayerAdmin } from './player-admin';
 import { PortalAdmin } from './portal-admin';
 import { AdminWithdrawals } from './admin-withdrawals';
 import { playerSignInEmail } from './players';
-import { PlayerNotifications, removeDeviceSubscription } from './notifications';
+import { PlayerNotifications, unlinkDeviceSubscription } from './notifications';
 import { allStaffPermissions, canOpenAdminPage, noStaffPermissions, staffPermissionPages, staffSignInEmail, type StaffPermissions } from './staff';
 import './styles.css';
 import './mobile.css';
@@ -80,6 +80,7 @@ function App() {
   const [loginRetryAt, setLoginRetryAt] = useState(readLoginRetryAt);
   const [depositRetryAt, setDepositRetryAt] = useState(0);
   const [userHistoryPages, setUserHistoryPages] = useState<Record<RequestRow['kind'], number>>({ deposit: 0, withdrawal: 0 });
+  const [userHistoryOpen, setUserHistoryOpen] = useState<Record<RequestRow['kind'], boolean>>({ deposit: false, withdrawal: false });
   const [profileHistoryTarget, setProfileHistoryTarget] = useState<RequestRow['kind'] | null>(null);
   const [playerWhatsAppUrl, setPlayerWhatsAppUrl] = useState<string | null>(null);
   const [playerUsername, setPlayerUsername] = useState<string | null>(null);
@@ -89,6 +90,25 @@ function App() {
   const userId = session?.user.id ?? 'demo';
 
   function navigate(nextPage: Page) { setPage(nextPage); setSelectedDepositId(null); setApprovedDeposit(null); setError(''); setNotice(''); }
+  useEffect(() => {
+    if (adminApp || !session) return;
+    function openNotification(url: string) {
+      const target = new URL(url, window.location.origin);
+      if (target.origin !== window.location.origin) return;
+      const view = target.searchParams.get('view');
+      if (view === 'chat' || view === 'deposit' || view === 'profile') {
+        if (view === 'profile') setUserHistoryOpen(old => ({ ...old, withdrawal: true }));
+        navigate(view);
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    }
+    openNotification(window.location.href);
+    const onMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'notification-navigate' && typeof event.data.url === 'string') openNotification(event.data.url);
+    };
+    navigator.serviceWorker?.addEventListener('message', onMessage);
+    return () => navigator.serviceWorker?.removeEventListener('message', onMessage);
+  }, [session?.user.id]);
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [page, depositPage]);
   useEffect(() => {
     if (page !== 'profile' || !profileHistoryTarget) return;
@@ -344,7 +364,7 @@ function App() {
   }
   async function logout() {
     await action(async () => {
-      if (!adminApp && !demo) await removeDeviceSubscription().catch(() => undefined);
+      if (!adminApp && !demo) await unlinkDeviceSubscription().catch(() => undefined);
       if (supabase && !demo) { const { error } = await supabase.auth.signOut(); if (error) throw error; }
       setDemo(false); navigate('home');
     });
@@ -399,6 +419,10 @@ function App() {
       const { data, error } = await supabase.from('messages').insert({ user_id: target, sender_id: userId, body }).select('id,user_id,sender_id,body,created_at').single();
       if (error) throw error;
       setMessages(old => [...old.filter(m => m.id !== data.id), data as Message]); element.reset();
+      if (adminApp) {
+        const { error: pushError } = await supabase.functions.invoke('send-user-push', { body: { message_id: data.id } });
+        if (pushError) setNotice('Mensaje enviado. El usuario lo verá en el chat y en sus avisos; no pudimos enviar el push.');
+      }
     });
   }
   async function openReceipt(request: RequestRow) {
@@ -467,15 +491,20 @@ function App() {
       ? kind === 'deposit' ? 'Cargas' : kind === 'withdrawal' ? 'Retiros' : page === 'history' ? 'Historial' : 'Solicitudes'
       : kind === 'deposit' ? 'Historial de cargas' : 'Tus retiros';
     const empty = kind === 'deposit' ? adminApp ? 'Todavía no hay cargas.' : 'Todavía no tenés recargas.' : kind === 'withdrawal' ? adminApp ? 'Todavía no hay retiros.' : 'Todavía no tenés retiros.' : 'Todavía no hay solicitudes.';
-    return <section className="card history-card" id={!adminApp && kind ? `user-${kind}-history` : undefined}><h2><Clock size={23} />{heading}</h2>
-      {!items.length ? <p className="empty">{empty}</p> : visibleItems.map(r => <article className="movement" key={r.id}>
+    const isOpen = !paginated || (kind ? userHistoryOpen[kind] : true);
+    return <section className={`card history-card${isOpen ? ' is-open' : ''}`} id={!adminApp && kind ? `user-${kind}-history` : undefined}><h2>{paginated && kind ? <button type="button" className="history-toggle" aria-expanded={isOpen} aria-controls={`user-${kind}-history-content`} onClick={() => setUserHistoryOpen(old => ({ ...old, [kind]: !old[kind] }))}><Clock size={23} /><span>{heading}</span><small>{items.length}</small><ChevronRight className="history-toggle-chevron" size={20} /></button> : <><Clock size={23} />{heading}</>}</h2>
+      {isOpen && <div id={paginated && kind ? `user-${kind}-history-content` : undefined}>
+      {!items.length ? <p className="empty">{empty}</p> : visibleItems.map(r => {
+        const requestParts = !adminApp && r.kind === 'withdrawal' ? withdrawalParts.filter(part => part.request_id === r.id).sort((a, b) => a.part_number - b.part_number) : [];
+        return <article className={`movement${requestParts.length ? ' user-withdrawal-movement' : ''}`} key={r.id}>
         <div><strong>{money(r.amount)}</strong><small>{r.kind === 'deposit' ? 'Carga' : 'Retiro'} · {date(r.created_at)}</small>{requestedBonus(r) && <small>Bono solicitado: {requestedBonus(r)}</small>}
           {adminApp && <><small>Usuario: {r.user_name || 'Sin nombre'}</small>{r.holder && <small>{r.holder} · {r.cbu} · {r.alias}</small>}</>}
-          {!adminApp && r.kind === 'withdrawal' && withdrawalParts.filter(part => part.request_id === r.id).map(part => {
+          {requestParts.map(part => {
             const key = `${part.request_id}-${part.part_number}`;
-            return <div className="user-withdrawal-part" key={part.part_number}><small>Retiro {part.part_number} de {Math.ceil(Number(r.amount) / 100000)} · {money(Number(part.amount))} · {part.paid_at ? 'Realizado' : 'Pendiente'}</small>{part.receipt_path && <button type="button" disabled={busy} onClick={() => void viewWithdrawalPart(part, true)}>{partPreview?.key === key ? 'Ocultar comprobante' : 'Ver comprobante'}</button>}{partPreview?.key === key && <img src={partPreview.url} alt={`Comprobante del retiro ${part.part_number}`} />}</div>;
+            const partStatus = r.status === 'rejected' ? 'rejected' : part.paid_at ? 'approved' : 'pending';
+            return <div className="user-withdrawal-part" key={part.part_number}><div className="user-withdrawal-part-summary"><small>Retiro {part.part_number} de {requestParts.length}</small><strong>{money(Number(part.amount))}</strong></div><span className={`badge ${partStatus}`}>{partStatus === 'approved' ? 'Realizado' : partStatus === 'rejected' ? 'Rechazado' : 'Pendiente'}</span>{part.receipt_path && <button type="button" disabled={busy} onClick={() => void viewWithdrawalPart(part, true)}>{partPreview?.key === key ? 'Ocultar comprobante' : 'Ver comprobante'}</button>}{partPreview?.key === key && <img src={partPreview.url} alt={`Comprobante del retiro ${part.part_number}`} />}</div>;
           })}
-        </div><span className={`badge ${r.status}`}>{statusLabel[r.status]}</span>
+        </div>{requestParts.length === 0 && <span className={`badge ${r.status}`}>{statusLabel[r.status]}</span>}
         {adminApp && <div className="row-actions">
           {(r.receipt_url || r.receipt_path) && canOpenAdminPage('deposit', staffContext.permissions, staffContext.superAdmin) && <button disabled={busy} onClick={() => void openReceipt(r)}>Comprobante <ArrowUpRight size={14} /></button>}
           {r.status === 'pending' && page === 'withdrawal' && canOpenAdminPage('withdrawal', staffContext.permissions, staffContext.superAdmin) && (['approved', 'rejected'] as const).map(status => <button disabled={busy || demo} key={status} onClick={() => void action(async () => {
@@ -484,11 +513,12 @@ function App() {
             setRequests(old => old.map(item => item.id === r.id ? { ...item, status: data.status as RequestRow['status'] } : item));
           })}>{status === 'approved' ? (r.kind === 'withdrawal' ? 'Confirmar acreditación' : 'Aprobar') : 'Rechazar'}</button>)}
         </div>}
-      </article>)}
+      </article>})}
       {kind && window && window.pages > 1 && <div className="user-history-pager" aria-label={`Páginas del ${heading.toLowerCase()}`}>
         <button type="button" disabled={window.current === 0} onClick={() => setUserHistoryPages(value => ({ ...value, [kind]: window.current - 1 }))}>Anterior</button>
         <span>{window.current + 1} de {window.pages}</span>
         <button type="button" disabled={window.current + 1 >= window.pages} onClick={() => setUserHistoryPages(value => ({ ...value, [kind]: window.current + 1 }))}>Siguiente</button>
+      </div>}
       </div>}
     </section>;
   }
@@ -539,7 +569,7 @@ function App() {
         setApprovedDeposit(null);
         setNotice('Carga acreditada. El aviso quedó guardado para el usuario.');
         if (result.newly_credited) {
-          const { error: pushError } = await db.functions.invoke('send-deposit-push', { body: { notification_id: result.notification_id } });
+          const { error: pushError } = await db.functions.invoke('send-user-push', { body: { notification_id: result.notification_id } });
           if (pushError) setNotice('Carga acreditada y aviso visible en la web. No pudimos enviar el push; podés reintentarlo desde esta carga.');
           else setNotice('Carga acreditada. El usuario recibió el aviso en la web y, si lo activó, en su dispositivo.');
         }
@@ -549,7 +579,7 @@ function App() {
     async function retryCreditPush(requestId: string) {
       await action(async () => {
         if (!supabase) return;
-        const { data, error } = await supabase.functions.invoke('send-deposit-push', { body: { request_id: requestId } });
+        const { data, error } = await supabase.functions.invoke('send-user-push', { body: { request_id: requestId } });
         if (error) throw error;
         const result = data as { sent?: number; already_sent?: boolean; no_devices?: boolean };
         setNotice(result.already_sent ? 'El aviso push ya se envió.' : result.no_devices ? 'El usuario todavía no activó los avisos en un dispositivo. El aviso está en su cuenta.' : `Aviso enviado a ${result.sent ?? 0} dispositivo(s).`);
@@ -645,10 +675,11 @@ function App() {
     {demo && <div className="demo">Vista previa · las operaciones no se envían</div>}
     {adminApp && !isAdmin && !demo ? <section className="card"><h1>Acceso restringido</h1><p>Esta cuenta no tiene permisos de administración.</p>{feedback}</section> : !canOpenCurrentPage ? <section className="card"><h1>Sin acceso</h1><p>Este apartado no está habilitado para tu usuario.</p>{feedback}</section> : <>
       {(adminApp || (page !== 'deposit' && page !== 'withdrawal')) && feedback}
-      {!adminApp && !demo && session && <PlayerNotifications userId={session.user.id} showSettings={page === 'home' || page === 'profile'} />}
+      {!adminApp && page === 'profile' && <UserProfile name={name} busy={busy} logout={() => void logout()} />}
+      {!adminApp && !demo && session && <PlayerNotifications key={session.user.id} userId={session.user.id} showSettings={page === 'profile'} />}
       {page === 'home' && (adminApp ? <><div className="welcome"><h1>Resumen del turno</h1><p>Revisá rápidamente las operaciones que necesitan atención.</p></div><div className="stats">{(['deposit', 'withdrawal'] as const).map(kind => <section className="card" key={kind}><p>{kind === 'deposit' ? 'Cargas pendientes' : 'Retiros pendientes'}</p><h1>{kind === 'deposit' ? pendingCounts.deposit : pendingCounts.withdrawal}</h1></section>)}</div>{bonusBoard()}</> : <UserHome name={name} navigate={navigate} whatsappUrl={demo ? undefined : playerWhatsAppUrl} username={demo ? null : playerUsername} />)}
-      {!adminApp && page === 'profile' && <><UserProfile name={name} busy={busy} logout={() => void logout()} />{history('deposit')}{history('withdrawal')}<ReferralBonusHistory userId={userId} demo={demo} /></>}
-      {(page === 'deposit' || page === 'withdrawal') && !adminApp && <RequestForm key={page} kind={page} requests={requests.filter(r => r.user_id === userId)} bank={bank} bankOperation={bankOperation} retryAt={page === 'deposit' ? depositRetryAt : 0} busy={busy} demo={demo} feedback={feedback} onSubmit={submitRequest} onCopy={(text, label) => void action(async () => { await navigator.clipboard.writeText(text); setNotice(`${label} copiado.`); })} onOpenWithdrawalHistory={() => { setProfileHistoryTarget('withdrawal'); navigate('profile'); }} />}
+      {!adminApp && page === 'profile' && <>{history('deposit')}{history('withdrawal')}<ReferralBonusHistory userId={userId} demo={demo} /></>}
+      {(page === 'deposit' || page === 'withdrawal') && !adminApp && <RequestForm key={page} kind={page} requests={requests.filter(r => r.user_id === userId)} bank={bank} bankOperation={bankOperation} retryAt={page === 'deposit' ? depositRetryAt : 0} busy={busy} demo={demo} feedback={feedback} onSubmit={submitRequest} onCopy={(text, label) => void action(async () => { await navigator.clipboard.writeText(text); setNotice(`${label} copiado.`); })} onOpenWithdrawalHistory={() => { setUserHistoryOpen(old => ({ ...old, withdrawal: true })); setProfileHistoryTarget('withdrawal'); navigate('profile'); }} />}
       {adminApp && page === 'deposit' && depositList()}
       {adminApp && page === 'withdrawal' && <AdminWithdrawals requests={requests} parts={withdrawalParts} busy={busy} demo={demo} onViewReceipt={part => void viewWithdrawalPart(part)} onPay={(request, part, file) => void action(async () => {
         if (!supabase || demo || !canOpenAdminPage('withdrawal', staffContext.permissions, staffContext.superAdmin)) throw new InputError('No tenés permiso para acreditar retiros.');
@@ -669,6 +700,8 @@ function App() {
           setRequests(old => old.map(item => item.id === request.id ? { ...item, status: 'approved', approved_at: paidAt } : item));
           setNotice('Retiro completado. El usuario ya puede ver todos los comprobantes.');
         } else setNotice(`Retiro ${part.part_number} de ${withdrawalParts.filter(item => item.request_id === request.id).length} realizado. Faltan transferencias para completar la solicitud.`);
+        const { error: pushError } = await supabase.functions.invoke('send-user-push', { body: { request_id: request.id, part_number: part.part_number } });
+        if (pushError) setNotice(`Retiro ${part.part_number} realizado. El aviso está en la cuenta del usuario, pero no pudimos enviar el push.`);
       })} onReview={(request, status) => void action(async () => {
         if (!canOpenAdminPage('withdrawal', staffContext.permissions, staffContext.superAdmin)) throw new InputError('No tenés permiso para revisar retiros.');
         const { data, error } = await supabase!.from('requests').update({ status }).eq('id', parseUuid(request.id)).eq('status', 'pending').select('id,status').single();

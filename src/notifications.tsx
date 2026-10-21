@@ -1,22 +1,59 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, Check, LoaderCircle } from 'lucide-react';
+import { Bell, Check } from 'lucide-react';
 import { supabase, date } from './lib';
 
 const vapidPublicKey = 'BNtbZNRD_ooezVlDPvQvUCrYbFJQfabwWQbgJpnqNaML1rZEsakHHR8cLc1l0AF26bRZolu1op6SOjtKBz8pgxs';
-type UserNotification = { id: string; title: string; body: string; created_at: string; read_at: string | null };
+const DEVICE_PREFERENCE_KEY = 'gana777-push-device-enabled';
+let pushSessionGeneration = 0;
+type UserNotification = { id: string; kind: 'deposit_credited' | 'withdrawal_paid' | 'chat_message'; title: string; body: string; created_at: string; read_at: string | null };
+
+function devicePreference() {
+  try { return localStorage.getItem(DEVICE_PREFERENCE_KEY); } catch { return null; }
+}
+
+function saveDevicePreference(enabled: boolean) {
+  try { localStorage.setItem(DEVICE_PREFERENCE_KEY, enabled ? 'on' : 'off'); } catch { /* El navegador puede bloquear el almacenamiento local. */ }
+}
 
 function applicationServerKey() {
   const padded = vapidPublicKey.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(vapidPublicKey.length / 4) * 4, '=');
   return Uint8Array.from(atob(padded), character => character.charCodeAt(0));
 }
 
-export async function removeDeviceSubscription() {
+async function readyRegistration() {
+  await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+  let timer = 0;
+  try {
+    return await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<never>((_, reject) => { timer = window.setTimeout(() => reject(new Error('El servicio de avisos tardó demasiado en iniciar.')), 8000); }),
+    ]);
+  } finally { window.clearTimeout(timer); }
+}
+
+async function registerForCurrentUser(subscription: PushSubscription) {
+  if (!supabase) return;
+  const json = subscription.toJSON();
+  if (!json.keys?.p256dh || !json.keys.auth) throw new Error('El dispositivo no devolvió una suscripción válida.');
+  const { error } = await supabase.rpc('register_push_subscription', {
+    p_endpoint: subscription.endpoint, p_p256dh: json.keys.p256dh, p_auth: json.keys.auth,
+  });
+  if (error) throw error;
+}
+
+// Desvincula la cuenta al salir y conserva la suscripción del dispositivo.
+export async function unlinkDeviceSubscription() {
+  pushSessionGeneration += 1;
   if (!supabase || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
   const registration = await navigator.serviceWorker.getRegistration('/');
   const subscription = await registration?.pushManager.getSubscription();
   if (!subscription) return;
-  await supabase.rpc('unregister_push_subscription', { p_endpoint: subscription.endpoint });
-  await subscription.unsubscribe();
+  const { error } = await supabase.rpc('unregister_push_subscription', { p_endpoint: subscription.endpoint });
+  if (error) {
+    // Si falla la desvinculación, invalida el endpoint para no recibir avisos de la cuenta anterior.
+    await subscription.unsubscribe();
+    throw error;
+  }
 }
 
 export function PlayerNotifications({ userId, showSettings }: { userId: string; showSettings: boolean }) {
@@ -24,6 +61,7 @@ export function PlayerNotifications({ userId, showSettings }: { userId: string; 
   const [supported, setSupported] = useState(false);
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [existingSubscription, setExistingSubscription] = useState<PushSubscription | null>(null);
+  const [wanted, setWanted] = useState(() => devicePreference() === 'on');
   const [enabled, setEnabled] = useState(false);
   const [foregroundOnly, setForegroundOnly] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -35,12 +73,17 @@ export function PlayerNotifications({ userId, showSettings }: { userId: string; 
     if (!supabase || !userId) return;
     const db = supabase;
     let alive = true;
+    const generation = pushSessionGeneration;
     activeRegistration.current = null;
     foregroundOnlyActive.current = false;
+    setNotifications([]);
+    setRegistration(null);
+    setExistingSubscription(null);
     setForegroundOnly(false);
     setEnabled(false);
+    setError('');
     async function refresh() {
-      const { data } = await db.from('user_notifications').select('id,title,body,created_at,read_at')
+      const { data } = await db.from('user_notifications').select('id,kind,title,body,created_at,read_at')
         .eq('user_id', userId).order('created_at', { ascending: false }).limit(20);
       if (alive && data) setNotifications(data as UserNotification[]);
     }
@@ -55,7 +98,8 @@ export function PlayerNotifications({ userId, showSettings }: { userId: string; 
         if (foregroundOnlyActive.current && document.visibilityState === 'hidden' && Notification.permission === 'granted'
           && activeRegistration.current && item.id && item.title) {
           void activeRegistration.current.showNotification(item.title, {
-            body: item.body ?? '', icon: '/pwa/icon-panda-192.png', tag: `deposit-credited-${item.id}`, data: { url: '/' },
+            body: item.body ?? '', icon: '/pwa/icon-panda-192.png', tag: `gana777-${item.id}`,
+            data: { url: item.kind === 'chat_message' ? '/?view=chat' : item.kind === 'withdrawal_paid' ? '/?view=profile' : '/?view=deposit' },
           }).catch(() => undefined);
         }
       })
@@ -63,53 +107,91 @@ export function PlayerNotifications({ userId, showSettings }: { userId: string; 
     const canPush = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && window.isSecureContext;
     setSupported(canPush);
     if (canPush) {
-      void navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(async () => {
-        // register() can resolve before Chrome activates the worker. Push requires an active worker.
-        const readyRegistration = await navigator.serviceWorker.ready;
-        const subscription = await readyRegistration.pushManager.getSubscription();
+      void (async () => {
+        const previous = await navigator.serviceWorker.getRegistration('/');
+        const existing = await previous?.pushManager.getSubscription() ?? null;
+        let preference = devicePreference();
+        // Conserva la elección de quienes ya tenían avisos activados antes de este cambio.
+        if (preference === null && existing && Notification.permission === 'granted') {
+          saveDevicePreference(true);
+          preference = 'on';
+        }
         if (!alive) return;
-        activeRegistration.current = readyRegistration;
-        setRegistration(readyRegistration);
-        setExistingSubscription(subscription);
-        if (!subscription || Notification.permission !== 'granted') {
-          if (!subscription && Notification.permission === 'granted') { foregroundOnlyActive.current = true; setForegroundOnly(true); }
+        setWanted(preference === 'on');
+        setRegistration(previous ?? null);
+        setExistingSubscription(existing);
+        if (preference !== 'on') return;
+        if (Notification.permission !== 'granted') {
+          setError('Los permisos de avisos están desactivados en este dispositivo.');
           return;
         }
-        const json = subscription.toJSON();
-        if (json.keys?.p256dh && json.keys.auth) {
-          const { error } = await db.rpc('register_push_subscription', { p_endpoint: subscription.endpoint, p_p256dh: json.keys.p256dh, p_auth: json.keys.auth });
-          if (alive && !error) { foregroundOnlyActive.current = false; setForegroundOnly(false); setEnabled(true); setError(''); }
-        }
-      }).catch(() => { if (alive) setError('No se pudo preparar el servicio de avisos de esta app. Cerrala y abrila de nuevo.'); });
+        setBusy(true);
+        const ready = await readyRegistration();
+        const subscription = existing ?? await ready.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: applicationServerKey() });
+        if (!alive || generation !== pushSessionGeneration || devicePreference() !== 'on') return;
+        await registerForCurrentUser(subscription);
+        if (!alive) return;
+        activeRegistration.current = ready;
+        setRegistration(ready);
+        setExistingSubscription(subscription);
+        setEnabled(true);
+        setError('');
+      })().catch(() => {
+        if (alive && devicePreference() === 'on') setError('No se pudieron preparar los avisos. Apagá y volvé a encender el interruptor para reintentar.');
+      }).finally(() => { if (alive) setBusy(false); });
     }
     return () => { alive = false; window.removeEventListener('focus', onFocus); window.clearInterval(timer); void db.removeChannel(channel); };
   }, [userId]);
 
   async function activate() {
-    if (!supabase || !registration) return;
+    if (!supabase) return;
+    const generation = pushSessionGeneration;
     setBusy(true); setError('');
     let step: 'permission' | 'subscription' | 'save' = 'permission';
     try {
       const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
-      if (permission !== 'granted') { setError('Habilitá las notificaciones en los permisos del navegador.'); return; }
+      if (permission !== 'granted') { setError('Habilitá las notificaciones en los permisos del dispositivo.'); return; }
       step = 'subscription';
-      const subscription = existingSubscription ?? await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: applicationServerKey() });
-      const json = subscription.toJSON();
-      if (!json.keys?.p256dh || !json.keys.auth) throw new Error('El dispositivo no devolvió una suscripción válida.');
+      const ready = registration?.active ? registration : await readyRegistration();
+      const subscription = existingSubscription ?? await ready.pushManager.getSubscription() ?? await ready.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: applicationServerKey() });
+      if (generation !== pushSessionGeneration) return;
       step = 'save';
-      const { error } = await supabase.rpc('register_push_subscription', { p_endpoint: subscription.endpoint, p_p256dh: json.keys.p256dh, p_auth: json.keys.auth });
-      if (error) throw error;
+      await registerForCurrentUser(subscription);
+      saveDevicePreference(true);
+      setWanted(true);
+      setRegistration(ready);
       setExistingSubscription(subscription);
+      activeRegistration.current = ready;
       foregroundOnlyActive.current = false;
       setForegroundOnly(false);
       setEnabled(true);
     } catch (cause) {
       const code = cause instanceof Error ? cause.name : '';
-      if (step === 'save') setError(`El dispositivo aceptó los avisos, pero no pudimos guardarlo en tu cuenta. Intentá nuevamente. ${cause instanceof Error ? cause.message : ''}`);
-      else if (code === 'NotAllowedError') setError('Chrome bloqueó los avisos para esta app. Habilitalos desde los permisos del sitio o de Android.');
-      else if (code === 'AbortError' || code === 'NetworkError') { foregroundOnlyActive.current = true; setForegroundOnly(true); }
-      else setError(`No pudimos activar los avisos en este dispositivo. Intentá nuevamente${code ? ` (código: ${code})` : ''}.`);
+      if (step === 'save') setError('El dispositivo aceptó los avisos, pero no pudimos vincularlos a esta cuenta. Intentá nuevamente.');
+      else if (code === 'NotAllowedError') setError('Los avisos están bloqueados. Habilitalos desde los permisos del dispositivo.');
+      else if (code === 'AbortError' || code === 'NetworkError') { foregroundOnlyActive.current = true; setForegroundOnly(true); setError('Los avisos del sistema no están disponibles ahora. Intentá nuevamente más tarde.'); }
+      else setError('No pudimos activar los avisos en este dispositivo. Intentá nuevamente.');
     }
+    finally { setBusy(false); }
+  }
+
+  async function deactivate() {
+    if (!supabase) return;
+    setBusy(true); setError('');
+    try {
+      const subscription = existingSubscription ?? await registration?.pushManager.getSubscription();
+      if (subscription) {
+        const { error } = await supabase.rpc('unregister_push_subscription', { p_endpoint: subscription.endpoint });
+        if (error) throw error;
+        await subscription.unsubscribe();
+      }
+      saveDevicePreference(false);
+      setWanted(false);
+      setEnabled(false);
+      setExistingSubscription(null);
+      foregroundOnlyActive.current = false;
+      setForegroundOnly(false);
+    } catch { setError('No pudimos desactivar los avisos. Intentá nuevamente.'); }
     finally { setBusy(false); }
   }
 
@@ -120,14 +202,15 @@ export function PlayerNotifications({ userId, showSettings }: { userId: string; 
   }
 
   const visible = notifications.filter(item => !item.read_at);
-  if (!visible.length && (!showSettings || !supported || enabled)) return null;
+  if (!visible.length && !showSettings) return null;
   return <section className="player-notifications" aria-label="Notificaciones">
+    {showSettings && <div className="player-notification-settings"><div className="player-notification-setting-copy"><div className="player-notifications-heading"><Bell size={19} /><h2>Avisos en este dispositivo</h2></div><p>{enabled ? 'Activados para la cuenta que uses en esta app.' : foregroundOnly ? 'Podés ver los avisos dentro de Gana777. Los avisos del sistema necesitan conexión.' : wanted ? 'Se volverán a conectar cuando el servicio esté disponible.' : 'Recibí avisos de cargas, retiros y mensajes de soporte.'}</p></div><button type="button" className="player-notification-switch" role="switch" aria-label="Avisos en este dispositivo" aria-checked={wanted} disabled={busy || !supported} onClick={() => void (wanted ? deactivate() : activate())}><span /></button></div>}
+    {showSettings && !supported && <p className="player-notification-error">Este dispositivo no admite avisos push.</p>}
+    {showSettings && error && <p className="player-notification-error" role="alert">{error}</p>}
     {visible.map(item => <article className="player-notification" key={item.id}>
       <Bell size={18} aria-hidden="true" />
       <div><strong>{item.title}</strong><p>{item.body}</p><time dateTime={item.created_at} className="sr-only">{date(item.created_at)}</time></div>
       <button type="button" aria-label={`Marcar como leída: ${item.title}`} title="Marcar como leída" onClick={() => void markRead(item.id)}><Check size={17} /></button>
     </article>)}
-    {showSettings && supported && !enabled && <div className={`player-notification-settings${foregroundOnly ? ' is-limited' : ''}`}><div className="player-notifications-heading"><Bell size={19} /><h2>Notificaciones</h2></div><p>{foregroundOnly ? 'En esta PC, los avisos siguen disponibles dentro de Gana777. Si dejás la pestaña abierta, también intentaremos mostrarlos en el sistema.' : 'Activá los avisos para enterarte cuando se acredite una carga, incluso con la app cerrada.'}</p><button type="button" disabled={busy || !registration} onClick={() => void activate()}>{busy || !registration ? <LoaderCircle size={16} /> : <Bell size={16} />} {registration ? foregroundOnly ? 'Reintentar push' : 'Activar notificaciones' : 'Preparando avisos…'}</button></div>}
-    {error && <p className="player-notification-error" role="alert">{error}</p>}
   </section>;
 }

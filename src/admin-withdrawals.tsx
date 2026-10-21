@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { Check, Clock3, Copy, Eye, WalletCards } from 'lucide-react';
+import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type MouseEvent, type ReactNode } from 'react';
+import { Check, ChevronRight, ClipboardPaste, Clock3, Copy, Eye, WalletCards, X } from 'lucide-react';
 import { date, money, type RequestRow, type WithdrawalPart } from './lib';
 import { compressReceipt } from './image-compression';
 
 type ReviewStatus = 'rejected';
+const PAGE_SIZE = 10;
 
 export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay, onViewReceipt }: {
   requests: RequestRow[];
@@ -19,9 +20,53 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay,
   const [receiptFiles, setReceiptFiles] = useState<Record<string, File>>({});
   const [receiptError, setReceiptError] = useState('');
   const [preparing, setPreparing] = useState('');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [inspection, setInspection] = useState<{ url: string; name: string; number: number; total: number; amount: number } | null>(null);
+  const [pendingPage, setPendingPage] = useState(0);
+  const [resolvedPage, setResolvedPage] = useState(0);
+  const trigger = useRef<HTMLButtonElement | null>(null);
+  const inspectionTrigger = useRef<HTMLButtonElement | null>(null);
+  const inspectionRef = useRef(inspection);
+  inspectionRef.current = inspection;
   const withdrawals = requests.filter(request => request.kind === 'withdrawal');
   const pending = withdrawals.filter(request => request.status === 'pending').sort((a, b) => a.created_at.localeCompare(b.created_at));
   const resolved = withdrawals.filter(request => request.status !== 'pending').sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const selected = withdrawals.find(request => request.id === selectedId);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (inspectionRef.current) setInspection(null);
+        else setSelectedId(null);
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', onKeyDown);
+      trigger.current?.focus();
+    };
+  }, [selectedId]);
+
+  useEffect(() => () => {
+    if (inspection) {
+      URL.revokeObjectURL(inspection.url);
+      inspectionTrigger.current?.focus();
+    }
+  }, [inspection]);
+
+  function closeDetail() {
+    setInspection(null);
+    setSelectedId(null);
+  }
+
+  function inspectReceipt(event: MouseEvent<HTMLButtonElement>, file: File, number: number, total: number, amount: number) {
+    inspectionTrigger.current = event.currentTarget;
+    setInspection({ url: URL.createObjectURL(file), name: file.name, number, total, amount });
+  }
 
   async function copy(value: string, key: string) {
     try {
@@ -47,6 +92,41 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay,
     } finally { setPreparing(''); }
   }
 
+  async function pasteReceipt(key: string) {
+    if (busy || demo || preparing) return;
+    try {
+      if (!navigator.clipboard?.read) throw new Error('Portapapeles no disponible.');
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const type = item.types.find(value => ['image/jpeg', 'image/png', 'image/webp'].includes(value));
+        if (!type) continue;
+        const blob = await item.getType(type);
+        const extension = type === 'image/jpeg' ? 'jpg' : type === 'image/webp' ? 'webp' : 'png';
+        await selectReceipt(key, new File([blob], `captura-pegada.${extension}`, { type }));
+        return;
+      }
+      setReceiptError('No hay una imagen en el portapapeles. Copiá la captura y volvé a intentar.');
+    } catch {
+      setReceiptError('No pudimos leer el portapapeles. Seleccioná «Pegar» y presioná Ctrl+V, o elegí la foto.');
+    }
+  }
+
+  function onPasteReceipt(event: ClipboardEvent<HTMLDivElement>, key: string) {
+    if (busy || demo || preparing) return;
+    const file = Array.from(event.clipboardData.items).map(item => item.getAsFile()).find(item => item?.type.startsWith('image/'));
+    if (!file) { setReceiptError('No hay una imagen copiada. Copiá la captura y volvé a pegarla.'); return; }
+    event.preventDefault();
+    void selectReceipt(key, file);
+  }
+
+  function onDropReceipt(event: DragEvent<HTMLLabelElement>, key: string) {
+    event.preventDefault();
+    if (busy || demo || preparing) return;
+    const file = event.dataTransfer.files[0];
+    if (!file) { setReceiptError('Arrastrá una foto JPG, PNG o WebP.'); return; }
+    void selectReceipt(key, file);
+  }
+
   function field(request: RequestRow, label: string, value: string | null, key: string, canCopy = true) {
     const fieldKey = `${request.id}-${key}`;
     return <div className="withdrawal-field" key={key}>
@@ -60,7 +140,7 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay,
     const payments = parts.filter(part => part.request_id === request.id).sort((a, b) => a.part_number - b.part_number);
     const paid = payments.filter(part => part.paid_at);
     return <article className={`withdrawal-review-card${isPending ? ' is-pending' : ''}`} key={request.id}>
-      <header className="withdrawal-review-header"><div><span className={`badge ${request.status}`}>{isPending ? 'Pendiente' : request.status === 'approved' ? 'Acreditado' : 'Rechazado'}</span><small>Solicitado el {date(request.created_at)}</small></div><strong>{money(request.amount)}</strong></header>
+      <header className="withdrawal-review-header"><div><span className={`badge ${request.status}`}>{isPending ? 'En proceso' : request.status === 'approved' ? 'Realizado' : 'Rechazado'}</span><small>Solicitado el {date(request.created_at)}</small></div><strong>{money(request.amount)}</strong></header>
       <div className="withdrawal-review-fields">
         {field(request, 'Nombre de usuario', request.user_name, 'user')}
         {field(request, 'Titular de la cuenta', request.holder, 'holder', false)}
@@ -74,8 +154,10 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay,
           const file = receiptFiles[key];
           return <div className="withdrawal-part" key={part.part_number}>
             <div><strong>Retiro {part.part_number} de {payments.length}</strong><span>{money(Number(part.amount))}</span><small>{part.paid_at ? `Realizado el ${date(part.paid_at)}` : 'Pendiente de transferencia'}</small></div>
-            {part.paid_at ? <button type="button" onClick={() => onViewReceipt(part)}><Eye size={16} /> Ver comprobante</button> : isPending && <div className="withdrawal-part-actions">
-              <label className="withdrawal-file-picker">{file?.name || 'Elegir comprobante'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy || demo || !!preparing} onChange={event => void selectReceipt(key, event.target.files?.[0])} /></label>
+            {part.paid_at ? <button type="button" onClick={() => onViewReceipt(part)}><Eye size={16} /> Ver comprobante</button> : isPending && <div className="withdrawal-part-actions" onPaste={event => onPasteReceipt(event, key)}>
+              <label className="withdrawal-file-picker" onDragOver={event => event.preventDefault()} onDrop={event => onDropReceipt(event, key)}>{file?.name || 'Elegir o arrastrar foto'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy || demo || !!preparing} onChange={event => void selectReceipt(key, event.target.files?.[0])} /></label>
+              <button type="button" className="withdrawal-paste" title="También podés presionar Ctrl+V sobre este botón" disabled={busy || demo || !!preparing} onClick={() => void pasteReceipt(key)}><ClipboardPaste size={16} /> Pegar</button>
+              <button type="button" className="withdrawal-inspect" disabled={!file || !!preparing} onClick={event => { if (file) inspectReceipt(event, file, part.part_number, payments.length, Number(part.amount)); }}><Eye size={16} /> Inspeccionar</button>
               <button type="button" className="withdrawal-approve" disabled={busy || demo || !!preparing || !file} onClick={() => { if (file && window.confirm(`¿Confirmás que transferiste ${money(Number(part.amount))} y que este es su comprobante?`)) onPay(request, part, file); }}>{preparing === key ? 'Preparando…' : 'Confirmar pago'}</button>
             </div>}
           </div>;
@@ -86,11 +168,49 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay,
     </article>;
   }
 
+  function row(request: RequestRow) {
+    const name = request.user_name || 'Usuario sin nombre';
+    const payments = parts.filter(part => part.request_id === request.id);
+    const paidCount = payments.filter(part => part.paid_at).length;
+    const remaining = payments.length - paidCount;
+    const status = request.status === 'pending' ? 'En proceso' : request.status === 'approved' ? 'Realizado' : 'Rechazado';
+    return <button type="button" className="load-request-button withdrawal-summary-button" key={request.id} aria-haspopup="dialog" onClick={event => { trigger.current = event.currentTarget; setSelectedId(request.id); }}>
+      <span className="request-avatar" aria-hidden="true">{name.charAt(0).toLocaleUpperCase('es')}</span>
+      <span className="request-summary-user"><strong>{name}</strong><small>{date(request.created_at)}</small>{payments.length > 0 && <span className="withdrawal-summary-progress">{paidCount} de {payments.length} {payments.length === 1 ? 'retiro realizado' : 'retiros realizados'}</span>}{request.status === 'pending' && <span className="withdrawal-summary-help">{payments.length === 0 ? 'Pagos pendientes de generar' : remaining === 1 ? 'Falta 1 para completar el retiro' : `Faltan ${remaining} para completar el retiro`}</span>}</span>
+      <span className="request-summary-amount"><strong>{money(request.amount)}</strong><span className={`badge ${request.status}`}>{status}</span></span>
+      <ChevronRight className="request-chevron" aria-hidden="true" />
+    </button>;
+  }
+
+  function section(items: RequestRow[], page: number, setPage: (page: number) => void, title: string, id: string, icon: ReactNode, empty: string) {
+    const pages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+    const current = Math.min(page, pages - 1);
+    return <section aria-labelledby={id}><h2 id={id}>{icon} {title} <span>{items.length}</span></h2>{items.length ? <>
+      <div className="withdrawal-review-list">{items.slice(current * PAGE_SIZE, (current + 1) * PAGE_SIZE).map(row)}</div>
+      {pages > 1 && <nav className="loads-pager" aria-label={`Páginas de retiros ${title.toLowerCase()}`}><button type="button" disabled={current === 0} onClick={() => setPage(current - 1)}>Anterior</button><span>Página {current + 1} de {pages}</span><button type="button" disabled={current + 1 >= pages} onClick={() => setPage(current + 1)}>Siguiente</button></nav>}
+    </> : <p className="card empty">{empty}</p>}</section>;
+  }
+
   return <div className="admin-withdrawals">
-    <div className="withdrawal-page-heading"><div><h1>Retiros</h1><p>Revisá los datos de la cuenta antes de acreditar cada solicitud.</p></div><strong>{pending.length} pendientes</strong></div>
-    {copyError && <p className="alert error" role="alert">{copyError}</p>}
-    {receiptError && <p className="alert error" role="alert">{receiptError}</p>}
-    <section aria-labelledby="withdrawals-pending-title"><h2 id="withdrawals-pending-title"><Clock3 size={22} /> Pendientes <span>{pending.length}</span></h2>{pending.length ? <div className="withdrawal-review-list">{pending.map(card)}</div> : <p className="card empty">No hay retiros pendientes.</p>}</section>
-    <section aria-labelledby="withdrawals-resolved-title"><h2 id="withdrawals-resolved-title"><WalletCards size={22} /> Resueltos <span>{resolved.length}</span></h2>{resolved.length ? <div className="withdrawal-review-list">{resolved.map(card)}</div> : <p className="card empty">Todavía no hay retiros resueltos.</p>}</section>
+    <div className="withdrawal-page-heading"><div><h1>Retiros</h1><p>Abrí un retiro para revisar los datos y completar sus pagos.</p></div><strong>{withdrawals.length} solicitudes</strong></div>
+    {!selected && copyError && <p className="alert error" role="alert">{copyError}</p>}
+    {!selected && receiptError && <p className="alert error" role="alert">{receiptError}</p>}
+    {section(pending, pendingPage, setPendingPage, 'En proceso', 'withdrawals-pending-title', <Clock3 size={22} />, 'No hay retiros en proceso.')}
+    {section(resolved, resolvedPage, setResolvedPage, 'Resueltos', 'withdrawals-resolved-title', <WalletCards size={22} />, 'Todavía no hay retiros resueltos.')}
+    {selected && <div className="load-modal-backdrop" role="presentation" onClick={event => { if (event.target === event.currentTarget) closeDetail(); }}>
+      <section className="withdrawal-modal" role="dialog" aria-modal="true" aria-label={`Detalle del retiro de ${selected.user_name || 'usuario'}`}>
+        <button type="button" className="load-modal-close" aria-label="Cerrar detalle" autoFocus onClick={closeDetail}><X /></button>
+        {copyError && <p className="alert error" role="alert">{copyError}</p>}
+        {receiptError && <p className="alert error" role="alert">{receiptError}</p>}
+        {card(selected)}
+      </section>
+    </div>}
+    {inspection && <div className="load-modal-backdrop withdrawal-inspection-backdrop" role="presentation" onClick={event => { if (event.target === event.currentTarget) setInspection(null); }}>
+      <section className="withdrawal-inspection" role="dialog" aria-modal="true" aria-label={`Vista previa del retiro ${inspection.number} de ${inspection.total}`}>
+        <header><div><strong>Comprobante · Retiro {inspection.number} de {inspection.total}</strong><small>{money(inspection.amount)} · {inspection.name}</small></div><button type="button" aria-label="Cerrar vista previa" autoFocus onClick={() => setInspection(null)}><X size={20} /></button></header>
+        <img src={inspection.url} alt={`Comprobante seleccionado para el retiro ${inspection.number} de ${inspection.total}`} />
+        <p>Revisá la imagen. El pago se confirma desde la tarjeta del retiro.</p>
+      </section>
+    </div>}
   </div>;
 }

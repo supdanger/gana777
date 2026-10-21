@@ -3,7 +3,8 @@ import { InputError } from '../supabase/functions/_shared/validation.ts';
 const MAX_SOURCE_BYTES = 20 * 1024 * 1024;
 const TARGET_BYTES = 2 * 1024 * 1024;
 const MAX_SIDE = 2048;
-const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
+const UPLOAD_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 export function scaledDimensions(width: number, height: number, maxSide = MAX_SIDE) {
   if (width <= 0 || height <= 0) throw new InputError('No pudimos leer las dimensiones del comprobante.');
@@ -30,7 +31,7 @@ export async function compressReceipt(file: File): Promise<File> {
     if (file.size > 5 * 1024 * 1024) throw new InputError('El PDF supera el límite de 5 MB.');
     return file;
   }
-  if (!IMAGE_TYPES.has(file.type)) throw new InputError('El comprobante debe ser una imagen JPG, PNG, WebP o un PDF válido.');
+  if (!IMAGE_TYPES.has(file.type)) throw new InputError('El comprobante debe ser una foto compatible o un PDF válido.');
   if (file.size > MAX_SOURCE_BYTES) throw new InputError('La imagen es demasiado grande. Elegí una de hasta 20 MB.');
 
   let bitmap: ImageBitmap;
@@ -60,7 +61,7 @@ export async function compressReceipt(file: File): Promise<File> {
     }
 
     if (!best) throw new InputError('No pudimos comprimir el comprobante.');
-    if (file.size <= 5 * 1024 * 1024 && best.size >= file.size) return file;
+    if (UPLOAD_IMAGE_TYPES.has(file.type) && file.size <= 5 * 1024 * 1024 && best.size >= file.size) return file;
     if (best.size > 5 * 1024 * 1024) throw new InputError('No pudimos reducir la imagen a menos de 5 MB. Probá con otra captura.');
     return new File([best], compressedReceiptName(file.name), { type: 'image/jpeg', lastModified: file.lastModified });
   } finally {

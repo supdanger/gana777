@@ -705,7 +705,24 @@
 .withdrawal-page-heading > strong { flex-shrink: 0; padding: 9px 12px; border: 1px solid #3b6780; border-radius: 999px; color: #9fddff; font-size: 12px; }
 .admin-withdrawals section > h2 { margin: 0 0 12px; font-size: 19px; }
 .admin-withdrawals section > h2 span { margin-left: auto; color: var(--panel-muted); font-size: 14px; }
-.withdrawal-review-list { display: grid; gap: 14px; }
+.withdrawal-review-list { display: grid; gap: 12px; }
+.withdrawal-summary-button { min-height: 96px; }
+.withdrawal-summary-progress, .withdrawal-summary-help { display: block; margin-top: 4px; font-size: 12px; line-height: 1.3; }
+.withdrawal-summary-progress { color: #a9dcfa; font-weight: 700; }
+.withdrawal-summary-help { color: var(--panel-muted); }
+.withdrawal-modal { position: relative; width: min(860px, 100%); max-height: calc(100dvh - 48px); overflow-y: auto; overscroll-behavior: contain; border: 1px solid #3c6079; border-radius: 14px; background: #0a1b28; box-shadow: 0 26px 90px #000c; }
+.withdrawal-modal > .alert { margin: 10px 50px 0 12px; }
+.withdrawal-modal > .withdrawal-review-card { border: 0; border-radius: 0; }
+.withdrawal-modal .withdrawal-review-header { padding-right: 58px; }
+.withdrawal-inspection-backdrop { z-index: 120; }
+.withdrawal-inspection { display: flex; flex-direction: column; width: min(1000px, 100%); height: min(86dvh, 920px); overflow: hidden; border: 1px solid #4c7894; border-radius: 14px; background: #081824; box-shadow: 0 26px 90px #000e; }
+.withdrawal-inspection header { flex-shrink: 0; gap: 12px; margin: 0; padding: 12px 16px; border-bottom: 1px solid #35556c; }
+.withdrawal-inspection header > div { min-width: 0; }
+.withdrawal-inspection header strong { display: block; font-size: 16px; }
+.withdrawal-inspection header small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.withdrawal-inspection header button { flex-shrink: 0; width: 40px; height: 40px; padding: 8px; }
+.withdrawal-inspection img { display: block; flex: 1; width: 100%; min-height: 0; padding: 10px; object-fit: contain; }
+.withdrawal-inspection p { flex-shrink: 0; margin: 0; padding: 10px 16px; border-top: 1px solid #35556c; color: #afc8d8; font-size: 12px; }
 .withdrawal-review-card { overflow: hidden; border: 1px solid var(--panel-border); border-radius: 13px; background: #102536; }
 .withdrawal-review-card.is-pending { border-color: #39789f; }
 .withdrawal-review-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin: 0; padding: 16px 18px; border-bottom: 1px solid var(--panel-border-soft); }
@@ -732,9 +749,12 @@
 .withdrawal-part > div:first-child span { color: #fff; font-weight: 800; }
 .withdrawal-part small { color: var(--panel-muted); }
 .withdrawal-part-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.withdrawal-file-picker { position: relative; display: grid; place-items: center; max-width: 210px; min-height: 43px; overflow: hidden; margin: 0; padding: 8px 11px; border: 1px solid #39789f; border-radius: 9px; color: #bde7ff; font-size: 12px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.withdrawal-file-picker { position: relative; display: grid; place-items: center; max-width: 210px; min-height: 43px; overflow: hidden; margin: 0; padding: 8px 11px; border: 1px dashed #39789f; border-radius: 9px; color: #bde7ff; font-size: 12px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.withdrawal-file-picker:hover, .withdrawal-file-picker:focus-within { border-color: #64c5f6; background: #173b53; }
 .withdrawal-file-picker input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 .withdrawal-part button { display: inline-flex; align-items: center; gap: 6px; min-height: 43px; }
+.withdrawal-paste { border-color: #39789f; color: #bde7ff; font-weight: 700; }
+.withdrawal-inspect { border-color: #39789f; color: #bde7ff; font-weight: 700; }
 .withdrawal-parts-missing { margin: 0; padding: 15px 18px; color: #ffd1df; }
 
 @media (max-width: 1100px) {
@@ -754,6 +774,10 @@
 
 @media (max-width: 600px) {
   .withdrawal-page-heading { flex-direction: column; }
+  .withdrawal-summary-button { min-height: 118px; }
+  .withdrawal-modal { width: 100%; max-height: calc(100dvh - 24px); }
+  .withdrawal-inspection { width: 100%; height: calc(100dvh - 24px); }
+  .withdrawal-modal .withdrawal-review-header { padding-right: 50px; }
   .withdrawal-review-header > strong { font-size: 22px; }
   .withdrawal-review-fields { grid-template-columns: 1fr; padding: 12px; }
   .withdrawal-review-actions { padding: 12px; }
