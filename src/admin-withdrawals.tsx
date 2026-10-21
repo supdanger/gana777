@@ -85,6 +85,7 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay,
     setSourceLoading(false);
     if (accounts.error || status.error) {
       setSourceError('No pudimos cargar las cuentas de este turno. Actualizá el panel e intentá nuevamente.');
+      setSourceAccounts([]);
       return;
     }
     setSourceError('');
@@ -289,7 +290,7 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay,
     </div>}
     {paymentSelection && paymentRequest && paymentPart && <div className="load-modal-backdrop withdrawal-source-backdrop" role="presentation" onClick={event => { if (event.target === event.currentTarget && !busy) setPaymentSelection(null); }}>
       <section className="withdrawal-source-modal" role="dialog" aria-modal="true" aria-label="Elegir cuenta de origen para el retiro">
-        <header><div><strong>Elegí la cuenta de origen</strong><small>Retiro {paymentPart.part_number} · {money(Number(paymentPart.amount))} · {paymentRequest.user_name || 'Usuario'}</small></div><button type="button" aria-label="Cerrar selección de cuenta" disabled={busy} onClick={() => setPaymentSelection(null)}><X size={20} /></button></header>
+        <header><div><strong>Elegí la cuenta de origen</strong><small>Retiro {paymentPart.part_number} · {money(Number(paymentPart.amount))} · {paymentRequest.user_name || 'Usuario'}</small></div><button type="button" aria-label="Cerrar selección de cuenta" autoFocus disabled={busy} onClick={() => setPaymentSelection(null)}><X size={20} /></button></header>
         <div className="withdrawal-source-modal-body">
           <p>Primero elegí el banco y después la cuenta desde la que hiciste la transferencia. El contador empieza cuando confirmás el pago.</p>
           {paymentError && <p className="alert error" role="alert">{paymentError}</p>}
