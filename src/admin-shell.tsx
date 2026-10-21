@@ -15,6 +15,7 @@ const groups: Array<{ label: string; items: Array<{ page: Page; Icon: typeof Lay
     { page: 'withdrawal', Icon: ArrowUpFromLine, count: 'withdrawal' },
     { page: 'chat', Icon: MessagesSquare, count: 'chat' },
     { page: 'users', Icon: Users },
+    { page: 'shifts', Icon: Clock3 },
     { page: 'referrals', Icon: Gift },
     { page: 'history', Icon: History },
   ] },
@@ -23,7 +24,6 @@ const groups: Array<{ label: string; items: Array<{ page: Page; Icon: typeof Lay
     { page: 'portal', Icon: PanelsTopLeft },
     { page: 'bonuses', Icon: Gift },
     { page: 'accounts', Icon: Landmark },
-    { page: 'shifts', Icon: Clock3 },
   ] },
   { label: 'Administración', items: [{ page: 'cashiers', Icon: UserCog }] },
 ];

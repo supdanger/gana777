@@ -94,8 +94,8 @@ export function ShiftAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
 
       {status?.mode === 'closing' ? <div className="operation-actions"><button disabled={busy} onClick={() => void activate(status.next_shift_key as ShiftKey)}>Activar {label(status.next_shift_key)} ahora</button><button className="maintenance-button" disabled={busy} onClick={() => void startMaintenance()}>Pasar a mantenimiento</button></div> : <form className="cash-close-form" onSubmit={startClose}>
         <div><strong>Modo cierre de caja</strong><p>Detiene cuentas nuevas y activa automáticamente el próximo turno.</p></div>
-        <label>Tiempo<input name="minutes" type="number" min="1" max="10" step="1" defaultValue="5" required /><span>minutos</span></label>
-        <label>Próximo turno<select name="next_shift" defaultValue={suggestedNext}>{shifts.map(shift => <option value={shift.key} key={shift.key}>{shift.label}</option>)}</select></label>
+        <label><span className="cash-close-label">Tiempo</span><span className="cash-close-duration"><input name="minutes" type="number" min="1" max="10" step="1" defaultValue="5" required /><small>minutos</small></span></label>
+        <label><span className="cash-close-label">Próximo turno</span><select name="next_shift" defaultValue={suggestedNext}>{shifts.map(shift => <option value={shift.key} key={shift.key}>{shift.label}</option>)}</select></label>
         <button disabled={busy || status?.mode === 'maintenance'}>Iniciar cierre</button>
       </form>}
 

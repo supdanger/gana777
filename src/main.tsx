@@ -35,6 +35,7 @@ import { PlayerAdmin } from './player-admin';
 import { PortalAdmin } from './portal-admin';
 import { AdminWithdrawals } from './admin-withdrawals';
 import { AdminChat, type ChatInboxRow } from './admin-chat';
+import { DepositLeaderboard } from './deposit-leaderboard';
 import { playerSignInEmail } from './players';
 import { PlayerNotifications, unlinkDeviceSubscription } from './notifications';
 import { allStaffPermissions, canOpenAdminPage, noStaffPermissions, staffPermissionPages, staffSignInEmail, type StaffPermissions } from './staff';
@@ -80,6 +81,7 @@ function App() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState('');
   const [historyReload, setHistoryReload] = useState(0);
+  const [leaderboardReload, setLeaderboardReload] = useState(0);
   const [pendingDepositCount, setPendingDepositCount] = useState(0);
   const [pendingWithdrawalCount, setPendingWithdrawalCount] = useState(0);
   const [liveBonusCounters, setLiveBonusCounters] = useState<BonusCounter[]>([]);
@@ -275,6 +277,7 @@ function App() {
     window.addEventListener('focus', onFocus);
     const channel = db.channel(`updates-${session.user.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => { void refresh(); setDepositReload(value => value + 1); setHistoryReload(value => value + 1); })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'deposit_credits' }, () => setLeaderboardReload(value => value + 1))
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'withdrawal_parts' }, () => void refresh())
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => { if (!adminApp) void refresh(); })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'admin_permissions', filter: `user_id=eq.${session.user.id}` }, () => void refresh())
@@ -756,7 +759,7 @@ function App() {
       {(adminApp || (page !== 'deposit' && page !== 'withdrawal')) && feedback}
       {!adminApp && page === 'profile' && <UserProfile name={name} busy={busy} logout={() => void logout()} />}
       {!adminApp && !demo && session && <PlayerNotifications key={session.user.id} userId={session.user.id} showSettings={page === 'profile'} />}
-      {page === 'home' && (adminApp ? <><div className="welcome"><h1>Resumen del turno</h1><p>Revisá rápidamente las operaciones que necesitan atención.</p></div><div className="stats">{(['deposit', 'withdrawal'] as const).map(kind => <section className="card" key={kind}><p>{kind === 'deposit' ? 'Cargas pendientes' : 'Retiros pendientes'}</p><h1>{kind === 'deposit' ? pendingCounts.deposit : pendingCounts.withdrawal}</h1></section>)}</div>{bonusBoard()}</> : <UserHome name={name} navigate={navigate} whatsappUrl={demo ? undefined : playerWhatsAppUrl} username={demo ? null : playerUsername} />)}
+      {page === 'home' && (adminApp ? <><div className="welcome"><h1><span>Resumen del turno</span></h1></div><div className="stats">{(['deposit', 'withdrawal'] as const).map(kind => <section className="card" key={kind}><p>{kind === 'deposit' ? 'Cargas pendientes' : 'Retiros pendientes'}</p><h1>{kind === 'deposit' ? pendingCounts.deposit : pendingCounts.withdrawal}</h1></section>)}</div>{bonusBoard()}<DepositLeaderboard demo={demo} requests={requests} reloadKey={leaderboardReload} /></> : <UserHome name={name} navigate={navigate} whatsappUrl={demo ? undefined : playerWhatsAppUrl} username={demo ? null : playerUsername} />)}
       {!adminApp && page === 'profile' && <>{history('deposit')}{history('withdrawal')}<ReferralBonusHistory userId={userId} demo={demo} /></>}
       {(page === 'deposit' || page === 'withdrawal') && !adminApp && <RequestForm key={page} kind={page} requests={requests.filter(r => r.user_id === userId)} bank={bank} bankOperation={bankOperation} retryAt={page === 'deposit' ? depositRetryAt : 0} busy={busy} demo={demo} feedback={feedback} onSubmit={submitRequest} onCopy={(text, label) => void action(async () => { await navigator.clipboard.writeText(text); setNotice(`${label} copiado.`); })} onOpenWithdrawalHistory={() => { setUserHistoryOpen(old => ({ ...old, withdrawal: true })); setProfileHistoryTarget('withdrawal'); navigate('profile'); }} />}
       {adminApp && page === 'deposit' && depositList()}
