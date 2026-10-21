@@ -1,0 +1,9 @@
+# Retiros por transferencias
+
+Aplicar `supabase/migrations/026_withdrawal_parts.sql` antes de publicar las nuevas versiones del panel y del portal. La migración crea un bucket privado para comprobantes de retiro y divide también los retiros que sigan pendientes al momento de aplicarla. Después, publicar ambas aplicaciones. No requiere desplegar una Edge Function nueva.
+
+Una solicitud conserva su monto total y la espera de 24 horas comienza cuando se completa el último pago. Cada pago puede ser de hasta $100.000; por ejemplo, $1.000.000 genera diez pagos de $100.000. El máximo por solicitud es $10.000.000 (100 pagos). El panel carga una foto JPG, PNG o WebP de hasta 5 MB por pago y la confirma después de transferir. El retiro pasa a acreditado solamente cuando la suma de los pagos coincide con el total y todos están confirmados. Si ya hubo un pago, el retiro no se puede rechazar desde el panel.
+
+El jugador ve el retiro agrupado en su historial; cada transferencia aparece como «Retiro 1 de 10 · Realizado» o «Pendiente», con su importe y su comprobante. Los comprobantes se guardan en un bucket privado; solo el titular y el personal con permiso de Retiros pueden obtener un enlace temporal de lectura. La interfaz no ofrece edición ni eliminación de estas fotos. Como ocurre con cualquier imagen mostrada en un navegador, no es técnicamente posible impedir capturas de pantalla o que el usuario la guarde por otros medios.
+
+Verificación antes de operar con dinero real: ejecutar `supabase/tests/026_withdrawal_parts_checks.sql` en un proyecto de prueba y comprobar desde el panel una solicitud de $1.000.000, diez fotos, la acreditación del último pago y la vista del historial con una cuenta de jugador. También verificar que otra cuenta no pueda abrir los comprobantes. El test SQL usa una transacción y revierte sus datos ficticios.

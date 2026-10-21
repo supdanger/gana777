@@ -429,6 +429,10 @@ a.social.instagram:hover { border-color: #ff8ab8; }
 .user-app.page-withdrawal .withdrawal-history-link { width: 100%; min-height: 46px; justify-content: flex-start; gap: 10px; padding: 10px 13px; border: 1px solid #38566e; border-radius: 10px; background: #102536; color: #dce9f3; font-size: 14px; font-weight: 700; text-align: left; transition: transform 140ms ease, border-color 140ms ease, background-color 140ms ease; }
 .user-app.page-withdrawal .withdrawal-history-link span { flex: 1; }
 .user-app.page-withdrawal .withdrawal-history-link > svg:first-child { color: #69c9ff; }
+.user-app.page-withdrawal .withdrawal-split-note { display: block; margin-top: 8px; color: #a7dfff; font-size: 12px; line-height: 1.4; }
+.user-withdrawal-part { display: grid; gap: 5px; margin-top: 8px; padding: 8px 0; border-top: 1px solid #35556c; }
+.user-withdrawal-part button { justify-self: start; min-height: 36px; padding: 6px 10px; border: 1px solid #39789f; border-radius: 8px; color: #bde7ff; font-size: 12px; }
+.user-withdrawal-part img { display: block; width: min(100%, 360px); max-height: 480px; object-fit: contain; border: 1px solid #35556c; border-radius: 8px; }
 .user-app.page-withdrawal .withdrawal-history-link > svg:last-child { color: #a9bed1; }
 .user-app.page-withdrawal .withdrawal-history-link:hover { border-color: #4b718c; background: #173044; }
 .user-app.page-withdrawal .withdrawal-history-link:active { transform: scale(.985); }

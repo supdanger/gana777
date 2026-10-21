@@ -205,6 +205,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
   const [preview, setPreview] = useState('');
   const [bonus, setBonus] = useState('');
   const [rawAmount, setRawAmount] = useState('');
+  useEffect(() => { if (kind === 'withdrawal' && pending) setRawAmount(''); }, [kind, pending]);
   const fileInput = useRef<HTMLInputElement>(null);
   const receiptChangeId = useRef(0);
   useEffect(() => { if (kind === 'deposit') reloadPromotions(); }, [kind, reloadPromotions]);
@@ -252,7 +253,9 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     setReceiptError('');
     setCompressing(false);
   }
-  const amount = <label className="amount-label">Monto a {kind === 'deposit' ? 'cargar' : 'retirar'}<span className="amount-input">{(kind !== 'deposit' || rawAmount) && <span aria-hidden="true">$</span>}<input className="amount" name="amount" inputMode="decimal" type="text" pattern={moneyInputPattern} maxLength={moneyInputMaxLength} placeholder={kind === 'deposit' ? 'Carga mínima 3.000' : '10.000'} aria-label={`Monto a ${kind === 'deposit' ? 'cargar' : 'retirar'} en pesos argentinos`} required value={kind === 'deposit' ? rawAmount : undefined} onChange={kind === 'deposit' ? event => setRawAmount(event.target.value) : undefined} />{bonusCreditLabel && <span className="amount-bonus">{bonusCreditLabel}</span>}</span></label>;
+  const withdrawalAmount = kind === 'withdrawal' ? readMoney(rawAmount) : null;
+  const withdrawalPartCount = withdrawalAmount === null ? 0 : Math.ceil(withdrawalAmount / 100000);
+  const amount = <label className="amount-label">Monto a {kind === 'deposit' ? 'cargar' : 'retirar'}<span className="amount-input">{(kind !== 'deposit' || rawAmount) && <span aria-hidden="true">$</span>}<input className="amount" name="amount" inputMode="decimal" type="text" pattern={moneyInputPattern} maxLength={moneyInputMaxLength} placeholder={kind === 'deposit' ? 'Carga mínima 3.000' : '10.000'} aria-label={`Monto a ${kind === 'deposit' ? 'cargar' : 'retirar'} en pesos argentinos`} required value={rawAmount} onChange={event => setRawAmount(event.target.value)} />{bonusCreditLabel && <span className="amount-bonus">{bonusCreditLabel}</span>}</span>{kind === 'withdrawal' && withdrawalPartCount > 1 && <small className="withdrawal-split-note">{withdrawalPartCount > 100 ? 'El máximo por solicitud es de $10.000.000.' : `Se pagará en ${withdrawalPartCount} transferencias de hasta ${money(100000)}. Cada pago tendrá su comprobante en el historial.`}</small>}</label>;
   return <form className="request-form" onSubmit={event => onSubmit(event, kind === 'deposit' ? file : null)}>
     {kind === 'deposit' ? <>
       <input type="hidden" name="bank_assignment_id" value={bank?.assignment_id ?? ''} />
@@ -293,7 +296,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     </>}
     {feedback && <div className="request-feedback">{feedback}</div>}
     {depositRetrySeconds > 0 && <div className="deposit-retry-countdown" role="timer" aria-live="polite"><span>Podés volver a enviar en</span><strong>{depositRetryCountdown}</strong></div>}
-    <button className="primary" disabled={busy || demo || withdrawalBlocked || pendingDeposit || compressing || depositRetrySeconds > 0 || (kind === 'deposit' && (!file || !bank))} aria-describedby={pendingDeposit ? 'deposit-pending-message' : undefined}>{compressing ? 'Optimizando…' : busy ? kind === 'deposit' ? 'Enviando solicitud…' : 'Enviando…' : depositRetrySeconds > 0 ? `Esperá ${depositRetryCountdown}` : kind === 'deposit' ? 'Solicitar carga' : 'Solicitar retiro'}</button>
+    <button className="primary" disabled={busy || demo || withdrawalBlocked || withdrawalPartCount > 100 || pendingDeposit || compressing || depositRetrySeconds > 0 || (kind === 'deposit' && (!file || !bank))} aria-describedby={pendingDeposit ? 'deposit-pending-message' : undefined}>{compressing ? 'Optimizando…' : busy ? kind === 'deposit' ? 'Enviando solicitud…' : 'Enviando…' : depositRetrySeconds > 0 ? `Esperá ${depositRetryCountdown}` : kind === 'deposit' ? 'Solicitar carga' : 'Solicitar retiro'}</button>
     {pendingDeposit && <p id="deposit-pending-message" className="deposit-pending-message" role="status">Tu carga ya está en proceso. Podrás solicitar otra cuando sea aprobada o rechazada.</p>}
   </form>;
 }

@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import type { Session } from '@supabase/supabase-js';
 import { ArrowUpRight, CalendarClock, Check, CheckCircle2, ChevronRight, Clock, Copy, Hash, Send, UserRound, WalletCards, X } from 'lucide-react';
 import { canonicalMoney, percentText } from '../supabase/functions/_shared/bonus-rule';
-import { adminApp, supabase, configError, turnstileSiteKey, REQUEST_COLUMNS, REQUEST_COLUMNS_LEGACY, money, date, statusLabel, type RequestRow, type Message, type Bank, type BankOperationStatus } from './lib';
+import { adminApp, supabase, configError, turnstileSiteKey, REQUEST_COLUMNS, REQUEST_COLUMNS_LEGACY, money, date, statusLabel, type RequestRow, type WithdrawalPart, type Message, type Bank, type BankOperationStatus } from './lib';
 import { DEPOSIT_PAGE_SIZE, depositWindow } from './deposit-page';
 import { bonusCounters, type BonusCounter } from './bonus-counters';
 import { loginFailure, readLoginRetryAt, saveLoginRetryAt } from './login-security';
@@ -57,6 +57,8 @@ function App() {
     superAdmin: false, username: '', displayName: '', avatarPath: null, permissions: noStaffPermissions,
   });
   const [requests, setRequests] = useState<RequestRow[]>([]);
+  const [withdrawalParts, setWithdrawalParts] = useState<WithdrawalPart[]>([]);
+  const [partPreview, setPartPreview] = useState<{ key: string; url: string } | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [bank, setBank] = useState<Bank | null>(null);
   const [bankOperation, setBankOperation] = useState<BankOperationStatus | null>(null);
@@ -157,7 +159,7 @@ function App() {
     });
     const { data } = supabase.auth.onAuthStateChange((_event, value) => {
       setSession(value);
-      if (!value) { setRequests([]); setMessages([]); setBank(null); setBankOperation(null); setIsAdmin(false); setStaffContext({ superAdmin: false, username: '', displayName: '', avatarPath: null, permissions: noStaffPermissions }); setThread(''); setDepositRows([]); setDepositTotal(0); setDepositPage(0); setPendingDepositCount(0); setLiveBonusCounters([]); setPlayerWhatsAppUrl(null); setPlayerUsername(null); }
+      if (!value) { setRequests([]); setWithdrawalParts([]); setPartPreview(null); setMessages([]); setBank(null); setBankOperation(null); setIsAdmin(false); setStaffContext({ superAdmin: false, username: '', displayName: '', avatarPath: null, permissions: noStaffPermissions }); setThread(''); setDepositRows([]); setDepositTotal(0); setDepositPage(0); setPendingDepositCount(0); setLiveBonusCounters([]); setPlayerWhatsAppUrl(null); setPlayerUsername(null); }
     });
     return () => { alive = false; data.subscription.unsubscribe(); };
   }, []);
@@ -186,7 +188,8 @@ function App() {
       const contextQuery = adminApp ? db.rpc('get_admin_context').single() : Promise.resolve({ data: null, error: null });
       const playerContactQuery = adminApp ? Promise.resolve({ data: null, error: null }) : db.rpc('get_my_whatsapp_url');
       const playerProfileQuery = adminApp ? Promise.resolve({ data: null, error: null }) : db.from('user_profiles').select('username').eq('user_id', session!.user.id).maybeSingle();
-      const [r, m, role, pending, context, playerContact, playerProfile] = await Promise.all([
+      const partsQuery = db.from('withdrawal_parts').select('request_id,part_number,amount,receipt_path,paid_at');
+      const [r, m, role, pending, context, playerContact, playerProfile, partsResult] = await Promise.all([
         requestPromise,
         messageQuery,
         db.rpc('is_admin'),
@@ -194,11 +197,12 @@ function App() {
         contextQuery,
         playerContactQuery,
         playerProfileQuery,
+        partsQuery,
       ]);
       if (!alive) return;
-      const failure = r.error ?? m.error ?? role.error ?? pending.error ?? context.error;
+      const failure = r.error ?? m.error ?? role.error ?? pending.error ?? context.error ?? partsResult.error;
       if (failure) { setError(publicError(failure)); return; }
-      setRequests(r.data as RequestRow[]); setMessages(m.data as Message[]);
+      setRequests(r.data as RequestRow[]); setWithdrawalParts((partsResult.data ?? []) as WithdrawalPart[]); setMessages(m.data as Message[]);
       setIsAdmin(role.data === true);
       if (!adminApp) setPlayerWhatsAppUrl(!playerContact.error && typeof playerContact.data === 'string' ? playerContact.data : null);
       if (!adminApp) setPlayerUsername(!playerProfile.error && typeof playerProfile.data?.username === 'string' ? playerProfile.data.username : null);
@@ -231,6 +235,7 @@ function App() {
     window.addEventListener('focus', onFocus);
     const channel = db.channel(`updates-${session.user.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => { void refresh(); setDepositReload(value => value + 1); })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'withdrawal_parts' }, () => void refresh())
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => void refresh())
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'admin_permissions', filter: `user_id=eq.${session.user.id}` }, () => void refresh())
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'cashier_profiles', filter: `user_id=eq.${session.user.id}` }, () => void refresh()).subscribe();
@@ -373,6 +378,9 @@ function App() {
         }).single();
         if (error) throw error;
         row = data as RequestRow;
+        const createdParts = await supabase.from('withdrawal_parts').select('request_id,part_number,amount,receipt_path,paid_at').eq('request_id', row.id);
+        if (createdParts.error) throw createdParts.error;
+        setWithdrawalParts(old => [...old.filter(part => part.request_id !== row.id), ...(createdParts.data as WithdrawalPart[])]);
       }
       setRequests(old => [row, ...old.filter(r => r.id !== row.id)]);
       if (page === 'deposit') setDepositRetryAt(0);
@@ -401,6 +409,26 @@ function App() {
       try {
         const url = await receiptUrl(request);
         if (tab) tab.location.href = url; else window.location.assign(url);
+      } catch (error) { tab?.close(); throw error; }
+    });
+  }
+  async function withdrawalReceiptUrl(part: WithdrawalPart): Promise<string> {
+    if (!supabase || !part.receipt_path) throw new InputError('Este pago todavía no tiene comprobante.');
+    const { data, error } = await supabase.storage.from('withdrawal-receipts').createSignedUrl(part.receipt_path, 300);
+    if (error || !data?.signedUrl) throw new InputError('No pudimos abrir el comprobante.');
+    return data.signedUrl;
+  }
+  async function viewWithdrawalPart(part: WithdrawalPart, inline = false) {
+    const key = `${part.request_id}-${part.part_number}`;
+    if (inline && partPreview?.key === key) { setPartPreview(null); return; }
+    const tab = inline ? null : window.open('about:blank', '_blank');
+    if (tab) tab.opener = null;
+    await action(async () => {
+      try {
+        const url = await withdrawalReceiptUrl(part);
+        if (inline) setPartPreview({ key, url });
+        else if (tab) tab.location.href = url;
+        else window.location.assign(url);
       } catch (error) { tab?.close(); throw error; }
     });
   }
@@ -443,6 +471,10 @@ function App() {
       {!items.length ? <p className="empty">{empty}</p> : visibleItems.map(r => <article className="movement" key={r.id}>
         <div><strong>{money(r.amount)}</strong><small>{r.kind === 'deposit' ? 'Carga' : 'Retiro'} · {date(r.created_at)}</small>{requestedBonus(r) && <small>Bono solicitado: {requestedBonus(r)}</small>}
           {adminApp && <><small>Usuario: {r.user_name || 'Sin nombre'}</small>{r.holder && <small>{r.holder} · {r.cbu} · {r.alias}</small>}</>}
+          {!adminApp && r.kind === 'withdrawal' && withdrawalParts.filter(part => part.request_id === r.id).map(part => {
+            const key = `${part.request_id}-${part.part_number}`;
+            return <div className="user-withdrawal-part" key={part.part_number}><small>Retiro {part.part_number} de {Math.ceil(Number(r.amount) / 100000)} · {money(Number(part.amount))} · {part.paid_at ? 'Realizado' : 'Pendiente'}</small>{part.receipt_path && <button type="button" disabled={busy} onClick={() => void viewWithdrawalPart(part, true)}>{partPreview?.key === key ? 'Ocultar comprobante' : 'Ver comprobante'}</button>}{partPreview?.key === key && <img src={partPreview.url} alt={`Comprobante del retiro ${part.part_number}`} />}</div>;
+          })}
         </div><span className={`badge ${r.status}`}>{statusLabel[r.status]}</span>
         {adminApp && <div className="row-actions">
           {(r.receipt_url || r.receipt_path) && canOpenAdminPage('deposit', staffContext.permissions, staffContext.superAdmin) && <button disabled={busy} onClick={() => void openReceipt(r)}>Comprobante <ArrowUpRight size={14} /></button>}
@@ -618,12 +650,31 @@ function App() {
       {!adminApp && page === 'profile' && <><UserProfile name={name} busy={busy} logout={() => void logout()} />{history('deposit')}{history('withdrawal')}<ReferralBonusHistory userId={userId} demo={demo} /></>}
       {(page === 'deposit' || page === 'withdrawal') && !adminApp && <RequestForm key={page} kind={page} requests={requests.filter(r => r.user_id === userId)} bank={bank} bankOperation={bankOperation} retryAt={page === 'deposit' ? depositRetryAt : 0} busy={busy} demo={demo} feedback={feedback} onSubmit={submitRequest} onCopy={(text, label) => void action(async () => { await navigator.clipboard.writeText(text); setNotice(`${label} copiado.`); })} onOpenWithdrawalHistory={() => { setProfileHistoryTarget('withdrawal'); navigate('profile'); }} />}
       {adminApp && page === 'deposit' && depositList()}
-      {adminApp && page === 'withdrawal' && <AdminWithdrawals requests={requests} busy={busy} demo={demo} onReview={(request, status) => void action(async () => {
+      {adminApp && page === 'withdrawal' && <AdminWithdrawals requests={requests} parts={withdrawalParts} busy={busy} demo={demo} onViewReceipt={part => void viewWithdrawalPart(part)} onPay={(request, part, file) => void action(async () => {
+        if (!supabase || demo || !canOpenAdminPage('withdrawal', staffContext.permissions, staffContext.superAdmin)) throw new InputError('No tenés permiso para acreditar retiros.');
+        const ext = file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : '';
+        if (!ext || file.size > 5 * 1024 * 1024) throw new InputError('El comprobante debe ser una foto JPG, PNG o WebP de hasta 5 MB.');
+        const path = `${parseUuid(request.id)}/${part.part_number}/${crypto.randomUUID()}.${ext}`;
+        const bucket = supabase.storage.from('withdrawal-receipts');
+        const uploaded = await bucket.upload(path, file, { contentType: file.type, upsert: false });
+        if (uploaded.error) throw uploaded.error;
+        const result = await supabase.rpc('confirm_withdrawal_part', { p_request_id: request.id, p_part_number: part.part_number, p_receipt_path: path });
+        if (result.error) {
+          await bucket.remove([path]);
+          throw result.error;
+        }
+        const paidAt = new Date().toISOString();
+        setWithdrawalParts(old => old.map(item => item.request_id === request.id && item.part_number === part.part_number ? { ...item, receipt_path: path, paid_at: paidAt } : item));
+        if (withdrawalParts.filter(item => item.request_id === request.id && !item.paid_at).length === 1) {
+          setRequests(old => old.map(item => item.id === request.id ? { ...item, status: 'approved', approved_at: paidAt } : item));
+          setNotice('Retiro completado. El usuario ya puede ver todos los comprobantes.');
+        } else setNotice(`Retiro ${part.part_number} de ${withdrawalParts.filter(item => item.request_id === request.id).length} realizado. Faltan transferencias para completar la solicitud.`);
+      })} onReview={(request, status) => void action(async () => {
         if (!canOpenAdminPage('withdrawal', staffContext.permissions, staffContext.superAdmin)) throw new InputError('No tenés permiso para revisar retiros.');
         const { data, error } = await supabase!.from('requests').update({ status }).eq('id', parseUuid(request.id)).eq('status', 'pending').select('id,status').single();
         if (error) throw error;
         setRequests(old => old.map(item => item.id === request.id ? { ...item, status: data.status as RequestRow['status'] } : item));
-        setNotice(status === 'approved' ? 'Retiro marcado como acreditado.' : 'Retiro rechazado.');
+        setNotice('Retiro rechazado.');
       })} />}
       {adminApp && page === 'history' && history()}
       {adminApp && page === 'users' && <PlayerAdmin demo={demo} busy={busy} action={action} />}
