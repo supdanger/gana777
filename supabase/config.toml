@@ -13,3 +13,5 @@ verify_jwt = false
 verify_jwt = false
 [functions.player-access]
 verify_jwt = false
+[functions.notify-sac-shift]
+verify_jwt = false

@@ -82,6 +82,17 @@ CLOUDINARY_API_SECRET
 
 Supabase proporciona automáticamente `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` al entorno de funciones. Ninguna clave secreta debe tener prefijo `VITE_` ni formar parte de los repositorios. `.env.functions.example` es solo una plantilla, no contiene credenciales.
 
+## Avisos de turno por Telegram
+
+Después de aplicar `supabase/migrations/038_sac_stations.sql`, desplegá `notify-sac-shift`. El turno se abre y se cierra aunque Telegram todavía no esté conectado; los avisos generados sin configuración no se envían después. Cuando el grupo y el bot existan, cargá estos secretos en **Supabase → Edge Functions → Secrets**:
+
+```text
+TELEGRAM_BOT_TOKEN
+TELEGRAM_CHAT_ID
+```
+
+`TELEGRAM_BOT_TOKEN` es el token de @BotFather. `TELEGRAM_CHAT_ID` es el identificador del grupo, incluidos los números negativos. El bot tiene que ser miembro del grupo. El mensaje de inicio sale como `Max inició turno · SAC 1 · Gana777` y el de cierre agrega los teléfonos de ese puesto.
+
 Con Supabase CLI instalado y la sesión del proyecto configurada, desplegar desde esta carpeta:
 
 ```powershell

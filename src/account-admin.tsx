@@ -1,19 +1,21 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { assertFormFields, InputError, parseAlias, parseBank, parseCbu, parseHolder } from '../supabase/functions/_shared/validation';
 import { supabase, type Bank } from './lib';
+import { groupAccountsByPhone, parsePhoneNumber } from './sac';
 import { shifts, shiftLabel, type ShiftKey } from './shifts';
 import { bankThemeRegistry, type BankThemeKey } from './bank-themes';
 import { BankTransferCard } from './bank-transfer-card';
 
-type Account = Omit<Bank, 'assignment_id'> & { theme_key: BankThemeKey; active: boolean; shift_key: ShiftKey; usage_count: number };
-const accountColumns = 'id,bank,holder,cbu,alias,theme_key,active,shift_key,usage_count';
+type Account = Omit<Bank, 'assignment_id'> & { theme_key: BankThemeKey; active: boolean; shift_key: ShiftKey; usage_count: number; phone_number: number | null };
+const accountColumns = 'id,bank,holder,cbu,alias,theme_key,active,shift_key,usage_count,phone_number';
 const previewNotice = 'La vista previa no guarda las cuentas. Entrá como administrador para realizar cambios.';
 
 function attachThemeAssets(accounts: Record<string, unknown>[], themes: { key: string; background_path: string | null; logo_path: string | null }[]): Account[] {
   const byKey = new Map(themes.map(theme => [theme.key, theme]));
   return accounts.map(row => {
     const theme = byKey.get(String(row.theme_key));
-    return { ...row, theme_background_path: theme?.background_path ?? null, theme_logo_path: theme?.logo_path ?? null, usage_count: Number(row.usage_count) || 0 } as Account;
+    const phone = row.phone_number == null || row.phone_number === '' ? null : Number(row.phone_number);
+    return { ...row, phone_number: Number.isInteger(phone) ? phone : null, theme_background_path: theme?.background_path ?? null, theme_logo_path: theme?.logo_path ?? null, usage_count: Number(row.usage_count) || 0 } as Account;
   });
 }
 
@@ -50,14 +52,14 @@ export function AccountAdmin({ demo, busy, action }: { demo: boolean; busy: bool
   }, [demo]);
 
   function readAccount(form: FormData) {
-    assertFormFields(form, ['bank', 'holder', 'cbu', 'alias', 'shift_key', 'theme_key', 'theme_banner', 'included_banner']);
+    assertFormFields(form, ['bank', 'holder', 'cbu', 'alias', 'shift_key', 'theme_key', 'theme_banner', 'included_banner', 'phone_number']);
     const alias = parseAlias(form.get('alias'));
     const shift = form.get('shift_key');
     const theme = form.get('theme_key');
     if (!alias) throw new InputError('Ingresá el alias de la cuenta.');
     if (!shifts.some(item => item.key === shift)) throw new InputError('Elegí un turno válido.');
     if (typeof theme !== 'string' || !(theme in bankThemeRegistry)) throw new InputError('Elegí un diseño bancario válido.');
-    return { bank: parseBank(form.get('bank')), holder: parseHolder(form.get('holder')), cbu: parseCbu(form.get('cbu')), alias, shift_key: shift as ShiftKey, theme_key: theme as BankThemeKey };
+    return { bank: parseBank(form.get('bank')), holder: parseHolder(form.get('holder')), cbu: parseCbu(form.get('cbu')), alias, shift_key: shift as ShiftKey, theme_key: theme as BankThemeKey, phone_number: parsePhoneNumber(form.get('phone_number')) };
   }
 
   async function uploadThemeBanner(value: FormDataEntryValue | null, theme: BankThemeKey, useIncluded: boolean) {
@@ -126,7 +128,7 @@ export function AccountAdmin({ demo, busy, action }: { demo: boolean; busy: bool
   }
 
   return <section className="account-admin" aria-labelledby="account-title">
-    <div className="account-heading"><div><h1 id="account-title">Cuentas</h1><p>Organizá las cuentas exclusivas de cada turno.</p></div><strong>{accounts.length} cuentas</strong></div>
+    <div className="account-heading"><div><h1 id="account-title">Cuentas</h1><p>Organizá las cuentas de cada turno y el teléfono donde está cada una.</p></div><strong>{accounts.length} cuentas</strong></div>
     <div className="shift-tabs" role="tablist" aria-label="Turno de las cuentas">
       {shifts.map(shift => {
         const count = accounts.filter(account => account.shift_key === shift.key).length;
@@ -143,17 +145,20 @@ export function AccountAdmin({ demo, busy, action }: { demo: boolean; busy: bool
       <label>Titular<input name="holder" maxLength={120} autoComplete="name" placeholder="Nombre y apellido" defaultValue={editing?.holder ?? ''} required /></label>
       <label>CBU / CVU<input name="cbu" inputMode="decimal" pattern="[0-9. \-]{22,34}" maxLength={34} placeholder="22 números, con o sin puntos" autoCapitalize="none" spellCheck={false} defaultValue={editing?.cbu ?? ''} required /></label>
       <label>Alias<input name="alias" maxLength={20} autoCapitalize="none" spellCheck={false} placeholder="tu.alias" defaultValue={editing?.alias ?? ''} required /></label>
+      <label>Teléfono<input name="phone_number" type="number" min={1} max={30} step={1} inputMode="numeric" placeholder="1" defaultValue={editing?.phone_number ?? ''} required /></label>
       <div className="account-form-actions">
         <button type="submit" disabled={busy || loading}>{busy ? 'Guardando…' : editing ? 'Guardar cambios' : `Agregar a ${shiftLabel[selectedShift]}`}</button>
         {editing && <button type="button" disabled={busy} onClick={() => setEditingId(null)}>Cancelar</button>}
       </div>
     </form>
-    {loading ? <p className="empty">Cargando cuentas…</p> : loadError ? <p className="empty">{loadError}</p> : !visibleAccounts.length ? <p className="empty">Todavía no hay cuentas en {shiftLabel[selectedShift].toLowerCase()}.</p> : <div className="account-offers">
-      {visibleAccounts.map(account => <article className={`account-offer${account.active ? '' : ' inactive'}${editing?.id === account.id ? ' editing' : ''}`} key={account.id}>
+    {loading ? <p className="empty">Cargando cuentas…</p> : loadError ? <p className="empty">{loadError}</p> : !visibleAccounts.length ? <p className="empty">Todavía no hay cuentas en {shiftLabel[selectedShift].toLowerCase()}.</p> : groupAccountsByPhone(visibleAccounts).map(group => <section className={`account-phone-group${group.phone === null ? ' unassigned' : ''}`} key={group.phone ?? 'none'} aria-label={group.phone === null ? 'Cuentas sin teléfono' : `Teléfono ${group.phone}`}>
+      <header><h2>{group.phone === null ? 'Sin teléfono' : `Teléfono ${group.phone}`}</h2><p>{group.phone === null ? 'Poneles un número para poder elegirlas en un SAC.' : `${group.items.length} ${group.items.length === 1 ? 'cuenta' : 'cuentas'}`}</p></header>
+      <div className="account-offers">
+      {group.items.map(account => <article className={`account-offer${account.active ? '' : ' inactive'}${editing?.id === account.id ? ' editing' : ''}`} key={account.id}>
         <div className="account-offer-banner">
           <BankTransferCard bank={account} compact />
           <div className="account-offer-management">
-            <div className="account-offer-details"><span>CBU/CVU · {account.cbu}</span><div className="account-offer-statusline"><strong className={`account-offer-state${account.active ? '' : ' paused'}`}>{account.active ? 'Disponible' : 'Pausada'}</strong><small>{account.usage_count} usos confirmados</small></div></div>
+            <div className="account-offer-details"><span>CBU/CVU · {account.cbu}</span><div className="account-offer-statusline"><strong className={`account-offer-state${account.active ? '' : ' paused'}`}>{account.active ? 'Disponible' : 'Pausada'}</strong><small>{account.phone_number ? `Teléfono ${account.phone_number}` : 'Sin teléfono'}</small><small>{account.usage_count} usos confirmados</small></div></div>
             <div className="account-offer-actions">
               <button type="button" disabled={busy} onClick={() => { setEditingId(account.id); document.getElementById('account-title')?.scrollIntoView({ block: 'start' }); }}>Editar</button>
               <button type="button" disabled={busy} onClick={() => void toggleAccount(account)}>{account.active ? 'Pausar' : 'Habilitar'}</button>
@@ -162,6 +167,7 @@ export function AccountAdmin({ demo, busy, action }: { demo: boolean; busy: bool
           </div>
         </div>
       </article>)}
-    </div>}
+      </div>
+    </section>)}
   </section>;
 }
