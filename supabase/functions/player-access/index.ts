@@ -16,6 +16,13 @@ function username(value: unknown): string {
   if (!/^[a-z0-9][a-z0-9._-]{2,31}$/.test(result)) throw new HttpError(400, 'Usá de 3 a 32 caracteres: letras, números, punto, guion o guion bajo.');
   return result;
 }
+function password(value: unknown): string {
+  const result = text(value, 'Contraseña', 8, 72);
+  if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/i.test(result)) {
+    throw new HttpError(400, 'La contraseña contiene caracteres invisibles no permitidos.');
+  }
+  return result;
+}
 function id(value: unknown): string {
   const result = text(value, 'Solicitud', 36, 36);
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(result)) throw new HttpError(400, 'Solicitud no válida.');
@@ -214,7 +221,7 @@ Deno.serve(async request => {
       if (requestError || !accessRequest) throw new HttpError(404, 'La solicitud ya no existe.');
       if (accessRequest.status !== 'pending') throw new HttpError(409, 'La solicitud ya fue procesada.');
       const playerUsername = username(accessRequest.username);
-      const playerPassword = text(payload.password, 'Contraseña', 8, 72);
+      const playerPassword = password(payload.password);
       const playerCasinoUrl = casinoUrl(payload.casino_url);
       const { data: existing } = await server.from('user_profiles').select('user_id').ilike('username', playerUsername).maybeSingle();
       if (existing) throw new HttpError(409, 'Ese nombre se registró mientras la solicitud esperaba. Cambiá el usuario en el directorio o respondé al solicitante para que elija otro.');
@@ -260,7 +267,7 @@ Deno.serve(async request => {
     if (action === 'admin-configure') {
       const { user, server } = await requireStaff(request);
       const requestId = id(payload.request_id);
-      const playerPassword = text(payload.password, 'Contraseña', 8, 72);
+      const playerPassword = password(payload.password);
       const playerCasinoUrl = casinoUrl(payload.casino_url);
       const { data: accessRequest, error: requestError } = await server.from('player_access_requests').select('id,status,player_user_id').eq('id', requestId).maybeSingle();
       if (requestError || !accessRequest) throw new HttpError(404, 'La solicitud ya no existe.');
