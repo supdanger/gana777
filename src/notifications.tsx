@@ -56,7 +56,7 @@ export async function unlinkDeviceSubscription() {
   }
 }
 
-export function PlayerNotifications({ userId, showSettings }: { userId: string; showSettings: boolean }) {
+export function PlayerNotifications({ userId, showSettings, onOpenChat }: { userId: string; showSettings: boolean; onOpenChat: () => void }) {
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [supported, setSupported] = useState(false);
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
@@ -209,7 +209,7 @@ export function PlayerNotifications({ userId, showSettings }: { userId: string; 
     {showSettings && error && <p className="player-notification-error" role="alert">{error}</p>}
     {visible.map(item => <article className="player-notification" key={item.id}>
       <Bell size={18} aria-hidden="true" />
-      <div><strong>{item.title}</strong><p>{item.body}</p><time dateTime={item.created_at} className="sr-only">{date(item.created_at)}</time></div>
+      <div><strong>{item.title}</strong><p>{item.body}</p>{item.kind === 'chat_message' && <button type="button" className="player-notification-open-chat" onClick={() => { void markRead(item.id); onOpenChat(); }}>Abrir chat</button>}<time dateTime={item.created_at} className="sr-only">{date(item.created_at)}</time></div>
       <button type="button" aria-label={`Marcar como leída: ${item.title}`} title="Marcar como leída" onClick={() => void markRead(item.id)}><Check size={17} /></button>
     </article>)}
   </section>;

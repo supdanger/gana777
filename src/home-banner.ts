@@ -10,10 +10,10 @@ export type HomeBannerSettings = {
 export const defaultHomeBanner: HomeBannerSettings = {
   home_banner_enabled: false, home_banner_title: 'Visitar página', home_banner_url: null, home_banner_path: null,
 };
-export const homeBannerColumns = 'home_banner_enabled,home_banner_title,home_banner_url,home_banner_path';
+export const homeBannerColumns = 'home_banner_enabled,home_banner_title,home_banner_url,home_banner_path,allow_player_logout';
 
-export function homeBannerLink(settings: HomeBannerSettings): string | null {
-  return settings.home_banner_enabled && settings.home_banner_path ? safeHttpsLink(settings.home_banner_url) : null;
+export function homeBannerLink(settings: HomeBannerSettings, personalUrl?: string | null): string | null {
+  return settings.home_banner_enabled && settings.home_banner_path ? safeHttpsLink(personalUrl) ?? safeHttpsLink(settings.home_banner_url) : null;
 }
 
 export function parseHomeBanner(enabled: boolean, title: string, url: string, path: string | null): HomeBannerSettings {

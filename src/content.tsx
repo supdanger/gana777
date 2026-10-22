@@ -17,6 +17,7 @@ export type AppContent = HomeBannerSettings & {
   show_whatsapp: boolean;
   show_telegram: boolean;
   show_instagram: boolean;
+  allow_player_logout: boolean;
 };
 export type Promotion = {
   id: string; title: string; description: string; image_path: string | null;
@@ -30,7 +31,7 @@ const defaults: AppContent = {
   ...defaultHomeBanner,
   id: true, logo_path: null, login_image_path: 'brand/panda-login-transparent.png',
   login_image_layout: 'image', whatsapp_url: null, telegram_url: null,
-  instagram_url: null, help_url: null, show_whatsapp: true, show_telegram: true, show_instagram: true,
+  instagram_url: null, help_url: null, show_whatsapp: true, show_telegram: true, show_instagram: true, allow_player_logout: false,
 };
 const loadBonusPromotionId = '00000000-0000-4000-8000-000000000777';
 const welcome: Promotion = {

@@ -14,9 +14,10 @@ import { PortalInstall } from './portal-install';
 import { homeBannerLink } from './home-banner';
 import { referralShareMessage, referralShareUrl } from './share-referral';
 import referralBannerUrl from './assets/home-casino-banner-v3.png';
+import { PlayerAccessRequest } from './player-access';
 
-export type Page = 'home' | 'profile' | 'deposit' | 'withdrawal' | 'referrals' | 'history' | 'users' | 'contacts' | 'portal' | 'bonuses' | 'accounts' | 'shifts' | 'chat' | 'cashiers';
-export const titles = { home: 'Inicio', profile: 'Mi perfil', deposit: 'Cargas', withdrawal: 'Retiros', referrals: 'Recomendados', history: 'Historial', users: 'Usuarios', contacts: 'Contactos', portal: 'Portal', bonuses: 'Bonos', accounts: 'Cuentas', shifts: 'Turnos', chat: 'Chat', cashiers: 'Cajeros' };
+export type Page = 'home' | 'profile' | 'deposit' | 'withdrawal' | 'referrals' | 'history' | 'users' | 'platform' | 'access-requests' | 'contacts' | 'portal' | 'bonuses' | 'accounts' | 'shifts' | 'chat' | 'cashiers';
+export const titles = { home: 'Inicio', profile: 'Mi perfil', deposit: 'Cargas', withdrawal: 'Retiros', referrals: 'Recomendados', history: 'Historial', users: 'Usuarios', platform: 'Platform', 'access-requests': 'Solicitudes', contacts: 'Contactos', portal: 'Portal', bonuses: 'Bonos', accounts: 'Cuentas', shifts: 'Turnos', chat: 'Chat', cashiers: 'Cajeros' };
 export function Brand({ panel = false }: { panel?: boolean }) {
   const { settings } = useContent();
   const name = panel ? 'GANA777 Panel' : 'GANA777';
@@ -32,6 +33,7 @@ export function LoginView({ admin, busy, configured, feedback, onLogin, onDemo, 
   const [visible, setVisible] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaReset, setCaptchaReset] = useState(0);
+  const [requestingAccess, setRequestingAccess] = useState(false);
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     setNow(Date.now());
@@ -49,7 +51,7 @@ export function LoginView({ admin, busy, configured, feedback, onLogin, onDemo, 
   return <main className={`login ${admin ? 'admin-login' : 'user-login'}`}>
     <Brand panel={admin} />
     {admin ? <p className="eyebrow">PANEL DE ADMINISTRACIÓN</p> : <div className={`login-character ${settings.login_image_path === 'brand/panda-login-transparent.png' ? 'transparent-character' : settings.login_image_layout === 'reference' ? 'reference-character' : ''}`}><StorageImage path={settings.login_image_path} fallbackPath="brand/panda-login-transparent.png" alt="Panda GANA777 con gorra y campera azul" /></div>}
-    <section className="card login-card"><h1>Bienvenido</h1>{admin ? <p>Ingresá a tu cuenta</p> : <p className="login-domain">gana777bet.com</p>}
+    {!admin && requestingAccess ? <PlayerAccessRequest onBack={() => setRequestingAccess(false)} /> : <><section className="card login-card"><h1>Bienvenido</h1>{admin ? <p>Ingresá a tu cuenta</p> : <p className="login-domain">gana777bet.com</p>}
       <form onSubmit={submit}>
         {admin && <label htmlFor="email">Usuario o correo electrónico</label>}
         <div className="icon-input"><span className="input-icon"><UserRound /></span><input id="email" name="email" type="text" autoComplete="username" aria-label={admin ? undefined : 'Usuario'} placeholder={admin ? 'Ejemplo: carlos' : 'Usuario'} maxLength={254} autoCapitalize="none" spellCheck={false} required /></div>
@@ -60,7 +62,7 @@ export function LoginView({ admin, busy, configured, feedback, onLogin, onDemo, 
         <button className="primary" disabled={busy || retrySeconds > 0 || (!!siteKey && !captchaToken)}>{busy ? 'Ingresando…' : retrySeconds > 0 ? 'Esperá para reintentar' : 'Ingresar'}</button>
       </form>
       {safeHttpsLink(settings.help_url) ? <a className="help-link" href={safeHttpsLink(settings.help_url)!} target="_blank" rel="noopener noreferrer">¿Necesitás ayuda?</a> : <button className="help-link" onClick={onHelp}>¿Necesitás ayuda?</button>}
-    </section>
+    </section>{!admin && <button type="button" className="player-access-open" onClick={() => setRequestingAccess(true)}>¿Todavía no tenés usuario? <strong>Crear usuario</strong></button>}</>}
     {!admin && <PortalInstall />}
     {(!configured || import.meta.env.DEV) && <button className="text-button" onClick={onDemo}>Explorar vista previa</button>}
     {admin ? <footer><span className="secure-connection"><ShieldCheck size={17} /> Conexión segura · GANA777 Panel</span></footer> : <PlayerFooter />}
@@ -97,9 +99,9 @@ function playerGreeting() {
   const hour = Number(greetingHourFormatter.format(new Date()));
   return hour >= 6 && hour < 12 ? 'Buenos días' : hour >= 12 && hour < 20 ? 'Buenas tardes' : 'Buenas noches';
 }
-export function UserHome({ name, navigate, whatsappUrl, username }: { name: string; navigate: (page: Page) => void; whatsappUrl?: string | null; username?: string | null }) {
+export function UserHome({ name, navigate, whatsappUrl, username, casinoUrl }: { name: string; navigate: (page: Page) => void; whatsappUrl?: string | null; username?: string | null; casinoUrl?: string | null }) {
   const { settings, contactAnimations } = useContent();
-  const bannerUrl = homeBannerLink(settings);
+  const bannerUrl = homeBannerLink(settings, casinoUrl);
   const shareUrl = referralShareUrl(username ?? null, whatsappUrl ?? null);
   const shareMessage = referralShareMessage(username ?? null, whatsappUrl ?? null);
   const [referralImage, setReferralImage] = useState<File | null>(null);
@@ -156,11 +158,12 @@ export function UserHome({ name, navigate, whatsappUrl, username }: { name: stri
     <PortalInstall />
   </>;
 }
-export function UserProfile({ name, busy, logout }: { name: string; busy: boolean; logout: () => void }) {
+export function UserProfile({ name, busy, logout, allowLogout = false }: { name: string; busy: boolean; logout: () => void; allowLogout?: boolean }) {
+  const { settings } = useContent();
   return <section className="card user-profile-summary">
     <span className="user-avatar"><StorageImage path="avatars/panda-user-avatar.png" alt="" /></span>
     <div><h1>{name}</h1></div>
-    <button className="profile-logout" disabled={busy} onClick={logout}><LogOut size={18} /> Salir</button>
+    {(allowLogout || settings.allow_player_logout) && <button className="profile-logout" disabled={busy} onClick={logout}><LogOut size={18} /> Salir</button>}
   </section>;
 }
 function pauseCountdown(status: BankOperationStatus, now: number): string {

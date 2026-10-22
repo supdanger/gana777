@@ -13,6 +13,7 @@ export function PortalAdmin({ demo, busy, action }: { demo: boolean; busy: boole
   const [title, setTitle] = useState(defaultHomeBanner.home_banner_title);
   const [url, setUrl] = useState('');
   const [path, setPath] = useState<string | null>(null);
+  const [allowLogout, setAllowLogout] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [useIncluded, setUseIncluded] = useState(false);
   const [preview, setPreview] = useState('');
@@ -28,7 +29,7 @@ export function PortalAdmin({ demo, busy, action }: { demo: boolean; busy: boole
       if (!alive) return;
       setLoading(false);
       if (error) { setFailure('No pudimos cargar el banner. Aplicá la migración 023 y revisá tu conexión y permisos.'); return; }
-      setEnabled(data.home_banner_enabled); setTitle(data.home_banner_title); setUrl(data.home_banner_url ?? ''); setPath(data.home_banner_path);
+      setEnabled(data.home_banner_enabled); setTitle(data.home_banner_title); setUrl(data.home_banner_url ?? ''); setPath(data.home_banner_path); setAllowLogout(data.allow_player_logout === true);
     });
     return () => { alive = false; };
   }, [demo]);
@@ -54,7 +55,7 @@ export function PortalAdmin({ demo, busy, action }: { demo: boolean; busy: boole
       // Validate everything before uploading; no changes to the current banner on failure.
       const extension = image ? await bannerImageExtension(image) : null;
       if (extension) nextPath = `home-banners/${crypto.randomUUID()}.${extension}`;
-      const payload = parseHomeBanner(enabled, title, url, nextPath);
+      const payload = { ...parseHomeBanner(enabled, title, url, nextPath), allow_player_logout: allowLogout };
       if (image && nextPath) {
         let bitmap: ImageBitmap;
         try { bitmap = await createImageBitmap(image); }
@@ -79,9 +80,10 @@ export function PortalAdmin({ demo, busy, action }: { demo: boolean; busy: boole
     {failure ? <p className="empty" role="alert">{failure}</p> : <form className="portal-banner-form" onSubmit={save}>
       <fieldset disabled={busy || loading || demo}>
         <legend><ImagePlus size={21} /> Botón del inicio</legend>
+        <label className="portal-banner-toggle"><input type="checkbox" checked={allowLogout} onChange={event => { setAllowLogout(event.target.checked); setSaved(false); }} />Permitir que los jugadores cierren sesión desde su perfil</label>
         <label className="portal-banner-toggle"><input type="checkbox" checked={enabled} onChange={event => { setEnabled(event.target.checked); setSaved(false); }} />Mostrar en el portal</label>
         <label>Nombre del botón<input value={title} onChange={event => { setTitle(event.target.value); setSaved(false); }} maxLength={80} required /><small>Identifica la imagen para accesibilidad y si no carga.</small></label>
-        <label>Página de destino<input type="url" value={url} onChange={event => { setUrl(event.target.value); setSaved(false); }} placeholder="https://ejemplo.com" maxLength={2048} required={enabled} /><small>Se abre en otra pestaña. El portal no agrega datos del jugador al enlace.</small></label>
+        <label>Página de destino predeterminada<input type="url" value={url} onChange={event => { setUrl(event.target.value); setSaved(false); }} placeholder="https://ejemplo.com" maxLength={2048} required={enabled} /><small>Se usa para jugadores sin enlace personal. Los enlaces asignados desde Solicitudes tienen prioridad.</small></label>
         <label>Imagen del banner<input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" onChange={event => { setFile(event.target.files?.[0] ?? null); setUseIncluded(false); setSaved(false); }} /><small>Incluimos tu banner definitivo «Gana777bet.com · Ir al casino». Se adapta a la tarjeta completa sin estirar la imagen. Para reemplazar el anterior, elegí «Usar banner incluido» y guardá. JPG, PNG o WebP · Hasta 5 MB.</small></label>
         <div className="portal-banner-preview" aria-label="Vista previa del banner">{preview ? <img src={preview} alt={title} /> : path && !useIncluded ? <StorageImage path={path} alt={title} /> : <img src={casinoBanner} alt="Gana777bet.com · Ir al casino" />}</div>
         <button type="button" onClick={() => { setFile(null); setUseIncluded(true); setSaved(false); if (fileInput.current) fileInput.current.value = ''; }}>Usar banner incluido «Ir al casino»</button>

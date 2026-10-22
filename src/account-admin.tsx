@@ -3,10 +3,19 @@ import { assertFormFields, InputError, parseAlias, parseBank, parseCbu, parseHol
 import { supabase, type Bank } from './lib';
 import { shifts, shiftLabel, type ShiftKey } from './shifts';
 import { bankThemeRegistry, type BankThemeKey } from './bank-themes';
+import { BankTransferCard } from './bank-transfer-card';
 
-type Account = Omit<Bank, 'assignment_id' | 'theme_background_path' | 'theme_logo_path'> & { theme_key: BankThemeKey; active: boolean; shift_key: ShiftKey; usage_count: number };
+type Account = Omit<Bank, 'assignment_id'> & { theme_key: BankThemeKey; active: boolean; shift_key: ShiftKey; usage_count: number };
 const accountColumns = 'id,bank,holder,cbu,alias,theme_key,active,shift_key,usage_count';
 const previewNotice = 'La vista previa no guarda las cuentas. Entrá como administrador para realizar cambios.';
+
+function attachThemeAssets(accounts: Record<string, unknown>[], themes: { key: string; background_path: string | null; logo_path: string | null }[]): Account[] {
+  const byKey = new Map(themes.map(theme => [theme.key, theme]));
+  return accounts.map(row => {
+    const theme = byKey.get(String(row.theme_key));
+    return { ...row, theme_background_path: theme?.background_path ?? null, theme_logo_path: theme?.logo_path ?? null, usage_count: Number(row.usage_count) || 0 } as Account;
+  });
+}
 
 function persistError(error: { code?: string; message?: string }): Error {
   const message = error.message ?? '';
@@ -28,11 +37,14 @@ export function AccountAdmin({ demo, busy, action }: { demo: boolean; busy: bool
     if (demo || !supabase) { setLoading(false); return; }
     const db = supabase;
     let alive = true;
-    void db.from('bank_accounts').select(accountColumns).order('usage_count').order('bank').then(({ data, error }) => {
+    void Promise.all([
+      db.from('bank_accounts').select(accountColumns).order('usage_count').order('bank'),
+      db.from('bank_themes').select('key,background_path,logo_path'),
+    ]).then(([{ data, error }, { data: themes }]) => {
       if (!alive) return;
       setLoading(false);
       if (error) { setLoadError('No pudimos cargar las cuentas. Aplicá primero la migración de turnos.'); return; }
-      setAccounts((data ?? []).map(item => ({ ...item, usage_count: Number(item.usage_count) || 0 })) as Account[]);
+      setAccounts(attachThemeAssets((data ?? []) as Record<string, unknown>[], (themes ?? []) as { key: string; background_path: string | null; logo_path: string | null }[]));
     });
     return () => { alive = false; };
   }, [demo]);
@@ -83,7 +95,8 @@ export function AccountAdmin({ demo, busy, action }: { demo: boolean; busy: bool
       const query = current ? supabase.from('bank_accounts').update(fields).eq('id', current.id) : supabase.from('bank_accounts').insert({ ...fields, active: true });
       const { data, error } = await query.select(accountColumns).single();
       if (error || !data) throw persistError(error ?? { message: 'No se pudo guardar la cuenta.' });
-      const saved = { ...data, usage_count: Number(data.usage_count) || 0 } as Account;
+      const { data: themes } = await supabase.from('bank_themes').select('key,background_path,logo_path').eq('key', data.theme_key);
+      const saved = attachThemeAssets([data as Record<string, unknown>], (themes ?? []) as { key: string; background_path: string | null; logo_path: string | null }[])[0];
       setAccounts(old => current ? old.map(item => item.id === saved.id ? saved : item) : [...old, saved]);
       setSelectedShift(saved.shift_key);
       setEditingId(null);
@@ -137,11 +150,16 @@ export function AccountAdmin({ demo, busy, action }: { demo: boolean; busy: bool
     </form>
     {loading ? <p className="empty">Cargando cuentas…</p> : loadError ? <p className="empty">{loadError}</p> : !visibleAccounts.length ? <p className="empty">Todavía no hay cuentas en {shiftLabel[selectedShift].toLowerCase()}.</p> : <div className="account-offers">
       {visibleAccounts.map(account => <article className={`account-offer${account.active ? '' : ' inactive'}${editing?.id === account.id ? ' editing' : ''}`} key={account.id}>
-        <div><strong>{account.bank}</strong><small>{bankThemeRegistry[account.theme_key]?.name ?? bankThemeRegistry.default.name}</small><small>{account.holder}</small><small>{account.cbu}</small><small>{account.alias}</small><span className="account-usage">{account.usage_count} usos confirmados · {account.active ? 'Disponible' : 'Pausada'}</span></div>
-        <div className="account-offer-actions">
-          <button type="button" disabled={busy} onClick={() => { setEditingId(account.id); document.getElementById('account-title')?.scrollIntoView({ block: 'start' }); }}>Editar</button>
-          <button type="button" disabled={busy} onClick={() => void toggleAccount(account)}>{account.active ? 'Pausar' : 'Habilitar'}</button>
-          <button type="button" disabled={busy} onClick={() => void removeAccount(account)}>Eliminar</button>
+        <div className="account-offer-banner">
+          <BankTransferCard bank={account} compact />
+          <div className="account-offer-management">
+            <div className="account-offer-details"><span>CBU/CVU · {account.cbu}</span><div className="account-offer-statusline"><strong className={`account-offer-state${account.active ? '' : ' paused'}`}>{account.active ? 'Disponible' : 'Pausada'}</strong><small>{account.usage_count} usos confirmados</small></div></div>
+            <div className="account-offer-actions">
+              <button type="button" disabled={busy} onClick={() => { setEditingId(account.id); document.getElementById('account-title')?.scrollIntoView({ block: 'start' }); }}>Editar</button>
+              <button type="button" disabled={busy} onClick={() => void toggleAccount(account)}>{account.active ? 'Pausar' : 'Habilitar'}</button>
+              <button type="button" disabled={busy} onClick={() => void removeAccount(account)}>Eliminar</button>
+            </div>
+          </div>
         </div>
       </article>)}
     </div>}

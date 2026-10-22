@@ -11,3 +11,5 @@ verify_jwt = false
 verify_jwt = false
 [functions.send-user-push]
 verify_jwt = false
+[functions.player-access]
+verify_jwt = false

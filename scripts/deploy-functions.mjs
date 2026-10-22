@@ -25,7 +25,7 @@ try {
   cpSync(join(projectRoot, 'supabase', 'functions'), join(stagingSupabase, 'functions'), { recursive: true });
   cpSync(join(projectRoot, 'supabase', 'config.toml'), join(stagingSupabase, 'config.toml'));
 
-  for (const functionName of ['manage-players', 'manage-cashiers']) {
+  for (const functionName of ['manage-players', 'manage-cashiers', 'player-access']) {
     console.log(`\nDesplegando ${functionName}…`);
     const result = spawnSync(cli, [
       'functions', 'deploy', functionName,

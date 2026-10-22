@@ -44,6 +44,8 @@ test('el banner permanece oculto hasta habilitarlo con imagen y destino seguro',
   const settings = parseHomeBanner(true, ' Juegos ', ' https://ejemplo.com/jugar?modo=1 ', path);
   assert.equal(settings.home_banner_title, 'Juegos');
   assert.equal(homeBannerLink(settings), 'https://ejemplo.com/jugar?modo=1');
+  assert.equal(homeBannerLink(settings, 'https://casino.ejemplo.com/acceso/jugador-1'), 'https://casino.ejemplo.com/acceso/jugador-1');
+  assert.equal(homeBannerLink(settings, 'javascript:alert(1)'), 'https://ejemplo.com/jugar?modo=1');
   assert.equal(homeBannerLink({ ...settings, home_banner_enabled: false }), null);
   assert.equal(homeBannerLink({ ...settings, home_banner_path: null }), null);
   assert.equal(homeBannerLink({ ...settings, home_banner_url: 'javascript:alert(1)' }), null);

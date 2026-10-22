@@ -17,6 +17,8 @@ export function isStaffPermissionPage(page: Page): page is StaffPermissionPage {
 
 export function canOpenAdminPage(page: Page, permissions: StaffPermissions, superAdmin: boolean): boolean {
   if (page === 'portal') return superAdmin || permissions.contacts;
+  if (page === 'access-requests') return superAdmin || permissions.users;
+  if (page === 'platform') return superAdmin || permissions.users;
   if (page === 'referrals') return superAdmin || permissions.users || permissions.bonuses;
   return superAdmin || (isStaffPermissionPage(page) && permissions[page]);
 }

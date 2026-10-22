@@ -969,6 +969,7 @@ body:has(.user-login) { min-height: 100svh; }
 .player-notification p { overflow: hidden; margin: 2px 0 0; color: #c8dfed; font-size: 12px; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
 .player-notification time.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .player-notification button { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 1px solid #4a9bc8; border-radius: 8px; background: #0e4264; color: #fff; }
+.player-notification .player-notification-open-chat { display: inline-flex; width: auto; height: auto; min-height: 28px; margin-top: 6px; padding: 3px 8px; font-size: 12px; font-weight: 700; }
 .player-notification-settings { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; }
 .player-notification-setting-copy { min-width: 0; }
 .player-notification-settings .player-notifications-heading { margin-bottom: 2px; }
@@ -1013,3 +1014,42 @@ body:has(.user-login) { min-height: 100svh; }
 .user-app.page-home:has(.home-link-banner) .action-card .icon-circle { width: 38px; height: 38px; }
 .user-app.page-home:has(.home-link-banner) .action-card strong { font-size: 19px; margin-bottom: 2px; }
 .user-app.page-home:has(.home-link-banner) .action-card small { font-size: 14px; }
+.player-access-open { display: flex; flex-direction: column; gap: 4px; width: 100%; margin: 10px 0 0; padding: 13px; border: 1px solid #284a61; border-radius: 12px; background: #0b1d2a; color: #b4c8d8; font-size: 13px; }
+.player-access-open strong { color: #62d7ff; }
+.player-access-card { width: min(100%, 470px); margin: 0 auto 18px; padding: 21px; text-align: left; border-color: #31556d; background: linear-gradient(145deg, #122a3a, #091a25); }
+.player-access-card > header { display: flex; align-items: flex-start; gap: 12px; margin: 0 0 19px; }
+.player-access-card > header > div { flex: 1; min-width: 0; }
+.player-access-card > header h2 { margin: 0 0 5px; font-size: 21px; }
+.player-access-card > header p { margin: 0; font-size: 13px; }
+.player-access-back { width: 38px; height: 38px; flex: 0 0 auto; padding: 8px; }
+.player-access-form { display: grid; gap: 14px; }
+.player-access-form label { margin: 0; }
+.player-access-form label > span { color: #90aabd; font-weight: 500; }
+.player-access-name { position: relative; display: flex; align-items: center; gap: 6px; margin-top: 7px; }
+.player-access-name > svg { position: absolute; left: 13px; color: #83b8d4; pointer-events: none; }
+.player-access-name input { min-width: 0; margin: 0; padding: 13px 10px 13px 40px; }
+.player-access-name button { min-height: 46px; flex: 0 0 auto; padding: 8px 10px; font-size: 12px; }
+.player-access-form > label > input { margin-top: 7px; }
+.player-access-honeypot { position: absolute !important; left: -10000px !important; width: 1px !important; height: 1px !important; overflow: hidden !important; }
+.player-access-form .primary { margin: 0; }
+.player-access-form > small, .player-access-card > small { color: #95adbe; font-size: 11px; line-height: 1.45; }
+.player-access-error { margin: 0; color: #ffb1c0; font-size: 13px; }
+.player-access-status { display: grid; gap: 4px; margin-bottom: 12px; padding: 11px 13px; border: 1px solid #275878; border-radius: 10px; background: #0b2232; }
+.player-access-status strong { color: #6edcff; }
+.player-access-status span, .player-access-status small { color: #afc4d4; font-size: 12px; }
+.player-access-messages { display: grid; gap: 10px; max-height: 44vh; min-height: 200px; overflow-y: auto; padding: 12px; border: 1px solid #253f52; border-radius: 11px; background: #06131d; }
+.player-access-message { justify-self: start; max-width: 90%; }
+.player-access-message.from-admin { justify-self: end; }
+.player-access-message p { margin: 0 0 3px; padding: 10px 12px; border-radius: 12px 12px 12px 3px; background: #17354a; color: #f1f7fb; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.player-access-message.from-admin p { border-radius: 12px 12px 3px 12px; background: #07558a; }
+.player-access-message time { display: block; color: #8ba5b9; font-size: 10px; }
+.player-access-message.from-admin time { text-align: right; }
+.player-access-composer { display: flex; gap: 8px; margin: 10px 0 12px; }
+.player-access-composer input { min-width: 0; margin: 0; }
+.player-access-composer button { width: 48px; flex: 0 0 auto; padding: 10px; color: #6be0ff; }
+.player-access-new-request { width: 100%; margin: 10px 0 12px; border-color: #32749a; background: #103047; color: #aeeaff; }
+@media (max-width: 420px) {
+  .player-access-card { padding: 16px; }
+  .player-access-name { flex-wrap: wrap; }
+  .player-access-name input { flex: 1 1 calc(100% - 120px); }
+}
