@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { ArrowLeft, Camera, ChevronRight, Eye, EyeOff, FileText, Headphones, Images, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserRound } from 'lucide-react';
+import { ArrowLeft, Camera, ChevronRight, Eye, EyeOff, FileText, Images, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserRound } from 'lucide-react';
 import { BonusBanner, StorageImage, useContent } from './content';
 import { asBonusRule, bonusEnabled, moneyInputMaxLength, moneyInputPattern, percentText, readMoney } from '../supabase/functions/_shared/bonus-rule';
 import { creditAmounts } from './amounts';
@@ -14,6 +14,7 @@ import { PortalInstall } from './portal-install';
 import { homeBannerLink } from './home-banner';
 import { referralShareMessage, referralShareUrl } from './share-referral';
 import referralBannerUrl from './assets/home-casino-banner-v3.png';
+import supportAvatarUrl from './assets/support-panda-avatar.png';
 import { PlayerAccessRequest } from './player-access';
 import { ChatImage, useChatImagePreview } from './chat-images';
 
@@ -328,7 +329,7 @@ export function Conversation({ messages, userId, busy, disabled, onSubmit }: { m
   const imageInput = useRef<HTMLInputElement>(null);
   useEffect(() => { if (log.current && nearBottom.current) log.current.scrollTop = log.current.scrollHeight; }, [messages]);
   return <>
-    <section className="card support"><SectionHeading icon={<Headphones />} title="Soporte GANA777" description="Escribinos cuando necesites ayuda" /></section>
+    <section className="card support"><div className="support-profile"><img className="support-avatar" src={supportAvatarUrl} alt="Panda de soporte GANA777" /><div><h2>Soporte GANA777</h2><p>Escribinos cuando necesites ayuda</p></div></div></section>
     <section ref={log} className="card chat-log" role="log" aria-label="Conversación con soporte" aria-live="polite" onScroll={e => { const el = e.currentTarget; nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }}>
       <div className="chat-date"><span>Tu conversación</span></div>
       {!messages.length && <p className="chat-welcome">¡Hola! Bienvenido a GANA777.<br />¿En qué podemos ayudarte?</p>}

@@ -480,6 +480,9 @@ a.social.instagram:hover { border-color: #ff8ab8; }
 .user-app.page-chat { height: 100dvh; min-height: 0; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
 .user-app.page-chat .inner-header { margin-bottom: 16px; }
 .user-app.page-chat .support { padding: 16px 18px; margin: 0 0 12px; background: var(--portal-card-strong); }
+.user-app.page-chat .support-profile { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.user-app.page-chat .support-avatar { display: block; width: 64px; height: 64px; flex: 0 0 auto; object-fit: contain; }
+.user-app.page-chat .support-profile > div { min-width: 0; }
 .user-app.page-chat .support .section-heading { margin: 0; }
 .user-app.page-chat .support h2 { font-size: 20px; }
 .user-app.page-chat .support p { font-size: 14px; }
@@ -508,6 +511,12 @@ a.social.instagram:hover { border-color: #ff8ab8; }
 .user-app.page-chat .chat-gallery-button { flex: 0 0 auto; min-height: 48px; padding: 10px; border: 1px solid #315970; border-radius: 10px; color: #90dbf6; }
 .user-app.page-chat .send { width: 52px; height: 52px; min-height: 52px; border: 1px solid #278ed7; background: var(--portal-accent); color: #fff; }
 .user-app.page-chat footer { margin: 10px 0 0; }
+@media (max-height: 600px) {
+  .user-app.page-chat .support { display: flex; padding: 8px 12px; margin-bottom: 8px; }
+  .user-app.page-chat .support-avatar { width: 42px; height: 42px; }
+  .user-app.page-chat .support h2 { font-size: 16px; }
+  .user-app.page-chat .support p { font-size: 11px; }
+}
 
 /* Cargas: tarjeta bancaria temática y formulario compacto, aislados del resto del portal. */
 .user-app.page-deposit { max-width: 480px; }
