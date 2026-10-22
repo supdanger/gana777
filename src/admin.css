@@ -754,7 +754,7 @@
 .admin-chat-unanswered { width: 8px; height: 8px; border-radius: 50%; background: #45c8ff; box-shadow: 0 0 10px #22b7fa88; }
 .admin-chat-list-empty { margin: 0; padding: 24px 16px; color: #9ab5c8; font-size: 13px; text-align: center; }
 .admin-chat-thread { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-.admin-chat-thread-header { display: flex; align-items: center; gap: 11px; min-height: 69px; margin: 0; padding: 12px 18px; border-bottom: 1px solid var(--panel-border); background: #102838; }
+.admin-chat-thread-header { display: flex; align-items: center; gap: 11px; min-height: 69px; margin: 0; padding: 12px 18px 8px; background: #102838; }
 .admin-chat-thread-header > div { min-width: 0; flex: 1; }
 .admin-chat-thread-header strong, .admin-chat-thread-header small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .admin-chat-thread-header strong { color: #f5fbff; font-size: 15px; }
@@ -768,8 +768,7 @@
 .admin-content .admin-chat-older { align-self: center; padding: 7px 12px; border-color: #315a73; color: #a9daf0; font-size: 11px; }
 .admin-chat-feedback { margin: 0; padding: 9px 16px; border-top: 1px solid #23616a; background: #103f45; color: #b1f3eb; font-size: 12px; }
 .admin-chat-feedback.is-error { border-top-color: #8b4257; background: #38232c; color: #ffd4df; }
-.admin-chat-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--panel-border); background: #102838; }
-.admin-chat-actions span { color: #9bb7c8; font-size: 11px; }
+.admin-chat-actions { display: flex; justify-content: flex-start; padding: 0 18px 12px 68px; border-bottom: 1px solid var(--panel-border); background: #102838; }
 .admin-content .admin-chat-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex-shrink: 0; min-height: 34px; padding: 7px 11px; font-size: 11px; font-weight: 700; }
 .admin-content .admin-chat-actions .admin-chat-complete { border-color: #2c937e; background: #104b43; color: #8af1d1; }
 .admin-content .admin-chat-actions .admin-chat-reopen { border-color: #42718b; background: #17394c; color: #a9dff6; }
@@ -793,8 +792,7 @@
   .admin-chat-messages { padding: 16px; }
   .admin-chat-messages .message { max-width: 90%; }
   .admin-chat-copy span { display: none; }
-  .admin-chat-actions { flex-wrap: wrap; padding: 9px; }
-  .admin-content .admin-chat-actions button { width: 100%; }
+  .admin-chat-actions { padding: 0 10px 10px 60px; }
   .admin-chat-composer { padding: 9px; }
   .admin-chat-composer > small { display: none; }
 }
