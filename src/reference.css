@@ -902,11 +902,36 @@ body:has(.user-app.page-home) { min-height: 100svh; }
 /* Login del jugador: aprovecha la altura visible sin ocultar campos o avisos. */
 body:has(.user-login) { min-height: 100svh; }
 .user-login {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   width: 100%;
   max-width: 480px;
   min-height: 100svh;
   padding: max(12px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
-  background: radial-gradient(ellipse at 85% 15%, #1b3f4b55, transparent 65%), #091923;
+  background: #091923;
+}
+.user-login::before {
+  content: '';
+  position: absolute;
+  inset: -25%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 15% 22%, #047eaa55 0, transparent 31%),
+    radial-gradient(circle at 88% 65%, #0754bf55 0, transparent 37%),
+    radial-gradient(circle at 42% 95%, #03a6d533 0, transparent 33%);
+  filter: blur(38px);
+  opacity: .5;
+  will-change: transform;
+  animation: login-blue-drift 36s ease-in-out infinite alternate;
+}
+@keyframes login-blue-drift {
+  from { transform: translate3d(-3%, -2%, 0) rotate(-3deg); }
+  to { transform: translate3d(4%, 3%, 0) rotate(3deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .user-login::before { animation: none; will-change: auto; }
 }
 .user-login > .brand { margin-bottom: 6px; font-size: clamp(32px, 9vw, 40px); line-height: 1.1; }
 .user-login > .brand .brand-image { max-width: 150px; max-height: 44px; }
