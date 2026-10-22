@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { ArrowLeft, Camera, ChevronRight, Eye, EyeOff, FileText, Images, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserRound } from 'lucide-react';
+import { ArrowLeft, Camera, ChevronRight, Eye, EyeOff, FileText, Images, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserPlus, UserRound } from 'lucide-react';
 import { BonusBanner, StorageImage, useContent } from './content';
 import { asBonusRule, bonusEnabled, moneyInputMaxLength, moneyInputPattern, percentText, readMoney } from '../supabase/functions/_shared/bonus-rule';
 import { creditAmounts } from './amounts';
@@ -64,7 +64,7 @@ export function LoginView({ admin, busy, configured, feedback, onLogin, onDemo, 
         <button className="primary" disabled={busy || retrySeconds > 0 || (!!siteKey && !captchaToken)}>{busy ? 'Ingresando…' : retrySeconds > 0 ? 'Esperá para reintentar' : 'Ingresar'}</button>
       </form>
       {safeHttpsLink(settings.help_url) ? <a className="help-link" href={safeHttpsLink(settings.help_url)!} target="_blank" rel="noopener noreferrer">¿Necesitás ayuda?</a> : <button className="help-link" onClick={onHelp}>¿Necesitás ayuda?</button>}
-    </section>{!admin && <button type="button" className="player-access-open" onClick={() => setRequestingAccess(true)}>¿Todavía no tenés usuario? <strong>Crear usuario</strong></button>}</>}
+    </section>{!admin && <button type="button" className="player-access-open" onClick={() => setRequestingAccess(true)}><span className="player-access-icon"><UserPlus size={22} aria-hidden="true" /></span><span className="player-access-copy"><strong>Crear usuario</strong><small>¿Primera vez? Solicitá tu acceso</small></span><ChevronRight className="player-access-arrow" size={20} aria-hidden="true" /></button>}</>}
     {!admin && <PortalInstall />}
     {(!configured || import.meta.env.DEV) && <button className="text-button" onClick={onDemo}>Explorar vista previa</button>}
     {admin ? <footer><span className="secure-connection"><ShieldCheck size={17} /> Conexión segura · GANA777 Panel</span></footer> : <PlayerFooter />}

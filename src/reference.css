@@ -1035,8 +1035,13 @@ body:has(.user-login) { min-height: 100svh; }
 .user-app.page-home:has(.home-link-banner) .action-card .icon-circle { width: 38px; height: 38px; }
 .user-app.page-home:has(.home-link-banner) .action-card strong { font-size: 19px; margin-bottom: 2px; }
 .user-app.page-home:has(.home-link-banner) .action-card small { font-size: 14px; }
-.player-access-open { display: flex; flex-direction: column; gap: 4px; width: 100%; margin: 10px 0 0; padding: 13px; border: 1px solid #284a61; border-radius: 12px; background: #0b1d2a; color: #b4c8d8; font-size: 13px; }
-.player-access-open strong { color: #62d7ff; }
+.player-access-open { display: flex; align-items: center; gap: 13px; width: 100%; min-height: 70px; margin: 12px 0 0; padding: 11px 15px; border: 1px solid #315c74; border-radius: 13px; background: #050f18; color: #eaf8ff; text-align: left; }
+.player-access-open:hover { border-color: #32b7ef; background: #0a2030; }
+.player-access-icon { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 auto; border: 1px solid #227fa7; border-radius: 11px; background: #0a3044; color: #66d8ff; }
+.player-access-copy { display: flex; flex: 1; flex-direction: column; min-width: 0; gap: 2px; }
+.player-access-copy strong { color: #eaf8ff; font-size: 16px; line-height: 1.2; }
+.player-access-copy small { color: #9fbaca; font-size: 12px; line-height: 1.3; }
+.player-access-arrow { flex: 0 0 auto; color: #68cfff; }
 .player-access-card { width: min(100%, 470px); margin: 0 auto 18px; padding: 21px; text-align: left; border-color: #31556d; background: linear-gradient(145deg, #122a3a, #091a25); }
 .player-access-card > header { display: flex; align-items: flex-start; gap: 12px; margin: 0 0 19px; }
 .player-access-card > header > div { flex: 1; min-width: 0; }
