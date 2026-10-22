@@ -329,7 +329,7 @@ export function Conversation({ messages, userId, busy, disabled, onSubmit }: { m
   const imageInput = useRef<HTMLInputElement>(null);
   useEffect(() => { if (log.current && nearBottom.current) log.current.scrollTop = log.current.scrollHeight; }, [messages]);
   return <>
-    <section className="card support"><div className="support-profile"><img className="support-avatar" src={supportAvatarUrl} alt="Panda de soporte GANA777" /><div><h2>Soporte GANA777</h2><p>Escribinos cuando necesites ayuda</p></div></div></section>
+    <section className="card support"><div className="support-profile"><img className="support-avatar" src={supportAvatarUrl} alt="Panda de soporte GANA777" /><div><h2>Soporte</h2><p className="support-domain">gana777bet.com</p></div></div></section>
     <section ref={log} className="card chat-log" role="log" aria-label="Conversación con soporte" aria-live="polite" onScroll={e => { const el = e.currentTarget; nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }}>
       <div className="chat-date"><span>Tu conversación</span></div>
       {!messages.length && <p className="chat-welcome">¡Hola! Bienvenido a GANA777.<br />¿En qué podemos ayudarte?</p>}
