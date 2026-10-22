@@ -3,7 +3,7 @@ import { InputError } from '../supabase/functions/_shared/validation.ts';
 import { date, supabase } from './lib';
 import { shiftLabel, type ShiftKey } from './shifts';
 import {
-  demoSacPhones, parseOperatorName, readSacBoard, stationsOrDefaults, telegramShiftSentence,
+  demoSacPhones, mergePhoneOptions, parseOperatorName, phonesFromAccounts, readSacBoard, stationsOrDefaults, telegramShiftSentence,
   type SacPhoneOption, type SacStation,
 } from './sac';
 
@@ -40,6 +40,7 @@ function SacCard({
       <label>Nombre<input name="operator_name" maxLength={40} placeholder="Ejemplo: Max" autoComplete="name" /></label>
       <button type="submit" disabled={busy}>Iniciar turno</button>
     </form>}
+    {open ? <p>Elegí los teléfonos de este SAC.</p> : <p>Iniciá el turno para elegir teléfonos. Los que ya están quedan en este SAC.</p>}
     <div className="sac-phone-list" role="group" aria-label={`Teléfonos de SAC ${station.number}`}>
       {phones.length ? phones.map(phone => {
         const owner = owners.get(phone.phone) ?? null;
@@ -48,11 +49,10 @@ function SacCard({
         return <button type="button" key={phone.phone} className={selected ? 'selected' : ''} aria-pressed={selected} disabled={busy || !open || takenBy !== null} onClick={() => onToggle(phone.phone)}>
           <strong>Teléfono {phone.phone}</strong>
           <small>{phone.holders.join(', ') || 'Sin titular'}</small>
-          {takenBy !== null ? <em>SAC {takenBy}</em> : phone.active_count === 0 ? <em>Sin cuentas activas</em> : null}
+          {takenBy !== null ? <em>SAC {takenBy}</em> : phone.on_shift === false ? <em>En otro turno</em> : phone.active_count === 0 ? <em>Sin cuentas activas</em> : null}
         </button>;
-      }) : <p>Este turno todavía no tiene teléfonos numerados en Cuentas.</p>}
+      }) : <p>Guardá el número en cada cuenta, desde Cuentas, para ver los teléfonos acá.</p>}
     </div>
-    {open ? null : <p>Iniciá el turno para elegir teléfonos. Los que ya están quedan en este SAC.</p>}
   </article>;
 }
 
@@ -77,12 +77,17 @@ export function SacBoard({
 
   const reload = useCallback(async () => {
     if (demo || !supabase) return;
-    const { data, error } = await supabase.rpc('get_sac_board');
-    if (error) throw error;
-    const board = readSacBoard(data);
+    const db = supabase;
+    const [boardResult, accountResult] = await Promise.all([
+      db.rpc('get_sac_board'),
+      db.from('bank_accounts').select('phone_number,holder,active,shift_key'),
+    ]);
+    if (boardResult.error) throw boardResult.error;
+    const board = readSacBoard(boardResult.data);
+    const listed = accountResult.error || !accountResult.data ? [] : phonesFromAccounts(accountResult.data, board.active_shift);
     setActiveShift(board.active_shift);
     setStations(stationsOrDefaults(board.stations));
-    setPhones(board.phones);
+    setPhones(mergePhoneOptions(listed, board.phones));
     setLoadError('');
   }, [demo]);
 
@@ -164,7 +169,7 @@ export function SacBoard({
     <div className="account-heading">
       <div>
         <h2 id={scope === 'all' ? 'sac-title' : undefined}>{scope === 'all' ? 'Puestos SAC' : 'SAC de esta computadora'}</h2>
-        <p>{activeShift ? `Teléfonos de ${shiftName(activeShift)}.` : 'No hay un turno en línea. Igual podés abrir o cerrar el puesto.'} Hasta que un SAC tenga teléfonos, los jugadores siguen recibiendo cualquier cuenta activa del turno.</p>
+        <p>{activeShift ? `El turno en línea es ${shiftName(activeShift)}. Elegí los teléfonos físicos: cada número junta las cuentas que lo tienen.` : 'No hay un turno en línea. Podés abrir el puesto y elegir teléfonos.'} Hasta que un SAC tenga teléfonos, los jugadores siguen recibiendo cualquier cuenta activa del turno.</p>
       </div>
     </div>
     {loadError ? <div className="alert error" role="alert">{loadError}</div> : null}

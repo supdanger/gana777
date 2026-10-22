@@ -9,7 +9,8 @@ const operatorNamePattern = /^[\p{L}\p{M}][\p{L}\p{M}\p{N} .'-]*$/u;
 const operatorControl = /[\u0000-\u001F\u007F]/;
 
 export type SacStation = { number: number; operator_name: string | null; started_at: string | null; phones: number[] };
-export type SacPhoneOption = { phone: number; holders: string[]; active_count: number };
+export type SacPhoneOption = { phone: number; holders: string[]; active_count: number; on_shift?: boolean };
+export type AccountPhoneSource = { phone_number?: unknown; holder?: unknown; active?: unknown; shift_key?: unknown };
 export type SacBoardData = { active_shift: string | null; stations: SacStation[]; phones: SacPhoneOption[] };
 export type DepositScope = number | 'all' | 'none';
 
@@ -84,8 +85,49 @@ function readPhone(value: unknown): number | null {
   return Number.isInteger(phone) && phone >= 1 && phone <= SAC_PHONE_MAX ? phone : null;
 }
 
+function sortedHolders(holders: ReadonlySet<string>): string[] {
+  return [...holders].sort((left, right) => left.localeCompare(right, 'es'));
+}
+
+export function phonesFromAccounts(accounts: readonly AccountPhoneSource[], activeShift: string | null): SacPhoneOption[] {
+  const buckets = new Map<number, { shiftHolders: Set<string>; anyHolders: Set<string>; activeOnShift: number; onShift: boolean }>();
+  for (const account of accounts) {
+    const phone = readPhone(account.phone_number);
+    if (phone === null) continue;
+    const bucket = buckets.get(phone) ?? { shiftHolders: new Set<string>(), anyHolders: new Set<string>(), activeOnShift: 0, onShift: false };
+    const holder = typeof account.holder === 'string' ? account.holder.trim() : '';
+    if (holder) bucket.anyHolders.add(holder);
+    const matchesShift = activeShift === null || account.shift_key === activeShift;
+    if (matchesShift) {
+      bucket.onShift = true;
+      if (holder) bucket.shiftHolders.add(holder);
+      if (account.active === true) bucket.activeOnShift += 1;
+    }
+    buckets.set(phone, bucket);
+  }
+  return [...buckets.entries()]
+    .sort((left, right) => left[0] - right[0])
+    .map(([phone, bucket]) => ({
+      phone,
+      holders: sortedHolders(bucket.onShift && bucket.shiftHolders.size > 0 ? bucket.shiftHolders : bucket.anyHolders),
+      active_count: bucket.activeOnShift,
+      on_shift: activeShift === null || bucket.onShift,
+    }));
+}
+
+export function mergePhoneOptions(fromAccounts: readonly SacPhoneOption[], fromBoard: readonly SacPhoneOption[]): SacPhoneOption[] {
+  const merged = new Map<number, SacPhoneOption>();
+  for (const phone of fromBoard) merged.set(phone.phone, phone);
+  for (const phone of fromAccounts) merged.set(phone.phone, phone);
+  return [...merged.values()].sort((left, right) => left.phone - right.phone);
+}
+
 export function readSacBoard(data: unknown): SacBoardData {
-  const row = data && typeof data === 'object' ? data as { active_shift?: unknown; stations?: unknown; phones?: unknown } : {};
+  let payload = data;
+  if (typeof payload === 'string') {
+    try { payload = JSON.parse(payload) as unknown; } catch { payload = null; }
+  }
+  const row = payload && typeof payload === 'object' ? payload as { active_shift?: unknown; stations?: unknown; phones?: unknown } : {};
   const stations = Array.isArray(row.stations) ? row.stations.flatMap(item => {
     if (!item || typeof item !== 'object') return [];
     const station = item as { number?: unknown; operator_name?: unknown; started_at?: unknown; phones?: unknown };
@@ -104,11 +146,14 @@ export function readSacBoard(data: unknown): SacBoardData {
   }) : [];
   const phones = Array.isArray(row.phones) ? row.phones.flatMap(item => {
     if (!item || typeof item !== 'object') return [];
-    const phone = item as { phone?: unknown; holders?: unknown; active_count?: unknown };
+    const phone = item as { phone?: unknown; holders?: unknown; active_count?: unknown; on_shift?: unknown };
     const number = readPhone(phone.phone);
     if (!number) return [];
     const holders = Array.isArray(phone.holders) ? phone.holders.filter((holder): holder is string => typeof holder === 'string' && holder.length > 0) : [];
-    return [{ phone: number, holders, active_count: Math.max(0, Number(phone.active_count) || 0) }];
+    const option: SacPhoneOption = { phone: number, holders, active_count: Math.max(0, Number(phone.active_count) || 0) };
+    if (phone.on_shift === false) option.on_shift = false;
+    else if (phone.on_shift === true) option.on_shift = true;
+    return [option];
   }) : [];
   return {
     active_shift: typeof row.active_shift === 'string' ? row.active_shift : null,

@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { InputError } from '../supabase/functions/_shared/validation.ts';
 import {
-  depositRouteLabel, formatPhoneList, groupAccountsByPhone, parseOperatorName, parsePhoneNumber,
-  parseSacStation, readSacBoard, sacShiftMessage, scopedDepositFilter, stationsOrDefaults, telegramShiftSentence,
+  depositRouteLabel, formatPhoneList, groupAccountsByPhone, mergePhoneOptions, parseOperatorName, parsePhoneNumber,
+  parseSacStation, phonesFromAccounts, readSacBoard, sacShiftMessage, scopedDepositFilter, stationsOrDefaults, telegramShiftSentence,
 } from '../src/sac.ts';
 
 test('formats the telegram shift messages', () => {
@@ -57,10 +57,37 @@ test('reads the sac board returned by the database', () => {
   const board = readSacBoard({
     active_shift: 'morning',
     stations: [{ number: 1, operator_name: 'Max', started_at: '2026-10-22T12:00:00Z', phones: [1, 4] }, { number: 9 }],
-    phones: [{ phone: '2', holders: ['Bazan'], active_count: '1' }],
+    phones: [{ phone: '2', holders: ['Bazan'], active_count: '1', on_shift: true }],
   });
   assert.equal(board.active_shift, 'morning');
   assert.deepEqual(stationsOrDefaults(board.stations).map(station => station.number), [1, 2, 3, 4, 5]);
   assert.deepEqual(board.stations[0], { number: 1, operator_name: 'Max', started_at: '2026-10-22T12:00:00Z', phones: [1, 4] });
-  assert.deepEqual(board.phones, [{ phone: 2, holders: ['Bazan'], active_count: 1 }]);
+  assert.deepEqual(board.phones, [{ phone: 2, holders: ['Bazan'], active_count: 1, on_shift: true }]);
+  const encoded = readSacBoard(JSON.stringify({ active_shift: 'night', stations: [], phones: [{ phone: 4, holders: ['Bazan'], active_count: 2 }] }));
+  assert.equal(encoded.active_shift, 'night');
+  assert.deepEqual(encoded.phones, [{ phone: 4, holders: ['Bazan'], active_count: 2 }]);
+});
+
+test('lists every numbered phone, including accounts from another cash shift', () => {
+  const phones = phonesFromAccounts([
+    { phone_number: 1, holder: 'Muñoz', active: true, shift_key: 'morning' },
+    { phone_number: 1, holder: 'Pérez', active: false, shift_key: 'morning' },
+    { phone_number: '4', holder: 'Bazan', active: true, shift_key: 'night' },
+    { phone_number: 2, holder: 'Día', active: true, shift_key: 'morning' },
+    { phone_number: 2, holder: 'Noche', active: true, shift_key: 'night' },
+    { phone_number: null, holder: 'Sosa', active: true, shift_key: 'morning' },
+    { phone_number: 99, holder: 'Fuera', active: true, shift_key: 'morning' },
+  ], 'morning');
+  assert.deepEqual(phones, [
+    { phone: 1, holders: ['Muñoz', 'Pérez'], active_count: 1, on_shift: true },
+    { phone: 2, holders: ['Día'], active_count: 1, on_shift: true },
+    { phone: 4, holders: ['Bazan'], active_count: 0, on_shift: false },
+  ]);
+  assert.deepEqual(mergePhoneOptions(
+    [{ phone: 4, holders: ['Bazan'], active_count: 0, on_shift: false }],
+    [{ phone: 1, holders: ['Muñoz'], active_count: 1 }, { phone: 4, holders: ['Viejo'], active_count: 1 }],
+  ), [
+    { phone: 1, holders: ['Muñoz'], active_count: 1 },
+    { phone: 4, holders: ['Bazan'], active_count: 0, on_shift: false },
+  ]);
 });
