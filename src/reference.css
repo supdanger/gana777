@@ -479,9 +479,9 @@ a.social.instagram:hover { border-color: #ff8ab8; }
 /* Chat */
 .user-app.page-chat { height: 100dvh; min-height: 0; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
 .user-app.page-chat .inner-header { margin-bottom: 16px; }
-.user-app.page-chat .support { padding: 16px 18px; margin: 0 0 12px; background: var(--portal-card-strong); }
-.user-app.page-chat .support-profile { display: flex; align-items: center; gap: 14px; min-width: 0; }
-.user-app.page-chat .support-avatar { display: block; width: 64px; height: 64px; flex: 0 0 auto; object-fit: contain; }
+.user-app.page-chat .support { padding: 12px 18px; margin: 0 0 12px; background: var(--portal-card-strong); }
+.user-app.page-chat .support-profile { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.user-app.page-chat .support-avatar { display: block; width: 92px; height: 92px; flex: 0 0 auto; object-fit: contain; }
 .user-app.page-chat .support-profile > div { min-width: 0; }
 .user-app.page-chat .support .section-heading { margin: 0; }
 .user-app.page-chat .support h2 { font-size: 20px; }
@@ -513,7 +513,7 @@ a.social.instagram:hover { border-color: #ff8ab8; }
 .user-app.page-chat footer { margin: 10px 0 0; }
 @media (max-height: 600px) {
   .user-app.page-chat .support { display: flex; padding: 8px 12px; margin-bottom: 8px; }
-  .user-app.page-chat .support-avatar { width: 42px; height: 42px; }
+  .user-app.page-chat .support-avatar { width: 62px; height: 62px; }
   .user-app.page-chat .support h2 { font-size: 16px; }
   .user-app.page-chat .support p { font-size: 11px; }
 }
