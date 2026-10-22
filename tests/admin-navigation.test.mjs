@@ -18,8 +18,10 @@ test('una conversación queda pendiente si el último mensaje es del jugador', (
     { user_id: 'u1', last_sender_id: 'otro-cajero' },
     { user_id: 'u2', last_sender_id: 'u2' },
     { user_id: 'u3', last_sender_id: 'u3' },
+    { user_id: 'u4', last_sender_id: 'u4', completed_at: '2026-10-22T12:00:00Z' },
   ];
   assert.equal(pendingChatCount(inbox), 2);
   assert.equal(needsChatReply(inbox[0]), false);
   assert.equal(needsChatReply(inbox[1]), true);
+  assert.equal(needsChatReply(inbox[3]), false);
 });

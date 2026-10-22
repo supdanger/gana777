@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { ArrowLeft, Check, Copy, MessageCircle, Search, Send } from 'lucide-react';
+import { ArrowLeft, Check, CircleCheck, Copy, MessageCircle, RotateCcw, Search, Send } from 'lucide-react';
 import { date, supabase, type Message } from './lib';
 import { needsChatReply, pendingChatCount } from './admin-navigation';
 import { parseMessage, parseUuid } from '../supabase/functions/_shared/validation';
@@ -8,8 +8,9 @@ import { publicError } from './security';
 export type ChatInboxRow = {
   user_id: string; username: string | null; display_name: string | null;
   last_message_id: string; last_sender_id: string; last_body: string; last_created_at: string;
+  completed_at: string | null; completed_by: string | null;
 };
-type Filter = 'pending' | 'all';
+type Filter = 'pending' | 'all' | 'completed';
 const PAGE_SIZE = 50;
 
 function shortDate(value: string) {
@@ -20,9 +21,9 @@ function shortDate(value: string) {
     : new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: 'short' }).format(when);
 }
 
-export function AdminChat({ inbox, selectedId, demo, onSelect, onSent }: {
+export function AdminChat({ inbox, selectedId, demo, onSelect, onChanged }: {
   inbox: ChatInboxRow[]; selectedId: string; demo: boolean;
-  onSelect: (id: string) => void; onSent: () => void;
+  onSelect: (id: string) => void; onChanged: () => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [search, setSearch] = useState('');
@@ -32,6 +33,7 @@ export function AdminChat({ inbox, selectedId, demo, onSelect, onSent }: {
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [sending, setSending] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const messageLog = useRef<HTMLDivElement>(null);
@@ -40,6 +42,7 @@ export function AdminChat({ inbox, selectedId, demo, onSelect, onSent }: {
   activeThreadId.current = selectedId;
   const selected = inbox.find(row => row.user_id === selectedId);
   const pending = pendingChatCount(inbox);
+  const completed = inbox.filter(row => !!row.completed_at).length;
   const title = (row: ChatInboxRow) => row.username || row.display_name || `Usuario ${row.user_id.slice(0, 8)}`;
 
   useEffect(() => {
@@ -103,7 +106,7 @@ export function AdminChat({ inbox, selectedId, demo, onSelect, onSent }: {
 
   async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!supabase || demo || sending || !selectedId) return;
+    if (!supabase || demo || sending || !selectedId || selected?.completed_at) return;
     const form = event.currentTarget;
     setSending(true); setError(''); setNotice('');
     try {
@@ -118,7 +121,7 @@ export function AdminChat({ inbox, selectedId, demo, onSelect, onSent }: {
         setMessages(old => old.some(item => item.id === data.id) ? old : [...old, data as Message]);
         form.reset();
       }
-      onSent();
+      onChanged();
       const { error: pushError } = await supabase.functions.invoke('send-user-push', { body: { message_id: data.id } });
       if (pushError && activeThreadId.current === selectedId) setNotice('Respuesta enviada. El usuario la verá en el chat y en sus avisos; el push no pudo salir.');
     } catch (cause) { if (activeThreadId.current === selectedId) setError(publicError(cause)); }
@@ -131,9 +134,31 @@ export function AdminChat({ inbox, selectedId, demo, onSelect, onSent }: {
     catch { setError('No pudimos copiar el usuario.'); }
   }
 
+  async function updateStatus(complete: boolean) {
+    if (!supabase || demo || updatingStatus || !selected) return;
+    const userId = selected.user_id;
+    setUpdatingStatus(true); setError(''); setNotice('');
+    const { error: statusError } = await supabase.rpc('set_chat_thread_completed', {
+      p_user_id: userId, p_last_message_id: selected.last_message_id, p_completed: complete,
+    });
+    setUpdatingStatus(false);
+    if (activeThreadId.current !== userId) return;
+    if (statusError) {
+      setError(statusError.message.includes('mensajes nuevos')
+        ? 'Llegó un mensaje nuevo. Actualizá la conversación antes de cambiar su estado.'
+        : 'No pudimos cambiar el estado del chat. Intentá nuevamente.');
+      onChanged();
+      return;
+    }
+    onChanged();
+    if (complete) onSelect('');
+    else setNotice('Conversación reabierta. Ya podés responder.');
+  }
+
   const query = search.trim().toLocaleLowerCase('es');
   const visible = inbox.filter(row => {
     if (filter === 'pending' && !needsChatReply(row)) return false;
+    if (filter === 'completed' && !row.completed_at) return false;
     if (!query) return true;
     return [row.username, row.display_name, row.last_body, row.user_id]
       .some(value => value?.toLocaleLowerCase('es').includes(query));
@@ -148,21 +173,23 @@ export function AdminChat({ inbox, selectedId, demo, onSelect, onSent }: {
         <div className="admin-chat-filters" role="group" aria-label="Filtrar conversaciones">
           <button type="button" className={filter === 'pending' ? 'active' : ''} aria-pressed={filter === 'pending'} onClick={() => setFilter('pending')}>Por responder <span>{pending}</span></button>
           <button type="button" className={filter === 'all' ? 'active' : ''} aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>Todas</button>
+          <button type="button" className={filter === 'completed' ? 'active' : ''} aria-pressed={filter === 'completed'} onClick={() => setFilter('completed')}>Completadas <span>{completed}</span></button>
         </div>
         <div className="admin-chat-list">
           {visible.length ? visible.map(row => <button type="button" key={row.user_id} className={`admin-chat-item${selectedId === row.user_id ? ' active' : ''}`} aria-current={selectedId === row.user_id ? 'true' : undefined} onClick={() => onSelect(row.user_id)}>
             <span className="admin-chat-avatar">{title(row).slice(0, 1).toUpperCase()}</span>
-            <span className="admin-chat-item-main"><span className="admin-chat-item-top"><strong>{title(row)}</strong><time dateTime={row.last_created_at}>{shortDate(row.last_created_at)}</time></span><span className="admin-chat-preview">{row.last_sender_id !== row.user_id ? 'Soporte: ' : ''}{row.last_body}</span></span>
+            <span className="admin-chat-item-main"><span className="admin-chat-item-top"><strong>{title(row)}</strong><time dateTime={row.last_created_at}>{shortDate(row.last_created_at)}</time></span><span className="admin-chat-preview">{row.completed_at ? 'Completado · ' : row.last_sender_id !== row.user_id ? 'Soporte: ' : ''}{row.last_body}</span></span>
             {needsChatReply(row) && <span className="admin-chat-unanswered" aria-label="Por responder" />}
-          </button>) : <p className="admin-chat-list-empty">{query ? 'No encontramos conversaciones con esa búsqueda.' : filter === 'pending' ? 'No hay consultas por responder.' : 'Todavía no hay conversaciones.'}</p>}
+          </button>) : <p className="admin-chat-list-empty">{query ? 'No encontramos conversaciones con esa búsqueda.' : filter === 'pending' ? 'No hay consultas por responder.' : filter === 'completed' ? 'No hay conversaciones completadas.' : 'Todavía no hay conversaciones.'}</p>}
         </div>
       </aside>
       <section className="admin-chat-thread" aria-label={selected ? `Conversación con ${title(selected)}` : 'Seleccioná una conversación'}>
         {selected ? <>
-          <header className="admin-chat-thread-header"><button type="button" className="admin-chat-back" aria-label="Volver a conversaciones" onClick={() => onSelect('')}><ArrowLeft size={19} /></button><span className="admin-chat-avatar">{title(selected).slice(0, 1).toUpperCase()}</span><div><strong>{title(selected)}</strong><small>{selected.display_name && selected.display_name !== selected.username ? selected.display_name : needsChatReply(selected) ? 'Consulta por responder' : 'Conversación respondida'}</small></div>{selected.username && <button type="button" className="admin-chat-copy" onClick={() => void copyUsername()} aria-label="Copiar nombre de usuario">{copied ? <Check size={16} /> : <Copy size={16} />}<span>{copied ? 'Copiado' : 'Copiar usuario'}</span></button>}</header>
+          <header className="admin-chat-thread-header"><button type="button" className="admin-chat-back" aria-label="Volver a conversaciones" onClick={() => onSelect('')}><ArrowLeft size={19} /></button><span className="admin-chat-avatar">{title(selected).slice(0, 1).toUpperCase()}</span><div><strong>{title(selected)}</strong><small>{selected.completed_at ? 'Conversación completada' : needsChatReply(selected) ? 'Consulta por responder' : 'Conversación respondida'}{selected.display_name && selected.display_name !== selected.username ? ` · ${selected.display_name}` : ''}</small></div>{selected.username && <button type="button" className="admin-chat-copy" onClick={() => void copyUsername()} aria-label="Copiar nombre de usuario">{copied ? <Check size={16} /> : <Copy size={16} />}<span>{copied ? 'Copiado' : 'Copiar usuario'}</span></button>}</header>
           <div className="admin-chat-messages" ref={messageLog} role="log" aria-live="polite" aria-relevant="additions text" onScroll={event => { const element = event.currentTarget; stickToBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80; }}>{hasMore && <button type="button" className="admin-chat-older" disabled={loadingOlder} onClick={() => void loadOlder()}>{loadingOlder ? 'Cargando…' : 'Ver mensajes anteriores'}</button>}{loading && <p className="admin-chat-list-empty">Cargando conversación…</p>}{messages.map(message => <div className={`message ${message.sender_id !== message.user_id ? 'mine' : ''}`} key={message.id}><p>{message.body}</p><small>{message.sender_id !== message.user_id ? 'Soporte · ' : ''}{date(message.created_at)}</small></div>)}</div>
           {(error || notice) && <p className={`admin-chat-feedback${error ? ' is-error' : ''}`} role={error ? 'alert' : 'status'}>{error || notice}</p>}
-          <form className="admin-chat-composer" onSubmit={event => void send(event)}><label htmlFor="admin-chat-message" className="sr-only">Responder a {title(selected)}</label><textarea id="admin-chat-message" name="message" placeholder="Escribí tu respuesta…" maxLength={2000} rows={2} required disabled={sending || demo} onKeyDown={onComposerKeyDown} /><button type="submit" disabled={sending || demo} aria-label="Enviar respuesta"><Send size={18} /> Enviar</button><small>Enter para enviar · Shift + Enter para nueva línea</small></form>
+          <div className="admin-chat-actions"><span>{selected.completed_at ? 'Esta sesión está cerrada. Podés reabrirla para responder.' : 'Cuando termines, marcá la conversación como completada.'}</span><button type="button" className={selected.completed_at ? 'admin-chat-reopen' : 'admin-chat-complete'} disabled={demo || updatingStatus || sending} onClick={() => void updateStatus(!selected.completed_at)}>{selected.completed_at ? <RotateCcw size={16} /> : <CircleCheck size={16} />}{updatingStatus ? 'Guardando…' : selected.completed_at ? 'Reabrir chat' : 'Marcar como completado'}</button></div>
+          {!selected.completed_at && <form className="admin-chat-composer" onSubmit={event => void send(event)}><label htmlFor="admin-chat-message" className="sr-only">Responder a {title(selected)}</label><textarea id="admin-chat-message" name="message" placeholder="Escribí tu respuesta…" maxLength={2000} rows={2} required disabled={sending || demo || updatingStatus} onKeyDown={onComposerKeyDown} /><button type="submit" disabled={sending || demo || updatingStatus} aria-label="Enviar respuesta"><Send size={18} /> Enviar</button><small>Enter para enviar · Shift + Enter para nueva línea</small></form>}
         </> : <div className="admin-chat-placeholder"><MessageCircle size={38} /><h2>Elegí una conversación</h2><p>Vas a ver el historial y responder desde acá.</p></div>}
       </section>
     </div>

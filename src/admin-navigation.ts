@@ -4,10 +4,10 @@ export function pendingRequestCount(requests: RequestRow[], kind: RequestRow['ki
   return requests.filter(request => request.kind === kind && request.status === 'pending').length;
 }
 
-type ChatLatest = { user_id: string; last_sender_id: string };
+type ChatLatest = { user_id: string; last_sender_id: string; completed_at?: string | null };
 
 export function needsChatReply(row: ChatLatest): boolean {
-  return row.last_sender_id === row.user_id;
+  return !row.completed_at && row.last_sender_id === row.user_id;
 }
 
 export function pendingChatCount(rows: ChatLatest[]): number {

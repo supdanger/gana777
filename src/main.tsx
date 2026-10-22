@@ -315,7 +315,7 @@ function App() {
       const pageSize = 500;
       for (let offset = 0; alive; offset += pageSize) {
         const { data, error } = await db.from('chat_inbox')
-          .select('user_id,username,display_name,last_message_id,last_sender_id,last_body,last_created_at')
+          .select('user_id,username,display_name,last_message_id,last_sender_id,last_body,last_created_at,completed_at,completed_by')
           .order('last_created_at', { ascending: false }).order('last_message_id', { ascending: false })
           .range(offset, offset + pageSize - 1);
         if (!alive || version !== requestVersion) return;
@@ -880,7 +880,7 @@ function App() {
       {adminApp && page === 'accounts' && <AccountAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'shifts' && <ShiftAdmin demo={demo} busy={busy} action={action} station={sacStation} onStation={chooseSac} />}
       {adminApp && page === 'cashiers' && staffContext.superAdmin && <CashierAdmin demo={demo} busy={busy} action={action} />}
-      {page === 'chat' && (adminApp ? <AdminChat inbox={chatInbox} selectedId={thread} demo={demo} onSelect={setThread} onSent={() => setChatReload(value => value + 1)} /> : <Conversation messages={messages} userId={userId} busy={busy} disabled={demo} onSubmit={sendMessage} />)}
+      {page === 'chat' && (adminApp ? <AdminChat inbox={chatInbox} selectedId={thread} demo={demo} onSelect={setThread} onChanged={() => setChatReload(value => value + 1)} /> : <Conversation messages={messages} userId={userId} busy={busy} disabled={demo} onSubmit={sendMessage} />)}
     </>}
   </>;
   const staffAvatarUrl = staffContext.avatarPath && supabase ? supabase.storage.from('cashier-avatars').getPublicUrl(staffContext.avatarPath).data.publicUrl : null;
