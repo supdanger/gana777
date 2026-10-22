@@ -51,9 +51,9 @@ export function LoginView({ admin, busy, configured, feedback, onLogin, onDemo, 
   }
   const { settings } = useContent();
   return <main className={`login ${admin ? 'admin-login' : 'user-login'}`}>
-    <Brand panel={admin} />
+    {admin ? <Brand panel /> : <span className="brand login-domain-brand">gana777bet.com</span>}
     {admin ? <p className="eyebrow">PANEL DE ADMINISTRACIÓN</p> : <div className={`login-character ${settings.login_image_path === 'brand/panda-login-transparent.png' ? 'transparent-character' : settings.login_image_layout === 'reference' ? 'reference-character' : ''}`}><StorageImage path={settings.login_image_path} fallbackPath="brand/panda-login-transparent.png" alt="Panda GANA777 con gorra y campera azul" /></div>}
-    {!admin && requestingAccess ? <PlayerAccessRequest onBack={() => setRequestingAccess(false)} /> : <><section className="card login-card"><h1>Bienvenido</h1>{admin ? <p>Ingresá a tu cuenta</p> : <p className="login-domain">gana777bet.com</p>}
+    {!admin && requestingAccess ? <PlayerAccessRequest onBack={() => setRequestingAccess(false)} /> : <><section className="card login-card"><h1>Bienvenido</h1>{admin && <p>Ingresá a tu cuenta</p>}
       <form onSubmit={submit}>
         {admin && <label htmlFor="email">Usuario o correo electrónico</label>}
         <div className="icon-input"><span className="input-icon"><UserRound /></span><input id="email" name="email" type="text" autoComplete="username" aria-label={admin ? undefined : 'Usuario'} placeholder={admin ? 'Ejemplo: carlos' : 'Usuario'} maxLength={254} autoCapitalize="none" spellCheck={false} required /></div>
