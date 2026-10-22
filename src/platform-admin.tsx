@@ -16,6 +16,8 @@ type Detail = {
   auth: { last_sign_in_at: string | null; banned_until: string | null };
   stats: { deposits: number; approved_deposits: number; approved_deposit_amount: number; withdrawals: number; approved_withdrawals: number; approved_withdrawal_amount: number; last_activity_at: string | null };
   operations: Array<{ id: string; kind: 'deposit' | 'withdrawal'; status: 'pending' | 'approved' | 'rejected'; amount: number; created_at: string }>;
+  same_ip_accounts?: Array<{ username: string }>;
+  ip_attempts?: Array<{ id: string; username: string; created_at: string }>;
 };
 const statusName = { pending: 'Pendiente', approved: 'Aprobada', rejected: 'Rechazada' };
 const pageSize = 20;
@@ -30,7 +32,7 @@ const detailTabs: { id: DetailTab; label: string }[] = [
 export function PlatformAdmin({ demo, busy, action }: { demo: boolean; busy: boolean; action: (task: () => Promise<void>) => Promise<void> }) {
   const [players, setPlayers] = useState<Player[]>([]);
   const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(!demo);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState('');
@@ -48,12 +50,21 @@ export function PlatformAdmin({ demo, busy, action }: { demo: boolean; busy: boo
 
   async function load(reset: boolean, term = search) {
     if (demo || !supabase) { setLoading(false); return; }
+    const clean = term.trim();
+    if (!clean) {
+      listVersion.current += 1;
+      setPlayers([]);
+      setTotal(0);
+      setError('');
+      setLoading(false);
+      return;
+    }
     const version = ++listVersion.current;
     setLoading(true);
     let request = supabase.from('user_profiles').select('user_id,username,created_at', { count: 'exact' })
       .eq('account_origin', 'platform').order('created_at', { ascending: false }).order('user_id', { ascending: false })
       .range(reset ? 0 : players.length, (reset ? 0 : players.length) + pageSize - 1);
-    if (term) request = request.ilike('username', `%${term}%`);
+    request = request.ilike('username', `%${clean}%`);
     const result = await request;
     if (version !== listVersion.current) return;
     setLoading(false);
@@ -115,22 +126,25 @@ export function PlatformAdmin({ demo, busy, action }: { demo: boolean; busy: boo
 
   const suspended = Boolean(detail?.auth.banned_until && new Date(detail.auth.banned_until) > new Date());
   const link = safeHttpsLink(detail?.casino_link?.url);
+  const sameIp = detail?.same_ip_accounts ?? [];
+  const ipAttempts = detail?.ip_attempts ?? [];
   return <section className="platform-admin" aria-labelledby="platform-title">
-    <div className="account-heading"><div><h1 id="platform-title">Platform</h1><p>Consultá la cuenta y gestioná sus datos, acceso y actividad desde una sola ficha.</p></div><strong>{total} {total === 1 ? 'cuenta' : 'cuentas'}</strong></div>
+    <div className="account-heading"><div><h1 id="platform-title">Platform</h1><p>Consultá la cuenta y gestioná sus datos, acceso y actividad desde una sola ficha.</p></div>{search ? <strong>{total} {total === 1 ? 'cuenta' : 'cuentas'}</strong> : null}</div>
     <div className="platform-admin-layout">
       <aside className="platform-admin-panel">
-        <div className="platform-admin-toolbar"><span><Layers3 size={18} /> Usuarios <small>{total}</small></span><button type="button" disabled={loading || demo} onClick={() => { void load(true); if (selectedId) void loadDetail(selectedId); }} aria-label="Actualizar usuarios y ficha"><RefreshCw size={15} /></button></div>
+        <div className="platform-admin-toolbar"><span><Layers3 size={18} /> Usuarios {search ? <small>{total}</small> : null}</span><button type="button" disabled={loading || demo || (!search && !selectedId)} onClick={() => { if (search) void load(true); if (selectedId) void loadDetail(selectedId); }} aria-label="Actualizar usuarios y ficha"><RefreshCw size={15} /></button></div>
         <form className="platform-admin-search" role="search" onSubmit={event => { event.preventDefault(); setSelectedId(''); setSearch(query.trim().replace(/^@/, '')); }}><Search size={17} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Buscar por usuario" maxLength={32} aria-label="Buscar usuario Platform" /><button type="submit">Buscar</button></form>
         {search && <p className="platform-admin-hint">Resultados para “{search}”</p>}
         {error && <p className="platform-admin-empty" role="alert">{error}</p>}
-        {!error && !loading && !players.length && <p className="platform-admin-empty">No encontramos cuentas Platform.</p>}
+        {!error && !loading && !players.length && <p className="platform-admin-empty">{search ? 'No encontramos cuentas Platform.' : 'Escribí un usuario y tocá Buscar.'}</p>}
         <div className="platform-admin-list">{players.map(player => <button type="button" key={player.user_id} className={`platform-admin-row${selectedId === player.user_id ? ' active' : ''}`} aria-current={selectedId === player.user_id ? 'true' : undefined} onClick={() => setSelectedId(player.user_id)}><span className="platform-admin-avatar"><UserRound size={19} /></span><span className="platform-admin-row-copy"><strong>{player.username ? `@${player.username}` : 'Usuario sin nombre'}</strong><small>Alta {date(player.created_at)}</small></span><ChevronRight size={16} className="platform-admin-row-arrow" aria-hidden="true" /></button>)}</div>
         {loading && <p className="platform-admin-empty">Cargando cuentas…</p>}
         {!loading && players.length < total && <button type="button" className="platform-admin-more" onClick={() => void load(false)}>Mostrar más</button>}
       </aside>
       <div className="platform-admin-detail">
-        {!selectedId ? <div className="platform-admin-placeholder"><UserRound size={32} /><h2>Elegí un usuario</h2><p>Acá vas a ver su ficha, actividad y herramientas de gestión.</p></div> : detailError && !detail ? <p className="platform-admin-empty" role="alert">{detailError}</p> : !detail ? <p className="platform-admin-empty">Cargando ficha…</p> : <>
+        {!selectedId ? <div className="platform-admin-placeholder"><UserRound size={32} /><h2>Buscá un usuario</h2><p>Escribí el nombre y tocá Buscar. Acá aparece la ficha.</p></div> : detailError && !detail ? <p className="platform-admin-empty" role="alert">{detailError}</p> : !detail ? <p className="platform-admin-empty">Cargando ficha…</p> : <>
           <header className="platform-detail-header"><span className="platform-detail-avatar"><UserRound size={22} /></span><div><span className="platform-detail-eyebrow">Ficha del jugador</span><h2>@{detail.profile.username}</h2><p>{detail.profile.display_name} · Alta {date(detail.profile.created_at)}</p></div><span className={`platform-admin-status${suspended ? ' is-suspended' : ''}`}>{suspended ? 'Suspendida' : 'Activa'}</span></header>
+          {(sameIp.length > 0 || ipAttempts.length > 0) && <p className="platform-ip-alert" role="status">{sameIp.length > 0 ? `Esta IP ya tiene ${sameIp.map(item => `@${item.username}`).join(', ')}. ` : ''}{ipAttempts.length > 0 ? `Hubo ${ipAttempts.length === 1 ? 'un intento' : `${ipAttempts.length} intentos`} de crear otra cuenta: ${ipAttempts.map(item => `@${item.username}`).join(', ')}.` : ''}</p>}
           {detailError && <p className="platform-admin-inline-error" role="alert">{detailError}</p>}
           {notice && <p className="platform-admin-inline-success" role="status">{notice}</p>}
           <nav className="platform-detail-tabs" aria-label="Secciones del jugador">{detailTabs.map(item => <button type="button" key={item.id} className={tab === item.id ? 'active' : ''} aria-pressed={tab === item.id} onClick={() => { setTab(item.id); setDetailError(''); }}>{item.label}</button>)}</nav>

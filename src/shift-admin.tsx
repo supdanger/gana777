@@ -112,7 +112,7 @@ export function ShiftAdmin({ demo, busy, action, station, onStation }: { demo: b
           </article>;
         })}
       </div>
-      <SacBoard demo={demo} busy={busy} action={action} scope="all" station={station} onStation={onStation} />
+      <SacBoard demo={demo} busy={busy} action={action} scope="all" station={station} onStation={onStation} liveShift={status?.active_shift_key ?? null} />
       <p className="shift-note">Las asignaciones entregadas antes del cierre continúan disponibles para que esos usuarios puedan enviar su comprobante.</p>
     </>}
   </section>;

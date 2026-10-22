@@ -1,4 +1,5 @@
 import { authenticate, cors, HttpError, json, serverClient } from '../_shared/http.ts';
+import { pickExistingIpAccount, type IpAccountRow } from '../_shared/ip-account.ts';
 import { requestIp } from '../_shared/ip.ts';
 
 function record(value: unknown): Record<string, unknown> {
@@ -76,12 +77,39 @@ async function requireStaff(request: Request) {
   if (error || !allowed) throw new HttpError(403, 'No tenés permiso para gestionar solicitudes de acceso.');
   return { user, server: serverClient() };
 }
+function missingIpColumn(error: { message?: string } | null | undefined): boolean {
+  const message = error?.message ?? '';
+  return /ip_blocked|matched_username|matched_request_id/i.test(message) && /does not exist|schema cache|could not find/i.test(message);
+}
+async function requestsForIp(server: ReturnType<typeof serverClient>, ipHash: string): Promise<IpAccountRow[]> {
+  const flagged = await server.from('player_access_requests').select('id,username,status,player_user_id,ip_blocked').eq('ip_hash', ipHash).in('status', ['pending', 'approved']).order('created_at', { ascending: false }).limit(100);
+  if (!flagged.error) return (flagged.data ?? []) as IpAccountRow[];
+  if (!missingIpColumn(flagged.error)) throw new HttpError(500, 'No pudimos verificar la conexión.');
+  const plain = await server.from('player_access_requests').select('id,username,status,player_user_id').eq('ip_hash', ipHash).in('status', ['pending', 'approved']).order('created_at', { ascending: false }).limit(100);
+  if (plain.error) throw new HttpError(500, 'No pudimos verificar la conexión.');
+  return (plain.data ?? []) as IpAccountRow[];
+}
+async function rememberDuplicateAttempt(server: ReturnType<typeof serverClient>, requestId: string, attemptedUsername: string) {
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { count } = await server.from('player_access_messages').select('id', { count: 'exact', head: true }).eq('request_id', requestId).eq('sender', 'admin').gte('created_at', since).ilike('body', 'Intento de otra cuenta%');
+  if ((count ?? 0) >= 3) return;
+  await server.from('player_access_messages').insert({
+    request_id: requestId, sender: 'admin',
+    body: `Intento de otra cuenta desde la misma conexión. Pidieron @${attemptedUsername}. Esta IP ya tiene un usuario, así que no se crea otra cuenta.`,
+  });
+}
 async function publicThread(server: ReturnType<typeof serverClient>, tokenValue: unknown) {
   const token = bearerToken(tokenValue);
   const tokenHash = await digest(`${pepper()}:${token}`);
-  const { data: thread, error } = await server.from('player_access_requests').select('id,username,referral_code,status,created_at,updated_at').eq('access_token_hash', tokenHash).maybeSingle();
-  if (error || !thread) throw new HttpError(404, 'No encontramos la solicitud. Revisá que estés en el mismo dispositivo donde la creaste.');
-  return thread;
+  const flagged = await server.from('player_access_requests').select('id,username,referral_code,status,created_at,updated_at,ip_blocked').eq('access_token_hash', tokenHash).maybeSingle();
+  if (flagged.error && missingIpColumn(flagged.error)) {
+    const plain = await server.from('player_access_requests').select('id,username,referral_code,status,created_at,updated_at').eq('access_token_hash', tokenHash).maybeSingle();
+    if (plain.error || !plain.data) throw new HttpError(404, 'No encontramos la solicitud. Revisá que estés en el mismo dispositivo donde la creaste.');
+    return { ...plain.data, ip_blocked: false };
+  }
+  if (flagged.error) throw new HttpError(500, 'No pudimos cargar la solicitud.');
+  if (!flagged.data) throw new HttpError(404, 'No encontramos la solicitud. Revisá que estés en el mismo dispositivo donde la creaste.');
+  return flagged.data;
 }
 async function messagesFor(server: ReturnType<typeof serverClient>, requestId: string) {
   const { data, error } = await server.from('player_access_messages').select('id,sender,body,created_at').eq('request_id', requestId).order('created_at').order('id');
@@ -128,6 +156,32 @@ Deno.serve(async request => {
       const referralCode = typeof payload.referral_code === 'string' ? payload.referral_code.trim().replace(/^@/, '').toLowerCase() : '';
       if (referralCode.length > 32 || (referralCode && !/^[a-z0-9][a-z0-9._-]{2,31}$/.test(referralCode))) throw new HttpError(400, 'El código recomendado no tiene un formato válido.');
 
+      if (ipHash) {
+        const match = pickExistingIpAccount(await requestsForIp(server, ipHash));
+        if (match) {
+          const duplicateMessage = 'Esta conexión ya tiene un usuario. No se crea otra cuenta. Si borraste los datos del navegador, pedile al equipo que te ayude a recuperar el acceso.';
+          const inserted = await server.from('player_access_requests').insert({
+            username: playerUsername, referral_code: referralCode || null,
+            access_token_hash: tokenHash, device_hash: deviceHash, ip_hash: ipHash,
+            origin_ip: originIp, origin_user_agent: originUserAgent,
+            ip_blocked: true, matched_request_id: match.id, matched_username: match.username,
+          }).select('id,username,status').single();
+          if (inserted.error || !inserted.data) {
+            if (missingIpColumn(inserted.error) || inserted.error?.code === '23505') {
+              await rememberDuplicateAttempt(server, match.id, playerUsername);
+              throw new HttpError(409, duplicateMessage);
+            }
+            throw new HttpError(500, 'No pudimos guardar la solicitud. Volvé a intentarlo más tarde.');
+          }
+          const { error: messageError } = await server.from('player_access_messages').insert([
+            { request_id: inserted.data.id, sender: 'player', body: `Solicito la creación del usuario @${playerUsername}.` },
+            { request_id: inserted.data.id, sender: 'admin', body: 'Esta conexión ya tiene un usuario. No creamos otra cuenta. Si borraste los datos del navegador, escribinos para recuperar ese acceso.' },
+          ]);
+          if (messageError) { await server.from('player_access_requests').delete().eq('id', inserted.data.id); throw new HttpError(500, 'No pudimos registrar el aviso.'); }
+          return json({ ok: true, request_id: inserted.data.id, username: inserted.data.username, status: inserted.data.status, resumed: false, ip_blocked: true });
+        }
+      }
+
       const { data: created, error } = await server.from('player_access_requests').insert({
         username: playerUsername, referral_code: referralCode || null,
         access_token_hash: tokenHash, device_hash: deviceHash, ip_hash: ipHash,
@@ -164,18 +218,24 @@ Deno.serve(async request => {
 
     if (action === 'admin-list') {
       const { server } = await requireStaff(request);
-      const { data, error } = await server.from('player_access_request_inbox').select('id,username,referral_code,status,player_user_id,created_at,updated_at,last_sender,last_body,last_message_at').order('created_at', { ascending: false }).limit(200);
-      if (error) throw new HttpError(500, 'No pudimos cargar las solicitudes. Aplicá la migración 031.');
+      const flaggedInbox = await server.from('player_access_request_inbox').select('id,username,referral_code,status,player_user_id,created_at,updated_at,last_sender,last_body,last_message_at,ip_blocked,matched_username').order('created_at', { ascending: false }).limit(200);
+      const listed = flaggedInbox.error && missingIpColumn(flaggedInbox.error)
+        ? await server.from('player_access_request_inbox').select('id,username,referral_code,status,player_user_id,created_at,updated_at,last_sender,last_body,last_message_at').order('created_at', { ascending: false }).limit(200)
+        : flaggedInbox;
+      if (listed.error) throw new HttpError(500, 'No pudimos cargar las solicitudes. Aplicá la migración 031.');
+      const data = listed.data ?? [];
       const approvedIds = (data ?? []).flatMap(row => row.status === 'approved' && row.player_user_id ? [row.player_user_id] : []);
       const { data: links, error: linksError } = approvedIds.length
         ? await server.from('player_casino_links').select('user_id').in('user_id', approvedIds)
         : { data: [], error: null };
       if (linksError) throw new HttpError(500, 'No pudimos verificar los enlaces personales. Aplicá la migración 032.');
       const linkedIds = new Set((links ?? []).map(link => link.user_id));
-      return json({ ok: true, requests: (data ?? []).map(row => ({
+      return json({ ok: true, requests: data.map(row => ({
         id: row.id, username: row.username, referral_code: row.referral_code, status: row.status,
         player_user_id: row.player_user_id, created_at: row.created_at, updated_at: row.updated_at,
         has_personal_url: Boolean(row.player_user_id && linkedIds.has(row.player_user_id)),
+        ip_blocked: Boolean('ip_blocked' in row && row.ip_blocked),
+        matched_username: 'matched_username' in row && typeof row.matched_username === 'string' ? row.matched_username : null,
         latest_message: row.last_sender ? { sender: row.last_sender, body: typeof row.last_body === 'string' && /Contraseña(?: temporal)?:/.test(row.last_body) ? 'Credenciales enviadas' : row.last_body, created_at: row.last_message_at } : null,
       })) });
     }
@@ -207,9 +267,14 @@ Deno.serve(async request => {
     if (action === 'admin-close') {
       const { server } = await requireStaff(request);
       const requestId = id(payload.request_id);
+      const current = await server.from('player_access_requests').select('ip_blocked').eq('id', requestId).eq('status', 'pending').maybeSingle();
+      if (current.error && !missingIpColumn(current.error)) throw new HttpError(500, 'No pudimos cerrar la solicitud. Actualizá la bandeja.');
       const { data, error } = await server.from('player_access_requests').update({ status: 'rejected', updated_at: new Date().toISOString() }).eq('id', requestId).eq('status', 'pending').select('id').maybeSingle();
       if (error || !data) throw new HttpError(409, 'No pudimos cerrar la solicitud. Actualizá la bandeja.');
-      const { error: messageError } = await server.from('player_access_messages').insert({ request_id: requestId, sender: 'admin', body: 'Por ahora no pudimos aprobar esta solicitud. Si necesitás ayuda, respondé por los canales de contacto disponibles.' });
+      const closing = !current.error && current.data?.ip_blocked
+        ? 'Esta conexión ya tiene un usuario. No se crea otra cuenta.'
+        : 'Por ahora no pudimos aprobar esta solicitud. Si necesitás ayuda, respondé por los canales de contacto disponibles.';
+      const { error: messageError } = await server.from('player_access_messages').insert({ request_id: requestId, sender: 'admin', body: closing });
       if (messageError) throw new HttpError(500, 'La solicitud se cerró, pero no se pudo enviar el aviso.');
       return json({ ok: true });
     }
@@ -220,6 +285,12 @@ Deno.serve(async request => {
       const { data: accessRequest, error: requestError } = await server.from('player_access_requests').select('id,username,referral_code,referrer_user_id,status').eq('id', requestId).maybeSingle();
       if (requestError || !accessRequest) throw new HttpError(404, 'La solicitud ya no existe.');
       if (accessRequest.status !== 'pending') throw new HttpError(409, 'La solicitud ya fue procesada.');
+      const blocked = await server.from('player_access_requests').select('ip_blocked,matched_username').eq('id', requestId).maybeSingle();
+      if (blocked.error && !missingIpColumn(blocked.error)) throw new HttpError(500, 'No pudimos verificar si esta IP ya tiene un usuario.');
+      if (blocked.data?.ip_blocked) {
+        const existingName = typeof blocked.data.matched_username === 'string' ? blocked.data.matched_username : 'existente';
+        throw new HttpError(409, `Esta IP ya tiene el usuario @${existingName}. No se crea otra cuenta.`);
+      }
       const playerUsername = username(accessRequest.username);
       const playerPassword = password(payload.password);
       const playerCasinoUrl = casinoUrl(payload.casino_url);
@@ -293,7 +364,7 @@ Deno.serve(async request => {
       const profile = await platformProfile(server, userId);
       const [authResult, accessResult, linkResult, referralResult, statsResult, operationsResult] = await Promise.all([
         server.auth.admin.getUserById(userId),
-        server.from('player_access_requests').select('id,username,referral_code,status,created_at,origin_ip,origin_user_agent').eq('player_user_id', userId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        server.from('player_access_requests').select('id,username,referral_code,status,created_at,origin_ip,origin_user_agent,ip_hash').eq('player_user_id', userId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
         server.from('player_casino_links').select('url,updated_at').eq('user_id', userId).maybeSingle(),
         server.from('player_referrals').select('referrer_user_id,created_at').eq('referred_user_id', userId).maybeSingle(),
         server.rpc('platform_player_stats', { p_user_id: userId }),
@@ -310,11 +381,30 @@ Deno.serve(async request => {
         ? await server.from('whatsapp_principals').select('phone,active').eq('slot', profile.whatsapp_principal_slot).maybeSingle()
         : { data: null };
       const authUser = authResult.data.user;
-      return json({ ok: true, profile, access_request: accessResult.data, casino_link: linkResult.data,
+      const accessRow = accessResult.data;
+      const accessRequest = accessRow ? {
+        id: accessRow.id, username: accessRow.username, referral_code: accessRow.referral_code, status: accessRow.status,
+        created_at: accessRow.created_at, origin_ip: accessRow.origin_ip, origin_user_agent: accessRow.origin_user_agent,
+      } : null;
+      let sameIpAccounts: { username: string }[] = [];
+      let ipAttempts: { id: string; username: string; created_at: string }[] = [];
+      if (accessRow?.ip_hash) {
+        const { data: others } = await server.from('player_access_requests').select('username,player_user_id').eq('ip_hash', accessRow.ip_hash).eq('status', 'approved').not('player_user_id', 'is', null).neq('player_user_id', userId).limit(10);
+        const seen = new Set<string>();
+        for (const row of others ?? []) {
+          if (!row.username || seen.has(row.username)) continue;
+          seen.add(row.username);
+          sameIpAccounts.push({ username: row.username });
+        }
+        const attempts = await server.from('player_access_requests').select('id,username,created_at').eq('ip_hash', accessRow.ip_hash).eq('ip_blocked', true).order('created_at', { ascending: false }).limit(10);
+        if (!attempts.error) ipAttempts = (attempts.data ?? []).flatMap(row => row.username ? [{ id: row.id, username: row.username, created_at: row.created_at }] : []);
+      }
+      return json({ ok: true, profile, access_request: accessRequest, casino_link: linkResult.data,
         referrer: referrerId ? { user_id: referrerId, name: referrer?.username || referrer?.display_name || 'Jugador registrado' } : null,
         principal: principal ?? null,
         auth: { last_sign_in_at: authUser.last_sign_in_at ?? null, banned_until: authUser.banned_until ?? null },
         stats: statsResult.data, operations: operationsResult.data ?? [],
+        same_ip_accounts: sameIpAccounts, ip_attempts: ipAttempts,
       });
     }
 

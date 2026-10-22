@@ -1,5 +1,6 @@
 import { InputError } from '../supabase/functions/_shared/validation.ts';
 import { formatPhoneList, sacShiftMessage } from '../supabase/functions/_shared/sac-message.ts';
+import { shiftLabel, type ShiftKey } from './shifts.ts';
 
 export { formatPhoneList, sacShiftMessage };
 export const SAC_COUNT = 5;
@@ -9,8 +10,33 @@ const operatorNamePattern = /^[\p{L}\p{M}][\p{L}\p{M}\p{N} .'-]*$/u;
 const operatorControl = /[\u0000-\u001F\u007F]/;
 
 export type SacStation = { number: number; operator_name: string | null; started_at: string | null; phones: number[] };
-export type SacPhoneOption = { phone: number; holders: string[]; active_count: number; on_shift?: boolean };
-export type AccountPhoneSource = { phone_number?: unknown; holder?: unknown; active?: unknown; shift_key?: unknown };
+export type SacPhoneAccount = {
+  id: string;
+  bank: string;
+  holder: string;
+  alias: string;
+  cbu: string;
+  theme_key: string | null;
+  theme_background_path: string | null;
+  theme_logo_path: string | null;
+  active: boolean;
+  shift_key: string | null;
+};
+export type SacPhoneOption = { phone: number; holders: string[]; active_count: number; on_shift?: boolean; accounts?: SacPhoneAccount[] };
+export type AccountPhoneSource = {
+  id?: unknown;
+  phone_number?: unknown;
+  bank?: unknown;
+  holder?: unknown;
+  alias?: unknown;
+  cbu?: unknown;
+  theme_key?: unknown;
+  theme_background_path?: unknown;
+  theme_logo_path?: unknown;
+  active?: unknown;
+  shift_key?: unknown;
+};
+export type SacAccountBadge = { label: string; tone: 'ready' | 'paused' | 'other' };
 export type SacBoardData = { active_shift: string | null; stations: SacStation[]; phones: SacPhoneOption[] };
 export type DepositScope = number | 'all' | 'none';
 
@@ -89,14 +115,48 @@ function sortedHolders(holders: ReadonlySet<string>): string[] {
   return [...holders].sort((left, right) => left.localeCompare(right, 'es'));
 }
 
+function textOrEmpty(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function readCard(account: AccountPhoneSource, fallbackId: string): SacPhoneAccount | null {
+  const bank = textOrEmpty(account.bank);
+  const holder = textOrEmpty(account.holder);
+  if (!bank || !holder) return null;
+  const id = textOrEmpty(account.id) || fallbackId;
+  return {
+    id,
+    bank,
+    holder,
+    alias: textOrEmpty(account.alias),
+    cbu: textOrEmpty(account.cbu),
+    theme_key: textOrEmpty(account.theme_key) || null,
+    theme_background_path: textOrEmpty(account.theme_background_path) || null,
+    theme_logo_path: textOrEmpty(account.theme_logo_path) || null,
+    active: account.active === true,
+    shift_key: textOrEmpty(account.shift_key) || null,
+  };
+}
+
+export function sacAccountBadge(account: { active: boolean; shift_key: string | null }, activeShift: string | null): SacAccountBadge {
+  if (!account.active) return { label: 'Pausada', tone: 'paused' };
+  if (activeShift && account.shift_key && account.shift_key !== activeShift) {
+    const label = account.shift_key in shiftLabel ? shiftLabel[account.shift_key as ShiftKey] : 'Otro turno';
+    return { label, tone: 'other' };
+  }
+  return { label: 'Recibe cargas', tone: 'ready' };
+}
+
 export function phonesFromAccounts(accounts: readonly AccountPhoneSource[], activeShift: string | null): SacPhoneOption[] {
-  const buckets = new Map<number, { shiftHolders: Set<string>; anyHolders: Set<string>; activeOnShift: number; onShift: boolean }>();
+  const buckets = new Map<number, { shiftHolders: Set<string>; anyHolders: Set<string>; activeOnShift: number; onShift: boolean; accounts: SacPhoneAccount[] }>();
   for (const account of accounts) {
     const phone = readPhone(account.phone_number);
     if (phone === null) continue;
-    const bucket = buckets.get(phone) ?? { shiftHolders: new Set<string>(), anyHolders: new Set<string>(), activeOnShift: 0, onShift: false };
-    const holder = typeof account.holder === 'string' ? account.holder.trim() : '';
+    const bucket = buckets.get(phone) ?? { shiftHolders: new Set<string>(), anyHolders: new Set<string>(), activeOnShift: 0, onShift: false, accounts: [] };
+    const holder = textOrEmpty(account.holder);
     if (holder) bucket.anyHolders.add(holder);
+    const card = readCard(account, `${phone}-${bucket.accounts.length + 1}`);
+    if (card) bucket.accounts.push(card);
     const matchesShift = activeShift === null || account.shift_key === activeShift;
     if (matchesShift) {
       bucket.onShift = true;
@@ -112,7 +172,19 @@ export function phonesFromAccounts(accounts: readonly AccountPhoneSource[], acti
       holders: sortedHolders(bucket.onShift && bucket.shiftHolders.size > 0 ? bucket.shiftHolders : bucket.anyHolders),
       active_count: bucket.activeOnShift,
       on_shift: activeShift === null || bucket.onShift,
+      accounts: [...bucket.accounts].sort((left, right) => left.holder.localeCompare(right.holder, 'es') || left.bank.localeCompare(right.bank, 'es')),
     }));
+}
+
+export function phonesForShift(phones: readonly SacPhoneOption[], activeShift: string | null): SacPhoneOption[] {
+  if (!activeShift) return [];
+  return phones.flatMap(phone => {
+    const accounts = (phone.accounts ?? []).filter(account => account.shift_key === activeShift);
+    if (!accounts.length) return [];
+    const holders = [...new Set(accounts.map(account => account.holder).filter(holder => holder.length > 0))]
+      .sort((left, right) => left.localeCompare(right, 'es'));
+    return [{ phone: phone.phone, holders, active_count: accounts.filter(account => account.active).length, on_shift: true, accounts }];
+  });
 }
 
 export function mergePhoneOptions(fromAccounts: readonly SacPhoneOption[], fromBoard: readonly SacPhoneOption[]): SacPhoneOption[] {
@@ -169,10 +241,25 @@ export function stationsOrDefaults(stations: readonly SacStation[]): SacStation[
   });
 }
 
+function demoCard(id: string, bank: string, holder: string, alias: string, ending: string, theme: string, active: boolean, shift: string): SacPhoneAccount {
+  return { id, bank, holder, alias, cbu: `0000000000000000${ending}`, theme_key: theme, theme_background_path: null, theme_logo_path: null, active, shift_key: shift };
+}
+
 export const demoSacPhones: SacPhoneOption[] = [
-  { phone: 1, holders: ['Muñoz', 'Pérez'], active_count: 2 },
-  { phone: 2, holders: ['Bazan'], active_count: 1 },
-  { phone: 3, holders: ['Gómez'], active_count: 1 },
-  { phone: 4, holders: ['Romero', 'Sosa'], active_count: 2 },
-  { phone: 5, holders: ['Acosta'], active_count: 1 },
+  { phone: 1, holders: ['Bazan', 'Muñoz'], active_count: 2, on_shift: true, accounts: [
+    demoCard('demo-1a', 'Banco Galicia', 'Muñoz', 'munos', '1234', 'galicia', true, 'morning'),
+    demoCard('demo-1b', 'Banco Galicia', 'Bazan', 'bazan', '1233', 'galicia', true, 'morning'),
+  ] },
+  { phone: 2, holders: ['Max'], active_count: 1, on_shift: true, accounts: [
+    demoCard('demo-2a', 'Lemon', 'Max Lemon', 'lemonlemon', '1233', 'lemon', true, 'morning'),
+  ] },
+  { phone: 3, holders: ['Maxima'], active_count: 0, on_shift: true, accounts: [
+    demoCard('demo-3a', 'Mercado Pago', 'Maxima Mercado Pago', 'max.mp', '1254', 'mercado-pago', false, 'morning'),
+  ] },
+  { phone: 4, holders: ['Mena'], active_count: 0, on_shift: false, accounts: [
+    demoCard('demo-4a', 'Naranja X', 'Maxmax Mena', 'maxmax.nx', '1231', 'naranja-x', true, 'night'),
+  ] },
+  { phone: 5, holders: ['Acosta'], active_count: 1, on_shift: true, accounts: [
+    demoCard('demo-5a', 'Ualá', 'Acosta', 'acosta.uala', '4588', 'uala', true, 'morning'),
+  ] },
 ];

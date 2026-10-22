@@ -1,24 +1,91 @@
 import { useCallback, useEffect, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { InputError } from '../supabase/functions/_shared/validation.ts';
-import { date, supabase } from './lib';
+import { BankTransferCard } from './bank-transfer-card';
+import { date, supabase, type Bank } from './lib';
 import { shiftLabel, type ShiftKey } from './shifts';
 import {
-  demoSacPhones, mergePhoneOptions, parseOperatorName, phonesFromAccounts, readSacBoard, stationsOrDefaults, telegramShiftSentence,
-  type SacPhoneOption, type SacStation,
+  demoSacPhones, mergePhoneOptions, parseOperatorName, phonesForShift, phonesFromAccounts, readSacBoard, sacAccountBadge, stationsOrDefaults, telegramShiftSentence,
+  type SacPhoneAccount, type SacPhoneOption, type SacStation,
 } from './sac';
 
 function shiftName(key: string | null) {
   return key && key in shiftLabel ? shiftLabel[key as ShiftKey].toLowerCase() : '';
 }
 
+function cardBank(account: SacPhoneAccount): Omit<Bank, 'assignment_id'> {
+  return {
+    id: account.id,
+    bank: account.bank,
+    holder: account.holder,
+    cbu: account.cbu || '0000',
+    alias: account.alias,
+    theme_key: account.theme_key ?? undefined,
+    theme_background_path: account.theme_background_path,
+    theme_logo_path: account.theme_logo_path,
+  };
+}
+
+function accountCount(phone: SacPhoneOption) {
+  const count = phone.accounts?.length || phone.holders.length;
+  return count === 1 ? '1 cuenta' : `${count} cuentas`;
+}
+
+function SacPhoneList({
+  stationNumber, phones, owners, open, busy, activeShift, onToggle,
+}: {
+  stationNumber: number;
+  phones: readonly SacPhoneOption[];
+  owners: ReadonlyMap<number, number>;
+  open: boolean;
+  busy: boolean;
+  activeShift: string | null;
+  onToggle: (phone: number) => void;
+}) {
+  const [expanded, setExpanded] = useState<number | null>(null);
+  if (!phones.length) return <p>{activeShift ? 'Este turno no tiene cuentas con teléfono.' : 'Cuando haya un turno en línea, acá aparecen solo sus cuentas.'}</p>;
+  return <div className="sac-phone-list" role="list" aria-label={`Teléfonos de SAC ${stationNumber}`}>
+    {phones.map(phone => {
+      const owner = owners.get(phone.phone) ?? null;
+      const selected = owner === stationNumber;
+      const takenBy = owner !== null && owner !== stationNumber ? owner : null;
+      const isOpen = expanded === phone.phone;
+      const accounts = phone.accounts ?? [];
+      const panelId = `sac-${stationNumber}-phone-${phone.phone}`;
+      return <article className={`sac-phone-fold${selected ? ' is-selected' : ''}${takenBy !== null ? ' is-taken' : ''}`} key={phone.phone} role="listitem">
+        <div className="sac-phone-fold-bar">
+          <button type="button" className="sac-phone-fold-toggle" aria-expanded={isOpen} aria-controls={panelId} onClick={() => setExpanded(isOpen ? null : phone.phone)}>
+            <span className="sac-phone-index" aria-hidden="true">{phone.phone}</span>
+            <span className="sac-phone-copy"><strong>Teléfono {phone.phone}</strong><small>{accounts.length ? accountCount(phone) : phone.holders.join(', ') || accountCount(phone)}</small></span>
+            <ChevronDown size={18} className={isOpen ? 'is-open' : ''} aria-hidden="true" />
+          </button>
+          <button type="button" className="sac-phone-choose" aria-pressed={selected} disabled={busy || !open || takenBy !== null} onClick={() => { setExpanded(phone.phone); onToggle(phone.phone); }}>
+            {takenBy !== null ? `SAC ${takenBy}` : selected ? 'En este SAC' : 'Elegir'}
+          </button>
+        </div>
+        {isOpen ? <div id={panelId} className="sac-phone-accounts">
+          {accounts.length ? <div className="withdrawal-source-grid">{accounts.map(account => {
+            const badge = sacAccountBadge(account, activeShift);
+            return <article className="withdrawal-source-card" key={account.id}>
+              <BankTransferCard bank={cardBank(account)} compact />
+              <div className={`withdrawal-source-state sac-account-state is-${badge.tone}${badge.tone === 'paused' ? ' is-cooling' : ''}`}><span>{badge.label}</span></div>
+            </article>;
+          })}</div> : <p>{phone.holders.join(', ') || 'Este teléfono no tiene cuentas cargadas.'}</p>}
+        </div> : null}
+      </article>;
+    })}
+  </div>;
+}
+
 function SacCard({
-  station, phones, owners, local, busy, onUseHere, onStart, onEnd, onToggle,
+  station, phones, owners, local, busy, activeShift, onUseHere, onStart, onEnd, onToggle,
 }: {
   station: SacStation;
   phones: readonly SacPhoneOption[];
   owners: ReadonlyMap<number, number>;
   local: boolean;
   busy: boolean;
+  activeShift: string | null;
   onUseHere: () => void;
   onStart: (name: string) => void;
   onEnd: () => void;
@@ -40,24 +107,13 @@ function SacCard({
       <label>Nombre<input name="operator_name" maxLength={40} placeholder="Ejemplo: Max" autoComplete="name" /></label>
       <button type="submit" disabled={busy}>Iniciar turno</button>
     </form>}
-    {open ? <p>Elegí los teléfonos de este SAC.</p> : <p>Iniciá el turno para elegir teléfonos. Los que ya están quedan en este SAC.</p>}
-    <div className="sac-phone-list" role="group" aria-label={`Teléfonos de SAC ${station.number}`}>
-      {phones.length ? phones.map(phone => {
-        const owner = owners.get(phone.phone) ?? null;
-        const selected = owner === station.number;
-        const takenBy = owner !== null && owner !== station.number ? owner : null;
-        return <button type="button" key={phone.phone} className={selected ? 'selected' : ''} aria-pressed={selected} disabled={busy || !open || takenBy !== null} onClick={() => onToggle(phone.phone)}>
-          <strong>Teléfono {phone.phone}</strong>
-          <small>{phone.holders.join(', ') || 'Sin titular'}</small>
-          {takenBy !== null ? <em>SAC {takenBy}</em> : phone.on_shift === false ? <em>En otro turno</em> : phone.active_count === 0 ? <em>Sin cuentas activas</em> : null}
-        </button>;
-      }) : <p>Guardá el número en cada cuenta, desde Cuentas, para ver los teléfonos acá.</p>}
-    </div>
+    {open ? <p>Abrí un teléfono para ver sus cuentas y elegilo para este SAC.</p> : <p>Iniciá el turno para elegir teléfonos. Los que ya están quedan en este SAC.</p>}
+    <SacPhoneList stationNumber={station.number} phones={phones} owners={owners} open={open} busy={busy} activeShift={activeShift} onToggle={onToggle} />
   </article>;
 }
 
 export function SacBoard({
-  demo, busy, action, scope, station, onStation,
+  demo, busy, action, scope, station, onStation, liveShift,
 }: {
   demo: boolean;
   busy: boolean;
@@ -65,10 +121,13 @@ export function SacBoard({
   scope: 'all' | 'local';
   station: number | null;
   onStation: (station: number) => void;
+  liveShift?: string | null;
 }) {
   const [stations, setStations] = useState<SacStation[]>(() => stationsOrDefaults([]));
   const [phones, setPhones] = useState<SacPhoneOption[]>(demo ? demoSacPhones : []);
-  const [activeShift, setActiveShift] = useState<string | null>(demo ? 'morning' : null);
+  const [loadedShift, setLoadedShift] = useState<string | null>(demo ? 'morning' : null);
+  const activeShift = liveShift === undefined ? loadedShift : liveShift;
+  const shownPhones = phonesForShift(phones, activeShift);
   const [loading, setLoading] = useState(!demo && !!supabase);
   const [loadError, setLoadError] = useState('');
   const [notice, setNotice] = useState('');
@@ -78,14 +137,23 @@ export function SacBoard({
   const reload = useCallback(async () => {
     if (demo || !supabase) return;
     const db = supabase;
-    const [boardResult, accountResult] = await Promise.all([
+    const [boardResult, accountResult, themeResult, statusResult] = await Promise.all([
       db.rpc('get_sac_board'),
-      db.from('bank_accounts').select('phone_number,holder,active,shift_key'),
+      db.from('bank_accounts').select('id,bank,holder,cbu,alias,theme_key,active,shift_key,phone_number'),
+      db.from('bank_themes').select('key,background_path,logo_path'),
+      db.rpc('get_bank_operation_status').single(),
     ]);
     if (boardResult.error) throw boardResult.error;
     const board = readSacBoard(boardResult.data);
-    const listed = accountResult.error || !accountResult.data ? [] : phonesFromAccounts(accountResult.data, board.active_shift);
-    setActiveShift(board.active_shift);
+    const operation = statusResult.error ? null : statusResult.data as { active_shift_key?: string | null } | null;
+    const shift = typeof operation?.active_shift_key === 'string' ? operation.active_shift_key : board.active_shift;
+    const themes = new Map((themeResult.error ? [] : themeResult.data ?? []).map(theme => [String(theme.key), theme]));
+    const rows = (accountResult.error ? [] : accountResult.data ?? []).map(row => {
+      const theme = themes.get(String(row.theme_key ?? ''));
+      return { ...row, theme_background_path: theme?.background_path ?? null, theme_logo_path: theme?.logo_path ?? null };
+    });
+    const listed = rows.length ? phonesFromAccounts(rows, shift) : [];
+    setLoadedShift(shift);
     setStations(stationsOrDefaults(board.stations));
     setPhones(mergePhoneOptions(listed, board.phones));
     setLoadError('');
@@ -102,6 +170,7 @@ export function SacBoard({
     const channel = db.channel(`sac-board-${scope}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sac_stations' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sac_phones' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bank_operation_state' }, load)
       .subscribe();
     return () => { alive = false; void db.removeChannel(channel); };
   }, [demo, reload, scope]);
@@ -169,7 +238,7 @@ export function SacBoard({
     <div className="account-heading">
       <div>
         <h2 id={scope === 'all' ? 'sac-title' : undefined}>{scope === 'all' ? 'Puestos SAC' : 'SAC de esta computadora'}</h2>
-        <p>{activeShift ? `El turno en línea es ${shiftName(activeShift)}. Elegí los teléfonos físicos: cada número junta las cuentas que lo tienen.` : 'No hay un turno en línea. Podés abrir el puesto y elegir teléfonos.'} Hasta que un SAC tenga teléfonos, los jugadores siguen recibiendo cualquier cuenta activa del turno.</p>
+        <p>{activeShift ? `El turno en línea es ${shiftName(activeShift)}. Cada teléfono muestra solo las cuentas de ese turno.` : 'No hay un turno en línea. Cuando se active, cada teléfono muestra solo las cuentas de ese turno.'} Hasta que un SAC tenga teléfonos, los jugadores siguen recibiendo cualquier cuenta activa del turno.</p>
       </div>
     </div>
     {loadError ? <div className="alert error" role="alert">{loadError}</div> : null}
@@ -178,7 +247,7 @@ export function SacBoard({
       {stations.map(item => <button type="button" key={item.number} className={station === item.number ? 'active' : ''} aria-pressed={station === item.number} onClick={() => onStation(item.number)}>SAC {item.number}</button>)}
     </div> : null}
     {loading ? <p className="empty">Cargando SAC…</p> : scope === 'local' && !station ? <p className="empty">Elegí el SAC de esta computadora para ver sus cargas.</p> : <div className="sac-grid">
-      {visible.map(item => <SacCard key={item.number} station={item} phones={phones} owners={owners} local={station === item.number} busy={busy} onUseHere={() => onStation(item.number)} onStart={name => start(item.number, name)} onEnd={() => end(item.number)} onToggle={phone => toggle(item.number, phone)} />)}
+      {visible.map(item => <SacCard key={item.number} station={item} phones={shownPhones} owners={owners} local={station === item.number} busy={busy} activeShift={activeShift} onUseHere={() => onStation(item.number)} onStart={name => start(item.number, name)} onEnd={() => end(item.number)} onToggle={phone => toggle(item.number, phone)} />)}
     </div>}
   </section>;
 }

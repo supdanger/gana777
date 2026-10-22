@@ -622,6 +622,14 @@
   box-shadow: 0 12px 30px #01090f1f, inset 0 1px #ffffff08;
 }
 .cashier-create, .player-create, .contact-settings-card, .principal-create, .bonus-create, .account-create { gap: 16px; padding: 20px; }
+.admin-content .account-create { gap: 12px; padding: 14px 16px; }
+.account-create-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(180px, .85fr); gap: 10px 12px; }
+.account-create-grid label { min-width: 0; }
+.account-create label span { color: #8eabc4; font-size: 11px; font-weight: 560; }
+.admin-content .account-create input,
+.admin-content .account-create select { min-height: 40px; }
+.account-create label.account-create-check { display: flex; align-items: center; align-self: end; gap: 8px; min-height: 40px; margin: 0; font-weight: 650; }
+.admin-content .account-create-check input { width: 18px; height: 18px; min-height: 0; margin: 0; flex: 0 0 auto; accent-color: #38d6ff; }
 .cashier-card, .player-card, .principal-card, .bonus-offer, .account-offer { box-shadow: 0 8px 22px #01090f1a; }
 .cashier-card-header, .player-card-header, .player-card-actions, .cashier-card-actions,
 .player-edit-form, .player-password-form, .principal-card > form, .principal-actions { border-color: var(--panel-border-soft); }
@@ -1203,58 +1211,27 @@
   .admin .bonus-counter-grid .card { min-height: 95px; padding: 13px; }
 }
 
-/* Tarjetas bancarias con el mismo arte que aparece en Retiros. */
-.account-offers { grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap: 14px; }
+/* En Cuentas se usa la misma tarjeta compacta de Retiros, un poco más larga para que el banner se vea entero. */
+.account-offers { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+.account-offer .withdrawal-source-card .bank-transfer-card { aspect-ratio: 1179 / 580; min-height: 168px; height: auto; }
+.account-offer .withdrawal-source-card .bank-theme-art { background-size: cover; background-position: center; }
 .admin-content .account-offer {
-  display: block;
+  display: grid;
+  gap: 8px;
   min-width: 0;
   min-height: 0;
-  overflow: visible;
   padding: 0;
   border: 0;
-  border-radius: 12px;
+  border-radius: 0;
   background: transparent;
   box-shadow: none;
 }
-.account-offer.editing { outline: 2px solid #38d6ff; outline-offset: 3px; }
-.account-offer-banner { position: relative; min-width: 0; min-height: 248px; overflow: hidden; border: 1px solid #294252; border-radius: 12px; background: #07131d; isolation: isolate; }
-.account-offer-banner .bank-transfer-card {
-  position: absolute;
-  z-index: 0;
-  inset: 0;
-  min-height: 0;
-  overflow: hidden;
-  border: 0;
-  border-radius: inherit;
-  background: transparent;
-}
-.account-offer-banner .bank-theme-art,
-.account-offer-banner .bank-theme-overlay { position: absolute; z-index: 0; inset: 0; pointer-events: none; }
-.account-offer-banner .bank-theme-art { background-position: top center; background-size: 100% auto; background-repeat: no-repeat; }
-.account-offer-banner .bank-theme-overlay { background: linear-gradient(180deg, #06152008 0 34%, #0615207d 46%, #07131df2 61%, #07131d 100%); }
-.account-offer-banner .bank-transfer-content.has-art { position: absolute; z-index: 1; inset: 0; display: block; min-height: 0; padding: 0; }
-.account-offer-banner .bank-compact-details { position: absolute; top: 64px; right: 12px; left: 12px; display: grid; gap: 2px; min-width: 0; }
-.account-offer-banner .bank-compact-details strong,
-.account-offer-banner .bank-compact-details span { overflow: hidden; color: #f2faff; font-size: 11px; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
-.account-offer-banner .bank-compact-details small { color: #b4ccdb; font-size: 10px; line-height: 1.15; }
-.account-offer-management { position: absolute; z-index: 2; right: 12px; bottom: 10px; left: 12px; display: grid; gap: 9px; min-width: 0; }
-.account-offer-details { display: grid; gap: 4px; min-width: 0; }
-.account-offer-details > span { overflow-wrap: anywhere; color: #dceaf5; font-size: 10px; line-height: 1.25; font-variant-numeric: tabular-nums; }
-.account-offer-statusline { display: flex; align-items: center; gap: 8px; }
-.account-offer-statusline small { color: #a8bfd0; font-size: 10px; }
-.account-offer-state { display: inline-flex; align-items: center; width: fit-content; min-height: 20px; padding: 2px 8px; border: 1px solid #20a977; border-radius: 999px; background: #073b34e8; color: #83f2c2; font-size: 9px; font-weight: 800; line-height: 1.1; }
-.account-offer-state.paused { border-color: #a16d32; background: #3a2e21ed; color: #ffd28c; }
-.admin-content .account-offer-actions { justify-content: flex-start; gap: 7px; }
-.admin-content .account-offer-actions button { min-height: 34px; padding: 6px 10px; border-color: #354f61; border-radius: 8px; background: #0b1d2a; font-size: 12px; }
-.admin-content .account-offer-actions button:hover { border-color: #168ee8; background: #123149; }
+.account-offer.editing { outline: 2px solid #38d6ff; outline-offset: 3px; border-radius: 12px; }
 .account-offer.inactive { opacity: 1; }
 .account-offer.inactive .bank-theme-art { filter: saturate(.45) brightness(.72); }
-@media (max-width: 420px) {
-  .account-offer-banner { min-height: 250px; }
-  .account-offer-banner .bank-compact-details { top: 60px; }
-  .account-offer-management { right: 9px; left: 9px; }
-  .admin-content .account-offer-actions button { flex: 1; padding-inline: 7px; }
-}
+.admin-content .account-offer-actions { display: flex; justify-content: stretch; gap: 6px; }
+.admin-content .account-offer-actions button { flex: 1; min-height: 32px; padding: 6px 8px; border-color: #354f61; border-radius: 8px; background: #0b1d2a; font-size: 11px; }
+.admin-content .account-offer-actions button:hover { border-color: #168ee8; background: #123149; }
 .access-admin { display: grid; gap: 14px; min-width: 0; }
 .access-admin-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .access-admin-heading h1 { margin: 0; background: linear-gradient(145deg, #38ffff, #00adfa 45%, #0651ff); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
@@ -1275,6 +1252,13 @@
 .access-admin-list > p { margin: 0; padding: 18px 14px; color: var(--panel-muted); font-size: 12px; text-align: center; }
 .access-admin-item { display: grid; grid-template-columns: 36px minmax(0,1fr) auto; align-items: center; gap: 9px; width: 100%; min-height: 68px; padding: 9px 11px; border: 0; border-bottom: 1px solid #233b4b; border-radius: 0; background: transparent; text-align: left; }
 .access-admin-item:hover, .access-admin-item.active { background: #142c3c; }
+.access-admin-item.is-ip-blocked { background: #2a1620; box-shadow: inset 3px 0 #ff5d6c; }
+.access-admin-item.is-ip-blocked:hover, .access-admin-item.is-ip-blocked.active { background: #3a1c2a; }
+.access-admin-item.is-ip-blocked small { color: #ffb7c4; }
+.access-admin-inbox > small .is-alert { color: #ffb7c4; font-style: normal; font-weight: 700; }
+.access-admin-ip-alert { margin: 0; padding: 12px 15px; border-bottom: 1px solid #8a4454; background: #301820; color: #ffd5dc; font-size: 12px; line-height: 1.45; }
+.access-admin-ip-actions { padding: 0 14px 14px; }
+.access-admin-ip-actions button { border-color: #684452; background: #291923; color: #f0bbcc; }
 .access-admin-avatar { display: grid; place-items: center; width: 35px; height: 35px; border: 1px solid #38799c; border-radius: 50%; background: #103049; color: #85dfff; }
 .access-admin-item > span:nth-child(2) { display: grid; min-width: 0; gap: 3px; }
 .access-admin-item strong { color: #eff6fa; font-size: 12px; }
@@ -1343,6 +1327,7 @@
 .platform-admin-search input { min-width: 0; min-height: 36px; margin: 0; padding: 7px; font-size: 11px; }
 .platform-admin-search button { min-height: 36px; padding: 6px 9px; font-size: 11px; }
 .platform-admin-hint { margin: 0; padding: 0 13px 10px; color: var(--panel-muted); font-size: 10px; }
+.platform-ip-alert { margin: 0; padding: 12px 16px; border-bottom: 1px solid #8a4454; background: #301820; color: #ffd5dc; font-size: 12px; line-height: 1.45; }
 .platform-admin-detail { min-width: 0; overflow: hidden; border: 1px solid var(--panel-border); border-radius: 14px; background: #090f14; }
 .platform-admin-placeholder { display: grid; min-height: 320px; place-content: center; justify-items: center; padding: 24px; text-align: center; }
 .platform-admin-placeholder svg { color: #7bd5fa; }
@@ -1431,28 +1416,48 @@
 .account-phone-group h2 { margin: 0; color: #fff; font-size: 16px; }
 .account-phone-group header p, .sac-board p, .sac-card p { margin: 0; color: #9cb9e6; font-size: 12px; }
 .account-phone-group.unassigned h2 { color: #ffd28c; }
-.account-offer-statusline { flex-wrap: wrap; }
 .sac-board { display: grid; gap: 12px; }
 .sac-board h2 { margin: 0; color: #fff; font-size: 18px; }
 .sac-picker, .sac-grid { display: grid; gap: 8px; }
 .sac-picker { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-.sac-picker button, .sac-card header button, .sac-start button, .sac-operator button, .sac-phone { background: #000; color: #fff; border-color: #24517d; }
-.sac-picker button.active, .sac-card header button.active, .sac-phone.selected { border-color: #08b98a; color: #8ef0c8; background: #04261c; }
+.sac-picker button, .sac-card header button, .sac-start button, .sac-operator button { background: #000; color: #fff; border-color: #24517d; }
+.sac-picker button.active, .sac-card header button.active { border-color: #08b98a; color: #8ef0c8; background: #04261c; }
 .sac-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
 .sac-card { display: grid; gap: 10px; padding: 14px; border: 1px solid #24517d; border-radius: 10px; background: #000; }
 .sac-card.open { border-color: #08b98a; }
 .sac-card.local { box-shadow: inset 0 0 0 1px #08b98a; }
 .sac-card header, .sac-operator, .sac-start { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.sac-card header small, .sac-operator small, .sac-phone small, .sac-phone em { display: block; color: #7895b9; font-size: 10px; font-style: normal; }
+.sac-card header small, .sac-operator small { display: block; color: #7895b9; font-size: 10px; font-style: normal; }
 .sac-card.open header small { color: #60e2b2; }
-.sac-card header strong, .sac-operator strong, .sac-phone strong { color: #fff; }
+.sac-card header strong, .sac-operator strong { color: #fff; }
 .sac-start { align-items: end; }
 .sac-start label { display: grid; flex: 1; gap: 6px; color: #d7e7ff; font-size: 12px; font-weight: 700; }
-.sac-phone-list { display: flex; flex-wrap: wrap; gap: 8px; }
-.sac-phone { display: grid; min-width: 132px; gap: 2px; padding: 8px 10px; text-align: left; }
-.sac-phone:disabled { opacity: .55; }
+.sac-phone-list { display: grid; gap: 8px; }
+.sac-phone-fold { display: grid; gap: 0; overflow: hidden; padding: 0; border: 1px solid #24517d; border-radius: 12px; background: #07141e; }
+.sac-phone-fold.is-selected { border-color: #08b98a; }
+.sac-phone-fold-bar { display: grid; grid-template-columns: minmax(0, 1fr) 108px; align-items: stretch; min-height: 62px; }
+.admin-content .sac-phone-fold-toggle,
+.admin-content .sac-phone-choose { border-radius: 0; }
+.admin-content .sac-phone-fold-toggle { display: grid; grid-template-columns: 32px minmax(0, 1fr) 18px; align-items: center; gap: 10px; width: 100%; min-height: 62px; margin: 0; padding: 8px 10px; border: 0; background: transparent; color: inherit; text-align: left; }
+.admin-content .sac-phone-fold-toggle:hover { border-color: transparent; background: #0c2230; }
+.sac-phone-index { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; background: #10283a; color: #8ecfff; font-size: 14px; font-weight: 800; }
+.sac-phone-fold.is-selected .sac-phone-index { background: #123c34; color: #8bf1c5; }
+.sac-phone-copy { display: grid; gap: 1px; min-width: 0; }
+.sac-phone-copy strong { overflow: hidden; color: #fff; font-size: 14px; font-weight: 800; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
+.sac-phone-copy small { overflow: hidden; color: #8eabc4; font-size: 11px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.sac-phone-fold-toggle svg { color: #9db9ca; transition: transform .18s ease; }
+.sac-phone-fold-toggle svg.is-open { transform: rotate(180deg); }
+.admin-content .sac-phone-choose { display: grid; place-items: center; width: 100%; height: 100%; min-height: 62px; margin: 0; padding: 8px 8px; border: 0; border-left: 1px solid #24517d; background: #0c1c28; color: #d7e7ff; font-size: 11px; font-weight: 800; line-height: 1.15; text-align: center; white-space: normal; }
+.admin-content .sac-phone-choose:hover:not(:disabled) { border-color: #24517d; border-left-color: #3d8ec4; background: #123049; }
+.admin-content .sac-phone-choose:disabled { opacity: 1; }
+.sac-phone-fold.is-selected .sac-phone-choose { border-left-color: #08b98a; background: #0d3b31; color: #8bf1c5; }
+.sac-phone-fold.is-taken .sac-phone-choose { border-left-color: #5a4630; background: #24180f; color: #ffd28c; }
+.sac-phone-accounts { display: grid; gap: 8px; padding: 0 8px 8px; }
+.sac-phone-accounts > p { margin: 0; }
+.withdrawal-source-state.sac-account-state.is-other { border-color: #3d6f9a; background: #123049e8; color: #9ad7ff; }
 .request-route { color: #72dfff; }
 @media (max-width: 720px) {
+  .account-create-grid { grid-template-columns: minmax(0, 1fr); }
   .sac-picker { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .sac-card header, .sac-operator, .sac-start { align-items: stretch; flex-direction: column; }
   .sac-card header button, .sac-operator button, .sac-start button { width: 100%; }

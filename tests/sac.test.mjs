@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { InputError } from '../supabase/functions/_shared/validation.ts';
 import {
   depositRouteLabel, formatPhoneList, groupAccountsByPhone, mergePhoneOptions, parseOperatorName, parsePhoneNumber,
-  parseSacStation, phonesFromAccounts, readSacBoard, sacShiftMessage, scopedDepositFilter, stationsOrDefaults, telegramShiftSentence,
+  parseSacStation, phonesForShift, phonesFromAccounts, readSacBoard, sacAccountBadge, sacShiftMessage, scopedDepositFilter, stationsOrDefaults, telegramShiftSentence,
 } from '../src/sac.ts';
 
 test('formats the telegram shift messages', () => {
@@ -79,9 +79,9 @@ test('lists every numbered phone, including accounts from another cash shift', (
     { phone_number: 99, holder: 'Fuera', active: true, shift_key: 'morning' },
   ], 'morning');
   assert.deepEqual(phones, [
-    { phone: 1, holders: ['Muñoz', 'Pérez'], active_count: 1, on_shift: true },
-    { phone: 2, holders: ['Día'], active_count: 1, on_shift: true },
-    { phone: 4, holders: ['Bazan'], active_count: 0, on_shift: false },
+    { phone: 1, holders: ['Muñoz', 'Pérez'], active_count: 1, on_shift: true, accounts: [] },
+    { phone: 2, holders: ['Día'], active_count: 1, on_shift: true, accounts: [] },
+    { phone: 4, holders: ['Bazan'], active_count: 0, on_shift: false, accounts: [] },
   ]);
   assert.deepEqual(mergePhoneOptions(
     [{ phone: 4, holders: ['Bazan'], active_count: 0, on_shift: false }],
@@ -90,4 +90,22 @@ test('lists every numbered phone, including accounts from another cash shift', (
     { phone: 1, holders: ['Muñoz'], active_count: 1 },
     { phone: 4, holders: ['Bazan'], active_count: 0, on_shift: false },
   ]);
+});
+
+test('arma las tarjetas del teléfono y un estado útil para cada cuenta', () => {
+  const phones = phonesFromAccounts([
+    { id: 'a', phone_number: 1, bank: 'Banco Galicia', holder: 'Muñoz', alias: 'munos', cbu: '11112222333344441234', theme_key: 'galicia', active: true, shift_key: 'morning' },
+    { id: 'b', phone_number: 1, bank: 'Lemon', holder: 'Bazan', alias: 'bazan', cbu: '11112222333344441233', theme_key: 'lemon', active: false, shift_key: 'morning' },
+    { id: 'c', phone_number: 4, bank: 'Mercado Pago', holder: 'Max', alias: 'max.mp', cbu: '11112222333344441254', theme_key: 'mercado-pago', active: true, shift_key: 'night' },
+  ], 'morning');
+  assert.deepEqual(phones[0].accounts.map(account => account.holder), ['Bazan', 'Muñoz']);
+  assert.equal(phones[0].accounts[1].theme_key, 'galicia');
+  assert.deepEqual(sacAccountBadge(phones[0].accounts[1], 'morning'), { label: 'Recibe cargas', tone: 'ready' });
+  assert.deepEqual(sacAccountBadge(phones[0].accounts[0], 'morning'), { label: 'Pausada', tone: 'paused' });
+  assert.deepEqual(sacAccountBadge(phones[1].accounts[0], 'morning'), { label: 'Turno noche', tone: 'other' });
+  const afternoon = phonesForShift(phones, 'afternoon');
+  assert.deepEqual(afternoon, []);
+  const morning = phonesForShift(phones, 'morning');
+  assert.deepEqual(morning.map(phone => [phone.phone, phone.accounts.map(account => account.holder)]), [[1, ['Bazan', 'Muñoz']]]);
+  assert.deepEqual(phonesForShift(phones, null), []);
 });

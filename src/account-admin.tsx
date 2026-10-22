@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { Clock3 } from 'lucide-react';
 import { assertFormFields, InputError, parseAlias, parseBank, parseCbu, parseHolder } from '../supabase/functions/_shared/validation';
 import { supabase, type Bank } from './lib';
 import { groupAccountsByPhone, parsePhoneNumber } from './sac';
@@ -138,14 +139,16 @@ export function AccountAdmin({ demo, busy, action }: { demo: boolean; busy: bool
     <form className="account-create" key={editing?.id ?? `new-${selectedShift}`} onSubmit={saveAccount}>
       <p>{demo ? previewNotice : editing ? 'Editando esta cuenta.' : `Nueva cuenta para ${shiftLabel[selectedShift].toLowerCase()}.`}</p>
       <input type="hidden" name="shift_key" value={editing?.shift_key ?? selectedShift} />
-      <label>Banco<input name="bank" maxLength={80} placeholder="Ejemplo: Mercado Pago" defaultValue={editing?.bank ?? ''} required /></label>
-      <label>Diseño de la tarjeta<select name="theme_key" defaultValue={editing?.theme_key ?? 'default'}>{Object.values(bankThemeRegistry).map(theme => <option value={theme.key} key={theme.key}>{theme.name}</option>)}</select></label>
-      <label>Banner del diseño <span>(opcional; los diseños de entidades incluyen su propio banner)</span><input name="theme_banner" type="file" accept="image/jpeg,image/png,image/webp" /></label>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}><input name="included_banner" type="checkbox" value="1" style={{ width: 20, minHeight: 20, flexShrink: 0 }} />Reemplazar el banner actual por el incluido del diseño</label>
-      <label>Titular<input name="holder" maxLength={120} autoComplete="name" placeholder="Nombre y apellido" defaultValue={editing?.holder ?? ''} required /></label>
-      <label>CBU / CVU<input name="cbu" inputMode="decimal" pattern="[0-9. \-]{22,34}" maxLength={34} placeholder="22 números, con o sin puntos" autoCapitalize="none" spellCheck={false} defaultValue={editing?.cbu ?? ''} required /></label>
-      <label>Alias<input name="alias" maxLength={20} autoCapitalize="none" spellCheck={false} placeholder="tu.alias" defaultValue={editing?.alias ?? ''} required /></label>
-      <label>Teléfono<input name="phone_number" type="number" min={1} max={30} step={1} inputMode="numeric" placeholder="1" defaultValue={editing?.phone_number ?? ''} required /></label>
+      <div className="account-create-grid">
+        <label>Banco<input name="bank" maxLength={80} placeholder="Ejemplo: Mercado Pago" defaultValue={editing?.bank ?? ''} required /></label>
+        <label>Diseño<select name="theme_key" defaultValue={editing?.theme_key ?? 'default'}>{Object.values(bankThemeRegistry).map(theme => <option value={theme.key} key={theme.key}>{theme.name}</option>)}</select></label>
+        <label>Titular<input name="holder" maxLength={120} autoComplete="name" placeholder="Nombre y apellido" defaultValue={editing?.holder ?? ''} required /></label>
+        <label>Teléfono<input name="phone_number" type="number" min={1} max={30} step={1} inputMode="numeric" placeholder="1" defaultValue={editing?.phone_number ?? ''} required /></label>
+        <label>CBU / CVU<input name="cbu" inputMode="decimal" pattern="[0-9. \-]{22,34}" maxLength={34} placeholder="22 números" autoCapitalize="none" spellCheck={false} defaultValue={editing?.cbu ?? ''} required /></label>
+        <label>Alias<input name="alias" maxLength={20} autoCapitalize="none" spellCheck={false} placeholder="tu.alias" defaultValue={editing?.alias ?? ''} required /></label>
+        <label>Banner <span>Opcional. Si no subís uno, queda el del diseño.</span><input name="theme_banner" type="file" accept="image/jpeg,image/png,image/webp" /></label>
+        <label className="account-create-check"><input name="included_banner" type="checkbox" value="1" />Usar el banner incluido del diseño</label>
+      </div>
       <div className="account-form-actions">
         <button type="submit" disabled={busy || loading}>{busy ? 'Guardando…' : editing ? 'Guardar cambios' : `Agregar a ${shiftLabel[selectedShift]}`}</button>
         {editing && <button type="button" disabled={busy} onClick={() => setEditingId(null)}>Cancelar</button>}
@@ -155,16 +158,14 @@ export function AccountAdmin({ demo, busy, action }: { demo: boolean; busy: bool
       <header><h2>{group.phone === null ? 'Sin teléfono' : `Teléfono ${group.phone}`}</h2><p>{group.phone === null ? 'Poneles un número para poder elegirlas en un SAC.' : `${group.items.length} ${group.items.length === 1 ? 'cuenta' : 'cuentas'}`}</p></header>
       <div className="account-offers">
       {group.items.map(account => <article className={`account-offer${account.active ? '' : ' inactive'}${editing?.id === account.id ? ' editing' : ''}`} key={account.id}>
-        <div className="account-offer-banner">
+        <div className="withdrawal-source-card">
           <BankTransferCard bank={account} compact />
-          <div className="account-offer-management">
-            <div className="account-offer-details"><span>CBU/CVU · {account.cbu}</span><div className="account-offer-statusline"><strong className={`account-offer-state${account.active ? '' : ' paused'}`}>{account.active ? 'Disponible' : 'Pausada'}</strong><small>{account.phone_number ? `Teléfono ${account.phone_number}` : 'Sin teléfono'}</small><small>{account.usage_count} usos confirmados</small></div></div>
-            <div className="account-offer-actions">
-              <button type="button" disabled={busy} onClick={() => { setEditingId(account.id); document.getElementById('account-title')?.scrollIntoView({ block: 'start' }); }}>Editar</button>
-              <button type="button" disabled={busy} onClick={() => void toggleAccount(account)}>{account.active ? 'Pausar' : 'Habilitar'}</button>
-              <button type="button" disabled={busy} onClick={() => void removeAccount(account)}>Eliminar</button>
-            </div>
-          </div>
+          <div className={`withdrawal-source-state${account.active ? '' : ' is-cooling'}`}>{account.active ? <Clock3 size={15} /> : null}<span>{account.active ? 'Disponible' : 'Pausada'}</span></div>
+        </div>
+        <div className="account-offer-actions">
+          <button type="button" disabled={busy} onClick={() => { setEditingId(account.id); document.getElementById('account-title')?.scrollIntoView({ block: 'start' }); }}>Editar</button>
+          <button type="button" disabled={busy} onClick={() => void toggleAccount(account)}>{account.active ? 'Pausar' : 'Habilitar'}</button>
+          <button type="button" disabled={busy} onClick={() => void removeAccount(account)}>Eliminar</button>
         </div>
       </article>)}
       </div>
