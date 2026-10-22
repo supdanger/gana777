@@ -494,6 +494,18 @@ a.social.instagram:hover { border-color: #ff8ab8; }
 .user-app.page-chat .message small { color: #96adbf; }
 .user-app.page-chat .composer { margin: 0; padding: 8px; border: 1px solid var(--portal-border); border-radius: 12px; background: #0d2131; box-shadow: 0 8px 20px #0004; }
 .user-app.page-chat .composer input { min-height: 52px; padding: 13px 17px; border: 1px solid #38566e; border-radius: 26px; background: #091923; }
+.chat-file-input { display: none !important; }
+.chat-image { display: block; margin-top: 3px; line-height: 0; }
+.chat-image img { display: block; width: auto; max-width: min(280px, 65vw); max-height: 320px; border-radius: 9px; object-fit: contain; }
+.chat-image-loading, .chat-image-error { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.chat-image-preview { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 7px; border: 1px solid #315970; border-radius: 9px; background: #0a2332; color: #bdd7e7; font-size: 12px; }
+.chat-image-preview img { width: 44px; height: 44px; flex: 0 0 auto; border-radius: 6px; object-fit: cover; }
+.chat-image-preview span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-image-preview button { flex: 0 0 auto; min-height: 30px; padding: 5px; }
+.user-app.page-chat .chat-composer { flex-wrap: wrap; align-items: center; }
+.user-app.page-chat .chat-composer .chat-image-preview { flex-basis: 100%; }
+.user-app.page-chat .chat-composer input[name="message"] { width: auto; min-width: 0; flex: 1; }
+.user-app.page-chat .chat-gallery-button { flex: 0 0 auto; min-height: 48px; padding: 10px; border: 1px solid #315970; border-radius: 10px; color: #90dbf6; }
 .user-app.page-chat .send { width: 52px; height: 52px; min-height: 52px; border: 1px solid #278ed7; background: var(--portal-accent); color: #fff; }
 .user-app.page-chat footer { margin: 10px 0 0; }
 

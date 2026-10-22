@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { ArrowLeft, Check, CircleCheck, Copy, MessageCircle, RotateCcw, Search, Send } from 'lucide-react';
+import { ArrowLeft, Check, CircleCheck, Copy, Images, MessageCircle, RotateCcw, Search, Send, X } from 'lucide-react';
 import { date, supabase, type Message } from './lib';
+import { ChatImage, removeChatImage, uploadChatImage, useChatImagePreview } from './chat-images';
 import { needsChatReply, pendingChatCount } from './admin-navigation';
 import { parseMessage, parseUuid } from '../supabase/functions/_shared/validation';
 import { publicError } from './security';
@@ -33,6 +34,9 @@ export function AdminChat({ inbox, selectedId, demo, onSelect, onChanged }: {
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [sending, setSending] = useState(false);
+  const [image, setImage] = useState<File | null>(null);
+  const imagePreview = useChatImagePreview(image);
+  const imageInput = useRef<HTMLInputElement>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -54,8 +58,9 @@ export function AdminChat({ inbox, selectedId, demo, onSelect, onChanged }: {
     const db = supabase;
     let alive = true;
     stickToBottom.current = true;
-    setMessages([]); setHasMore(false); setLoading(true); setError(''); setNotice(''); setCopied(false);
-    void db.from('messages').select('id,user_id,sender_id,body,created_at')
+    setMessages([]); setHasMore(false); setLoading(true); setError(''); setNotice(''); setCopied(false); setImage(null);
+    if (imageInput.current) imageInput.current.value = '';
+    void db.from('messages').select('id,user_id,sender_id,body,attachment_path,created_at')
       .eq('user_id', selectedId).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(PAGE_SIZE)
       .then(({ data, error: loadError }) => {
         if (!alive) return;
@@ -88,7 +93,7 @@ export function AdminChat({ inbox, selectedId, demo, onSelect, onChanged }: {
     const oldest = messages[0];
     const viewport = messageLog.current;
     const previousHeight = viewport?.scrollHeight ?? 0;
-    const result = await supabase.from('messages').select('id,user_id,sender_id,body,created_at')
+    const result = await supabase.from('messages').select('id,user_id,sender_id,body,attachment_path,created_at')
       .eq('user_id', selectedId)
       .or(`created_at.lt.${oldest.created_at},and(created_at.eq.${oldest.created_at},id.lt.${oldest.id})`)
       .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(PAGE_SIZE);
@@ -104,7 +109,7 @@ export function AdminChat({ inbox, selectedId, demo, onSelect, onChanged }: {
   function onComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault();
-      if (!sending && !demo && event.currentTarget.value.trim()) event.currentTarget.form?.requestSubmit();
+      if (!sending && !demo && (event.currentTarget.value.trim() || image)) event.currentTarget.form?.requestSubmit();
     }
   }
 
@@ -114,16 +119,26 @@ export function AdminChat({ inbox, selectedId, demo, onSelect, onChanged }: {
     const form = event.currentTarget;
     setSending(true); setError(''); setNotice('');
     try {
-      const body = parseMessage(new FormData(form).get('message'));
+      const raw = String(new FormData(form).get('message') ?? '').trim();
+      if (!raw && !image) throw new Error('Escribí un mensaje o adjuntá una imagen.');
+      const body = parseMessage(raw || 'Imagen adjunta');
       const { data: session } = await supabase.auth.getUser();
       if (!session.user) throw new Error('Tu sesión venció. Volvé a ingresar.');
-      const { data, error: sendError } = await supabase.from('messages')
-        .insert({ user_id: parseUuid(selectedId), sender_id: session.user.id, body })
-        .select('id,user_id,sender_id,body,created_at').single();
-      if (sendError) throw sendError;
+      const attachment_path = image ? await uploadChatImage(parseUuid(selectedId), image) : null;
+      let data: Message;
+      try {
+        const result = await supabase.from('messages')
+          .insert({ user_id: parseUuid(selectedId), sender_id: session.user.id, body, attachment_path })
+          .select('id,user_id,sender_id,body,attachment_path,created_at').single();
+        if (result.error) throw result.error;
+        data = result.data as Message;
+      } catch (cause) {
+        if (attachment_path) await removeChatImage(attachment_path);
+        throw cause;
+      }
       if (activeThreadId.current === selectedId) {
         setMessages(old => old.some(item => item.id === data.id) ? old : [...old, data as Message]);
-        form.reset();
+        form.reset(); setImage(null);
       }
       onChanged();
       const { error: pushError } = await supabase.functions.invoke('send-user-push', { body: { message_id: data.id } });
@@ -191,9 +206,9 @@ export function AdminChat({ inbox, selectedId, demo, onSelect, onChanged }: {
         {selected ? <>
           <header className="admin-chat-thread-header"><button type="button" className="admin-chat-back" aria-label="Volver a conversaciones" onClick={() => onSelect('')}><ArrowLeft size={19} /></button><span className="admin-chat-avatar">{title(selected).slice(0, 1).toUpperCase()}</span><div><strong>{title(selected)}</strong>{selectedSubtitle && <small>{selectedSubtitle}</small>}</div>{selected.username && <button type="button" className="admin-chat-copy" onClick={() => void copyUsername()} aria-label="Copiar nombre de usuario">{copied ? <Check size={16} /> : <Copy size={16} />}<span>{copied ? 'Copiado' : 'Copiar usuario'}</span></button>}</header>
           <div className="admin-chat-actions"><button type="button" className={selected.completed_at ? 'admin-chat-reopen' : 'admin-chat-complete'} disabled={demo || updatingStatus || sending} onClick={() => void updateStatus(!selected.completed_at)}>{selected.completed_at ? <RotateCcw size={16} /> : <CircleCheck size={16} />}{updatingStatus ? 'Guardando…' : selected.completed_at ? 'Reabrir chat' : 'Marcar como completado'}</button></div>
-          <div className="admin-chat-messages" ref={messageLog} role="log" aria-live="polite" aria-relevant="additions text" onScroll={event => { const element = event.currentTarget; stickToBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80; }}>{hasMore && <button type="button" className="admin-chat-older" disabled={loadingOlder} onClick={() => void loadOlder()}>{loadingOlder ? 'Cargando…' : 'Ver mensajes anteriores'}</button>}{loading && <p className="admin-chat-list-empty">Cargando conversación…</p>}{messages.map(message => <div className={`message ${message.sender_id !== message.user_id ? 'mine' : ''}`} key={message.id}><p>{message.body}</p><small>{message.sender_id !== message.user_id ? 'Soporte · ' : ''}{date(message.created_at)}</small></div>)}</div>
+          <div className="admin-chat-messages" ref={messageLog} role="log" aria-live="polite" aria-relevant="additions text" onScroll={event => { const element = event.currentTarget; stickToBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80; }}>{hasMore && <button type="button" className="admin-chat-older" disabled={loadingOlder} onClick={() => void loadOlder()}>{loadingOlder ? 'Cargando…' : 'Ver mensajes anteriores'}</button>}{loading && <p className="admin-chat-list-empty">Cargando conversación…</p>}{messages.map(message => <div className={`message ${message.sender_id !== message.user_id ? 'mine' : ''}`} key={message.id}><p>{message.body === 'Imagen adjunta' && message.attachment_path ? '' : message.body}{message.attachment_path && <ChatImage path={message.attachment_path} />}</p><small>{message.sender_id !== message.user_id ? 'Soporte · ' : ''}{date(message.created_at)}</small></div>)}</div>
           {(error || notice) && <p className={`admin-chat-feedback${error ? ' is-error' : ''}`} role={error ? 'alert' : 'status'}>{error || notice}</p>}
-          {!selected.completed_at && <form className="admin-chat-composer" onSubmit={event => void send(event)}><label htmlFor="admin-chat-message" className="sr-only">Responder a {title(selected)}</label><textarea id="admin-chat-message" name="message" placeholder="Escribí tu respuesta…" maxLength={2000} rows={2} required disabled={sending || demo || updatingStatus} onKeyDown={onComposerKeyDown} /><button type="submit" disabled={sending || demo || updatingStatus} aria-label="Enviar respuesta"><Send size={18} /> Enviar</button><small>Enter para enviar · Shift + Enter para nueva línea</small></form>}
+          {!selected.completed_at && <form className="admin-chat-composer" onSubmit={event => void send(event)}><label htmlFor="admin-chat-message" className="sr-only">Responder a {title(selected)}</label>{imagePreview && <div className="chat-image-preview"><img src={imagePreview} alt="Imagen seleccionada" /><span>{image?.name}</span><button type="button" aria-label="Quitar imagen" onClick={() => { setImage(null); if (imageInput.current) imageInput.current.value = ''; }}><X size={16} /></button></div>}<textarea id="admin-chat-message" name="message" placeholder="Escribí tu respuesta…" maxLength={2000} rows={2} required={!image} disabled={sending || demo || updatingStatus} onKeyDown={onComposerKeyDown} /><input ref={imageInput} className="chat-file-input" type="file" accept="image/*" disabled={sending || demo || updatingStatus} onChange={event => setImage(event.target.files?.[0] ?? null)} /><button type="button" className="admin-chat-image-button" aria-label="Adjuntar imagen de la galería" disabled={sending || demo || updatingStatus} onClick={() => imageInput.current?.click()}><Images size={18} /></button><button type="submit" disabled={sending || demo || updatingStatus} aria-label="Enviar respuesta"><Send size={18} /> Enviar</button><small>Enter para enviar · Shift + Enter para nueva línea</small></form>}
         </> : <div className="admin-chat-placeholder"><MessageCircle size={38} /><h2>Elegí una conversación</h2><p>Vas a ver el historial y responder desde acá.</p></div>}
       </section>
     </div>

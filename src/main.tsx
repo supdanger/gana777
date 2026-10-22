@@ -44,6 +44,7 @@ import { DepositLeaderboard } from './deposit-leaderboard';
 import { AdminPlayerAccess } from './admin-player-access';
 import { PlatformAdmin } from './platform-admin';
 import { AccessSessionError, invokeAdminPlayerAccess } from './admin-player-access-api';
+import { removeChatImage, uploadChatImage } from './chat-images';
 import { playerSignInEmail } from './players';
 import { PlayerNotifications, unlinkDeviceSubscription } from './notifications';
 import { allStaffPermissions, canOpenAdminPage, noStaffPermissions, staffPermissionPages, staffSignInEmail, type StaffPermissions } from './staff';
@@ -226,7 +227,7 @@ function App() {
         return { ...second, data: (second.data ?? []).map(row => ({ ...row, bonus_amount: 0 })) };
       })();
       const messageQuery = adminApp ? Promise.resolve({ data: [] as Message[], error: null })
-        : db.from('messages').select('id,user_id,sender_id,body,created_at').eq('user_id', session!.user.id).order('created_at');
+        : db.from('messages').select('id,user_id,sender_id,body,attachment_path,created_at').eq('user_id', session!.user.id).order('created_at');
       const pendingWithdrawalsQuery = adminApp
         ? db.from('request_summaries').select('id', { count: 'exact', head: true }).eq('kind', 'withdrawal').eq('status', 'pending')
         : Promise.resolve({ count: 0, error: null });
@@ -541,12 +542,22 @@ function App() {
     event.preventDefault(); const element = event.currentTarget; const form = new FormData(element);
     await action(async () => {
       if (!supabase || demo) throw new InputError('Conectá Supabase para conversar con soporte.');
-      assertFormFields(form, ['message']);
-      const body = parseMessage(form.get('message'));
+      assertFormFields(form, ['message', 'image']);
+      const image = form.get('image');
+      const file = image instanceof File && image.size ? image : null;
+      const text = String(form.get('message') ?? '').trim();
+      if (!text && !file) throw new InputError('Escribí un mensaje o adjuntá una imagen.');
+      const body = parseMessage(text || 'Imagen adjunta');
       const target = parseUuid(userId);
-      const { data, error } = await supabase.from('messages').insert({ user_id: target, sender_id: userId, body }).select('id,user_id,sender_id,body,created_at').single();
-      if (error) throw error;
-      setMessages(old => [...old.filter(m => m.id !== data.id), data as Message]); element.reset();
+      const attachment_path = file ? await uploadChatImage(target, file) : null;
+      try {
+        const { data, error } = await supabase.from('messages').insert({ user_id: target, sender_id: userId, body, attachment_path }).select('id,user_id,sender_id,body,attachment_path,created_at').single();
+        if (error) throw error;
+        setMessages(old => [...old.filter(m => m.id !== data.id), data as Message]); element.reset();
+      } catch (cause) {
+        if (attachment_path) await removeChatImage(attachment_path);
+        throw cause;
+      }
     });
   }
   async function openReceipt(request: RequestRow) {

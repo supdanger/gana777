@@ -8,7 +8,7 @@ export const configError = key && !isPublicSupabaseKey(key) ? 'Configurá una cl
 export const supabase = url && key && !configError ? createClient(url, key) : null;
 export type RequestRow = { id: string; user_id: string; user_name: string; kind: 'deposit' | 'withdrawal'; amount: number; status: 'pending' | 'approved' | 'rejected'; created_at: string; approved_at: string | null; credited_at?: string | null; holder: string | null; cbu: string | null; alias: string | null; receipt_path: string | null; receipt_url: string | null; cloudinary_asset_id: string | null; bonus_id: string | null; bonus_percent: number; bonus_amount?: number; deposit_holder?: string | null; deposit_phone?: number | null; deposit_sac?: number | null };
 export type WithdrawalPart = { request_id: string; part_number: number; amount: number; receipt_path: string | null; paid_at: string | null; source_bank_account_id?: string | null; source_bank_name?: string | null; source_alias?: string | null };
-export type Message = { id: string; user_id: string; sender_id: string; body: string; created_at: string };
+export type Message = { id: string; user_id: string; sender_id: string; body: string; attachment_path: string | null; created_at: string };
 export type Bank = {
   assignment_id: string; id: string; bank: string; holder: string; cbu: string; alias: string;
   theme_key?: string; theme_background_path?: string | null; theme_logo_path?: string | null;

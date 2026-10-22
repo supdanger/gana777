@@ -15,6 +15,7 @@ import { homeBannerLink } from './home-banner';
 import { referralShareMessage, referralShareUrl } from './share-referral';
 import referralBannerUrl from './assets/home-casino-banner-v3.png';
 import { PlayerAccessRequest } from './player-access';
+import { ChatImage, useChatImagePreview } from './chat-images';
 
 export type Page = 'home' | 'profile' | 'deposit' | 'withdrawal' | 'referrals' | 'history' | 'users' | 'platform' | 'access-requests' | 'contacts' | 'portal' | 'bonuses' | 'accounts' | 'shifts' | 'chat' | 'cashiers';
 export const titles = { home: 'Inicio', profile: 'Mi perfil', deposit: 'Cargas', withdrawal: 'Retiros', referrals: 'Recomendados', history: 'Historial', users: 'Usuarios', platform: 'Platform', 'access-requests': 'Solicitudes', contacts: 'Contactos', portal: 'Portal', bonuses: 'Bonos', accounts: 'Cuentas', shifts: 'Turnos', chat: 'Chat', cashiers: 'Cajeros' };
@@ -322,14 +323,17 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
 export function Conversation({ messages, userId, busy, disabled, onSubmit }: { messages: Message[]; userId: string; busy: boolean; disabled: boolean; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
   const log = useRef<HTMLElement>(null);
   const nearBottom = useRef(true);
+  const [image, setImage] = useState<File | null>(null);
+  const imagePreview = useChatImagePreview(image);
+  const imageInput = useRef<HTMLInputElement>(null);
   useEffect(() => { if (log.current && nearBottom.current) log.current.scrollTop = log.current.scrollHeight; }, [messages]);
   return <>
     <section className="card support"><SectionHeading icon={<Headphones />} title="Soporte GANA777" description="Escribinos cuando necesites ayuda" /></section>
     <section ref={log} className="card chat-log" role="log" aria-label="Conversación con soporte" aria-live="polite" onScroll={e => { const el = e.currentTarget; nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }}>
       <div className="chat-date"><span>Tu conversación</span></div>
       {!messages.length && <p className="chat-welcome">¡Hola! Bienvenido a GANA777.<br />¿En qué podemos ayudarte?</p>}
-      {messages.map(m => <div className={`message ${m.sender_id === userId ? 'mine' : ''}`} key={m.id}><p>{m.body}</p><small>{date(m.created_at)}</small></div>)}
+      {messages.map(m => <div className={`message ${m.sender_id === userId ? 'mine' : ''}`} key={m.id}><p>{m.body === 'Imagen adjunta' && m.attachment_path ? '' : m.body}{m.attachment_path && <ChatImage path={m.attachment_path} />}</p><small>{date(m.created_at)}</small></div>)}
     </section>
-    <form className="composer" onSubmit={onSubmit}><input name="message" aria-label="Mensaje" placeholder="Escribí un mensaje…" maxLength={2000} autoComplete="off" enterKeyHint="send" required /><button className="send" aria-label="Enviar mensaje" disabled={busy || disabled}><Send size={24} /></button></form>
+    <form className="composer chat-composer" onSubmit={onSubmit} onReset={() => setImage(null)}>{imagePreview && <div className="chat-image-preview"><img src={imagePreview} alt="Imagen seleccionada" /><span>{image?.name}</span><button type="button" aria-label="Quitar imagen" onClick={() => { setImage(null); if (imageInput.current) imageInput.current.value = ''; }}><Trash2 size={16} /></button></div>}<input ref={imageInput} className="chat-file-input" name="image" type="file" accept="image/*" disabled={busy || disabled} onChange={event => setImage(event.target.files?.[0] ?? null)} /><button type="button" className="chat-gallery-button" aria-label="Adjuntar imagen de la galería" disabled={busy || disabled} onClick={() => imageInput.current?.click()}><Images size={22} /></button><input name="message" aria-label="Mensaje" placeholder="Escribí un mensaje…" maxLength={2000} autoComplete="off" enterKeyHint="send" required={!image} /><button className="send" aria-label="Enviar mensaje" disabled={busy || disabled}><Send size={24} /></button></form>
   </>;
 }
