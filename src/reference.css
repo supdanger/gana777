@@ -1114,6 +1114,14 @@ body:has(.user-app.theme-dark), body:has(.user-login.theme-dark) { background: #
 .user-app.theme-dark:not(.page-home) .action-card,
 .user-app.theme-dark:not(.page-home) .account-card,
 .user-app.theme-dark:not(.page-home) .transfer-card { background: #121a24; border-color: #344657; }
+.user-app.theme-dark.page-deposit .bank-transfer-card.has-bank-art .bank-theme-art { filter: saturate(1.22) brightness(1.12); }
+.user-app.theme-dark.page-deposit .bank-transfer-card.branded-bank-banner.has-bank-art .bank-theme-overlay {
+  background: linear-gradient(180deg, #06152008 0 42%, #06152082 73%, #061520d6 100%);
+}
+.user-app.theme-dark.page-deposit .bank-transfer-card.branded-bank-banner.theme-galicia.has-bank-art .bank-theme-art {
+  -webkit-mask-image: linear-gradient(to bottom, #000 0 34cqw, transparent 51cqw);
+  mask-image: linear-gradient(to bottom, #000 0 34cqw, transparent 51cqw);
+}
 .user-app.theme-dark .icon-circle { background: #08121e; border-color: #168fe5; color: #52bfff; }
 .user-app.theme-dark input, .user-app.theme-dark select, .user-app.theme-dark textarea { background: #151e29; border-color: #3a5368; }
 .user-app.theme-dark .composer, .user-app.theme-dark .chat-log { background: #0b1119; border-color: #344554; }
