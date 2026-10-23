@@ -5,7 +5,7 @@ import { supabase, date } from './lib';
 const vapidPublicKey = 'BNtbZNRD_ooezVlDPvQvUCrYbFJQfabwWQbgJpnqNaML1rZEsakHHR8cLc1l0AF26bRZolu1op6SOjtKBz8pgxs';
 const DEVICE_PREFERENCE_KEY = 'gana777-push-device-enabled';
 let pushSessionGeneration = 0;
-type UserNotification = { id: string; kind: 'deposit_credited' | 'withdrawal_paid' | 'chat_message'; title: string; body: string; created_at: string; read_at: string | null };
+type UserNotification = { id: string; kind: 'deposit_credited' | 'withdrawal_paid' | 'chat_message' | 'announcement'; title: string; body: string; created_at: string; read_at: string | null };
 
 function devicePreference() {
   try { return localStorage.getItem(DEVICE_PREFERENCE_KEY); } catch { return null; }
@@ -56,7 +56,7 @@ export async function unlinkDeviceSubscription() {
   }
 }
 
-export function PlayerNotifications({ userId, showSettings, onOpenChat }: { userId: string; showSettings: boolean; onOpenChat: () => void }) {
+export function PlayerNotifications({ userId, settingsPage, onOpenChat }: { userId: string; settingsPage: 'home' | 'profile' | null; onOpenChat: () => void }) {
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [supported, setSupported] = useState(false);
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
@@ -99,7 +99,7 @@ export function PlayerNotifications({ userId, showSettings, onOpenChat }: { user
           && activeRegistration.current && item.id && item.title) {
           void activeRegistration.current.showNotification(item.title, {
             body: item.body ?? '', icon: '/pwa/icon-panda-192.png', tag: `gana777-${item.id}`,
-            data: { url: item.kind === 'chat_message' ? '/?view=chat' : item.kind === 'withdrawal_paid' ? '/?view=profile' : '/?view=deposit' },
+            data: { url: item.kind === 'chat_message' ? '/?view=chat' : item.kind === 'withdrawal_paid' ? '/?view=profile' : item.kind === 'announcement' ? '/?view=home' : '/?view=deposit' },
           }).catch(() => undefined);
         }
       })
@@ -167,10 +167,13 @@ export function PlayerNotifications({ userId, showSettings, onOpenChat }: { user
       setEnabled(true);
     } catch (cause) {
       const code = cause instanceof Error ? cause.name : '';
-      if (step === 'save') setError('El dispositivo aceptó los avisos, pero no pudimos vincularlos a esta cuenta. Intentá nuevamente.');
-      else if (code === 'NotAllowedError') setError('Los avisos están bloqueados. Habilitalos desde los permisos del dispositivo.');
-      else if (code === 'AbortError' || code === 'NetworkError') { foregroundOnlyActive.current = true; setForegroundOnly(true); setError('Los avisos del sistema no están disponibles ahora. Intentá nuevamente más tarde.'); }
-      else setError('No pudimos activar los avisos en este dispositivo. Intentá nuevamente.');
+      console.error('No se pudo activar el push', { step, cause });
+      if (step === 'save') setError('El navegador aceptó los avisos, pero no pudimos vincularlos a tu cuenta. Reintentá; los avisos dentro de GANA777 siguen disponibles.');
+      else if (code === 'NotAllowedError') setError('El navegador bloqueó las notificaciones. Habilitalas en los permisos del sitio o del dispositivo y reintentá.');
+      else if (code === 'AbortError' || code === 'NetworkError') { foregroundOnlyActive.current = true; setForegroundOnly(true); setError('No hubo conexión con el servicio de notificaciones push. Los avisos dentro de GANA777 siguen disponibles; reintentá más tarde.'); }
+      else if (code === 'InvalidStateError') setError('El servicio de notificaciones todavía no está listo. Cerrá y volvé a abrir el portal antes de reintentar.');
+      else if (code === 'NotSupportedError' || code === 'SecurityError') setError('Este navegador no permite notificaciones push en este modo. Probá abrir el portal como app instalada y con una conexión segura.');
+      else setError(`No pudimos activar las notificaciones push en este dispositivo${code ? ` (${code})` : ''}. Los avisos dentro de GANA777 siguen disponibles.`);
     }
     finally { setBusy(false); }
   }
@@ -202,6 +205,7 @@ export function PlayerNotifications({ userId, showSettings, onOpenChat }: { user
   }
 
   const visible = notifications.filter(item => !item.read_at);
+  const showSettings = settingsPage === (wanted ? 'profile' : 'home');
   if (!visible.length && !showSettings) return null;
   return <section className="player-notifications" aria-label="Notificaciones">
     {showSettings && <div className="player-notification-settings"><div className="player-notification-setting-copy"><div className="player-notifications-heading"><Bell size={19} /><h2>Avisos en este dispositivo</h2></div><p>{enabled ? 'Activados para la cuenta que uses en esta app.' : foregroundOnly ? 'Podés ver los avisos dentro de Gana777. Los avisos del sistema necesitan conexión.' : wanted ? 'Se volverán a conectar cuando el servicio esté disponible.' : 'Recibí avisos de cargas, retiros y mensajes de soporte.'}</p></div><button type="button" className="player-notification-switch" role="switch" aria-label="Avisos en este dispositivo" aria-checked={wanted} disabled={busy || !supported} onClick={() => void (wanted ? deactivate() : activate())}><span /></button></div>}

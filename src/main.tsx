@@ -47,6 +47,7 @@ import { AccessSessionError, invokeAdminPlayerAccess } from './admin-player-acce
 import { removeChatImage, uploadChatImage } from './chat-images';
 import { playerSignInEmail } from './players';
 import { PlayerNotifications, unlinkDeviceSubscription } from './notifications';
+import { ScheduledAnnouncementsAdmin } from './scheduled-announcements-admin';
 import { allStaffPermissions, canOpenAdminPage, noStaffPermissions, staffPermissionPages, staffSignInEmail, type StaffPermissions } from './staff';
 import './styles.css';
 import './mobile.css';
@@ -122,7 +123,7 @@ function App() {
       const target = new URL(url, window.location.origin);
       if (target.origin !== window.location.origin) return;
       const view = target.searchParams.get('view');
-      if (view === 'chat' || view === 'deposit' || view === 'profile') {
+      if (view === 'chat' || view === 'deposit' || view === 'profile' || view === 'home') {
         if (view === 'profile') setUserHistoryOpen(old => ({ ...old, withdrawal: true }));
         navigate(view);
         window.history.replaceState(null, '', window.location.pathname);
@@ -831,7 +832,7 @@ function App() {
     {adminApp && !isAdmin && !demo ? <section className="card"><h1>Acceso restringido</h1><p>Esta cuenta no tiene permisos de administración.</p>{feedback}</section> : !canOpenCurrentPage ? <section className="card"><h1>Sin acceso</h1><p>Este apartado no está habilitado para tu usuario.</p>{feedback}</section> : <>
       {(adminApp || (page !== 'deposit' && page !== 'withdrawal')) && feedback}
       {!adminApp && page === 'profile' && <UserProfile name={name} busy={busy} logout={() => void logout()} />}
-      {!adminApp && !demo && session && <PlayerNotifications key={session.user.id} userId={session.user.id} showSettings={page === 'profile'} onOpenChat={() => navigate('chat')} />}
+      {!adminApp && !demo && session && <PlayerNotifications key={session.user.id} userId={session.user.id} settingsPage={page === 'home' || page === 'profile' ? page : null} onOpenChat={() => navigate('chat')} />}
       {page === 'home' && (adminApp ? <><div className="welcome"><h1><span>Resumen del turno</span></h1></div>{!demo && !staffContext.superAdmin && !sacStation ? <p className="shift-note">Elegí el SAC de esta computadora en Cargas para ver sus pendientes.</p> : null}<div className="stats">{(['deposit', 'withdrawal'] as const).map(kind => <section className="card" key={kind}><p>{kind === 'deposit' ? 'Cargas pendientes' : 'Retiros pendientes'}</p><h1>{kind === 'deposit' ? pendingCounts.deposit : pendingCounts.withdrawal}</h1></section>)}</div>{bonusBoard()}<DepositLeaderboard demo={demo} requests={requests} reloadKey={leaderboardReload} /></> : <UserHome name={name} navigate={navigate} whatsappUrl={demo ? undefined : playerWhatsAppUrl} username={demo ? null : playerUsername} casinoUrl={demo ? null : playerCasinoUrl} />)}
       {!adminApp && page === 'profile' && <>{history('deposit')}{history('withdrawal')}<ReferralBonusHistory userId={userId} demo={demo} /></>}
       {(page === 'deposit' || page === 'withdrawal') && !adminApp && <RequestForm key={page} kind={page} requests={requests.filter(r => r.user_id === userId)} bank={bank} bankOperation={bankOperation} retryAt={page === 'deposit' ? depositRetryAt : 0} busy={busy} demo={demo} feedback={feedback} onSubmit={submitRequest} onCopy={(text, label) => void action(async () => { await navigator.clipboard.writeText(text); setNotice(`${label} copiado.`); })} onOpenWithdrawalHistory={() => { setUserHistoryOpen(old => ({ ...old, withdrawal: true })); setProfileHistoryTarget('withdrawal'); navigate('profile'); }} />}
@@ -886,6 +887,7 @@ function App() {
       {adminApp && page === 'access-requests' && <AdminPlayerAccess demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'contacts' && <ContactAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'portal' && <PortalAdmin demo={demo} busy={busy} action={action} />}
+      {adminApp && page === 'announcements' && staffContext.superAdmin && <ScheduledAnnouncementsAdmin demo={demo} />}
       {adminApp && page === 'bonuses' && <BonusAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'referrals' && <ReferralRewardsAdmin demo={demo} busy={busy} action={action} userId={userId} superAdmin={demo || staffContext.superAdmin} />}
       {adminApp && page === 'accounts' && <AccountAdmin demo={demo} busy={busy} action={action} />}
