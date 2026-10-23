@@ -5,9 +5,10 @@ import { defaultHomeBanner, type HomeBannerSettings } from './home-banner';
 import pandaLogin from './assets/panda-login-transparent.png';
 import pandaAvatar from './assets/panda-user-avatar.png';
 
+export type PortalTheme = 'base' | 'dark' | 'christmas' | 'new-year';
 export type AppContent = HomeBannerSettings & {
   id: boolean;
-  portal_theme: 'base' | 'dark';
+  portal_theme: PortalTheme;
   logo_path: string | null;
   login_image_path: string;
   login_image_layout: 'reference' | 'image';

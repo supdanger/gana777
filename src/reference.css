@@ -1121,3 +1121,82 @@ body:has(.user-app.theme-dark), body:has(.user-login.theme-dark) { background: #
 .user-login.theme-dark .icon-input input:-webkit-autofill { -webkit-text-fill-color: #f2f7fb; -webkit-box-shadow: 0 0 0 1000px #26323e inset; }
 .user-login.theme-dark .password button { color: #b3d7ed; }
 .user-login.theme-dark .player-access-card { background: #0a1018; }
+
+/* Temas estacionales: comparten componentes y cambian la paleta del portal completo. */
+.user-login.theme-christmas, .user-app.theme-christmas {
+  --season-card: #0c241d; --season-card-strong: #153a2c; --season-border: #47715f;
+  --season-icon: #dceac4; --season-accent: #d7b873; --season-button: #08765a;
+}
+.user-login.theme-new-year, .user-app.theme-new-year {
+  --season-card: #171b35; --season-card-strong: #262744; --season-border: #626281;
+  --season-icon: #f4dda9; --season-accent: #e6c77c; --season-button: #6d5599;
+}
+body:has(.user-app.theme-christmas), body:has(.user-login.theme-christmas) { background: #061710; }
+body:has(.user-app.theme-new-year), body:has(.user-login.theme-new-year) { background: #080c1d; }
+.user-login.theme-christmas, .user-app.page-home.theme-christmas, .user-app.theme-christmas:not(.page-home) {
+  background: radial-gradient(circle at 85% 12%, #77432942 0, transparent 28%), linear-gradient(155deg, #08251d, #092018 55%, #1c111a);
+}
+.user-login.theme-new-year, .user-app.page-home.theme-new-year, .user-app.theme-new-year:not(.page-home) {
+  background: radial-gradient(circle at 80% 8%, #a38a4b2d 0, transparent 32%), linear-gradient(155deg, #101937, #10152c 55%, #1d1630);
+}
+.user-app.theme-christmas:not(.page-home), .user-app.theme-new-year:not(.page-home) { position: relative; }
+.user-login.theme-christmas::before, .user-app.page-home.theme-christmas::before {
+  background: radial-gradient(circle at 14% 17%, #37b78775 0, transparent 35%), radial-gradient(circle at 88% 62%, #b8344c52 0, transparent 40%), radial-gradient(circle at 48% 96%, #d8bc7252 0, transparent 35%);
+  opacity: .44;
+}
+.user-login.theme-new-year::before, .user-app.page-home.theme-new-year::before {
+  background: radial-gradient(circle at 17% 20%, #6568d67a 0, transparent 37%), radial-gradient(circle at 88% 59%, #d8b7615c 0, transparent 40%), radial-gradient(circle at 40% 90%, #74469e73 0, transparent 38%);
+  opacity: .48;
+}
+.user-login.theme-christmas::after, .user-app.theme-christmas::after,
+.user-login.theme-new-year::after, .user-app.theme-new-year::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(circle, #fff8df99 1px, transparent 2px), radial-gradient(circle, #e9e4c76b 1px, transparent 2px);
+  background-size: 88px 100px, 137px 163px;
+  background-position: 18px 13px, 79px 62px;
+  opacity: .42;
+}
+.user-login.theme-new-year::after, .user-app.theme-new-year::after {
+  background-image: radial-gradient(circle, #fce5a9b8 1px, transparent 2px), radial-gradient(circle, #b2a0ef85 1px, transparent 2px);
+  background-size: 107px 95px, 151px 149px;
+  opacity: .5;
+}
+.user-app.page-home.theme-christmas, .user-app.page-home.theme-new-year { --home-accent: var(--season-accent); }
+.user-app.theme-christmas:not(.page-home), .user-app.theme-new-year:not(.page-home) { --portal-accent: var(--season-accent); --portal-card: var(--season-card); --portal-card-strong: var(--season-card-strong); --portal-border: var(--season-border); }
+.user-app:is(.theme-christmas, .theme-new-year) .card,
+.user-login:is(.theme-christmas, .theme-new-year) .card { background: var(--season-card); border-color: var(--season-border); }
+.user-app:is(.theme-christmas, .theme-new-year).page-home .action-card { background: var(--season-card); border-color: var(--season-border); }
+.user-app:is(.theme-christmas, .theme-new-year).page-home button.action-card:first-of-type { background: var(--season-card-strong); border-color: var(--season-accent); }
+.user-app:is(.theme-christmas, .theme-new-year).page-home .action-card:hover { background: var(--season-card-strong); }
+.user-app:is(.theme-christmas, .theme-new-year).page-home .home-profile-button { background: var(--season-card-strong); border-color: var(--season-border); }
+.user-app:is(.theme-christmas, .theme-new-year).page-home .bonus-banner { border-color: var(--season-border); }
+.user-app:is(.theme-christmas, .theme-new-year).page-home .section-title::before { background: var(--season-accent); }
+.user-app:is(.theme-christmas, .theme-new-year) .icon-circle { background: var(--season-card-strong); border-color: var(--season-accent); color: var(--season-icon); }
+.user-app:is(.theme-christmas, .theme-new-year):not(.page-home) .back-button,
+.user-app:is(.theme-christmas, .theme-new-year):not(.page-home) .action-card,
+.user-app:is(.theme-christmas, .theme-new-year):not(.page-home) .account-card,
+.user-app:is(.theme-christmas, .theme-new-year):not(.page-home) .transfer-card { background: var(--season-card); border-color: var(--season-border); }
+.user-app:is(.theme-christmas, .theme-new-year) input,
+.user-app:is(.theme-christmas, .theme-new-year) select,
+.user-app:is(.theme-christmas, .theme-new-year) textarea { background: var(--season-card-strong); border-color: var(--season-border); color: #f8f8f2; }
+.user-app:is(.theme-christmas, .theme-new-year) .primary,
+.user-login:is(.theme-christmas, .theme-new-year) .primary { background: var(--season-button); border-color: var(--season-accent); color: #fff; }
+.user-app:is(.theme-christmas, .theme-new-year) .composer,
+.user-app:is(.theme-christmas, .theme-new-year) .chat-log { background: var(--season-card); border-color: var(--season-border); }
+.user-app:is(.theme-christmas, .theme-new-year).page-chat .message p { background: var(--season-card-strong); border-color: var(--season-border); }
+.user-app:is(.theme-christmas, .theme-new-year).page-chat .message.mine p { background: var(--season-button); border-color: var(--season-accent); }
+.user-login:is(.theme-christmas, .theme-new-year) .login-card,
+.user-login:is(.theme-christmas, .theme-new-year) .player-access-open,
+.user-login:is(.theme-christmas, .theme-new-year) .player-access-card { background: var(--season-card); border-color: var(--season-border); }
+.user-login:is(.theme-christmas, .theme-new-year) .icon-input input { background: var(--season-card-strong); border-color: var(--season-border); color: #f8f8f2; caret-color: #fff; }
+.user-login:is(.theme-christmas, .theme-new-year) .icon-input input::placeholder { color: #c6d2cf; }
+.user-login:is(.theme-christmas, .theme-new-year) .icon-input input:-webkit-autofill { -webkit-text-fill-color: #f8f8f2; -webkit-box-shadow: 0 0 0 1000px var(--season-card-strong) inset; }
+.user-login:is(.theme-christmas, .theme-new-year) .password button { color: var(--season-accent); }
+.user-login:is(.theme-christmas, .theme-new-year) .login-card h1,
+.user-login:is(.theme-christmas, .theme-new-year) .login-domain-brand,
+.user-login:is(.theme-christmas, .theme-new-year) .brand span,
+.user-app:is(.theme-christmas, .theme-new-year) .brand span { background: linear-gradient(110deg, var(--season-icon), var(--season-accent)); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }

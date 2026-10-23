@@ -7,20 +7,21 @@
 .theme-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
 .theme-section-heading h2 { margin: 4px 0 0; font-size: 21px; }
 .theme-current-label { flex: 0 0 auto; padding: 6px 10px; border: 1px solid #326381; border-radius: 999px; background: #102a3b; color: #84d9fa; font-size: 11px; font-weight: 750; }
-.theme-presets, .theme-future > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.theme-presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .theme-preset { display: flex; align-items: center; gap: 13px; width: 100%; min-width: 0; min-height: 84px; padding: 13px 15px; border: 1px solid #304a60; border-radius: 11px; background: #0c1b27; color: #f5f8fc; text-align: left; }
 button.theme-preset { cursor: pointer; }
 button.theme-preset:hover:not(:disabled) { border-color: #3e9dcc; background: #102b3c; }
 button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 3px; }
 .theme-preset.active { border-color: #28a8e8; background: #0b2940; box-shadow: inset 3px 0 #00b8f6; }
+.theme-preset-christmas.active { border-color: #9cc46f; background: #102920; box-shadow: inset 3px 0 #d0b374; }
+.theme-preset-new-year.active { border-color: #d4b566; background: #1d1c32; box-shadow: inset 3px 0 #e4c875; }
 .theme-preset-copy { display: grid; min-width: 0; gap: 4px; }
 .theme-preset-copy strong { font-size: 15px; line-height: 1.1; }
 .theme-preset-copy small { color: #a7bed0; font-size: 11px; line-height: 1.3; }
 .theme-preset-status { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; padding: 5px 8px; border: 1px solid #42617b; border-radius: 7px; color: #cce8f6; font-size: 11px; font-weight: 750; white-space: nowrap; }
 .theme-preset.active .theme-preset-status { border-color: #1774a0; background: #0a405e; color: #88e6ff; }
-.theme-future { margin-top: 18px; padding-top: 16px; border-top: 1px solid #233e53; }
-.theme-future > span { display: block; margin-bottom: 10px; color: #8facbf; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
-.theme-preset.upcoming { min-height: 67px; background: #0a1822; opacity: .72; }
+.theme-preset-christmas.active .theme-preset-status { border-color: #7eac75; background: #173b2d; color: #e2eec4; }
+.theme-preset-new-year.active .theme-preset-status { border-color: #ad8f50; background: #3a2f42; color: #f6dda2; }
 .theme-swatch { display: grid; place-items: center; width: 40px; height: 40px; flex: 0 0 auto; border: 1px solid #3b617e; border-radius: 10px; color: #8edfff; background: linear-gradient(145deg, #061b27, #0c65b5); }
 .theme-swatch svg { width: 20px; height: 20px; }
 .theme-swatch.dark { background: linear-gradient(145deg, #05070b, #293240); color: #b7c3da; }
@@ -36,7 +37,7 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .theme-banner-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 .theme-banner-actions .primary { width: auto; min-width: 170px; margin: 0; padding: 12px 16px; font-size: 13px; }
 .theme-banner-actions button:not(.primary) { border-radius: 9px; font-size: 12px; }
-@media (max-width: 700px) { .theme-presets, .theme-future > div { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .theme-presets { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .theme-section, .theme-banner-editor { padding: 15px; } .theme-section-heading { align-items: flex-start; flex-direction: column; } }
 .admin-shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100dvh; background: radial-gradient(ellipse at 62% 0, #042c4b 0, #001322 58%); }
 .admin-sidebar { position: sticky; top: 0; z-index: 50; display: flex; flex-direction: column; height: 100dvh; min-height: 0; overflow-y: auto; padding: 22px 15px 16px; border-right: 1px solid #173d5a; background: linear-gradient(180deg, #061b2b 0%, #020d16 100%); box-shadow: 16px 0 38px #0002; }
