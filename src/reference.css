@@ -1090,27 +1090,30 @@ body:has(.user-login) { min-height: 100svh; }
 }
 
 /* Tema oscuro: grafito casi negro con acentos azules discretos. */
-body:has(.user-app.theme-dark), body:has(.user-login.theme-dark) { background: #070a0f; }
-.user-login.theme-dark, .user-app.page-home.theme-dark, .user-app.theme-dark:not(.page-home) {
-  background: linear-gradient(165deg, #10151d 0%, #090d14 54%, #06090f 100%);
+body:has(.user-app.theme-dark), body:has(.user-login.theme-dark) { background: #03060b; }
+.user-app.page-home.theme-dark, .user-login.theme-dark {
+  background: #03060b url('/preview-assets/dark-theme-background.png') center / cover no-repeat;
 }
-.user-login.theme-dark::before, .user-app.page-home.theme-dark::before {
-  background: radial-gradient(circle at 16% 18%, #15598756, transparent 40%), radial-gradient(circle at 80% 72%, #19376c4d, transparent 44%);
-  opacity: .36;
-}
-.user-app.theme-dark .card, .user-login.theme-dark .card { background: #0b1017; border-color: #34414e; }
-.user-app.theme-dark.page-home .action-card { background: #151d27; border-color: #344554; box-shadow: 0 10px 24px #0008; }
-.user-app.theme-dark.page-home button.action-card:first-of-type { background: #1b2632; border-color: #466177; }
-.user-app.theme-dark.page-home .action-card:hover { background: #202c38; }
-.user-app.theme-dark.page-home .action-card .icon-circle { background: #101923; border-color: #40596f; }
-.user-app.theme-dark.page-home .home-profile-button { background: #171f2a; border-color: #425467; }
-.user-app.theme-dark.page-home .bonus-banner { border-color: #40566a; }
-.user-app.theme-dark.page-home .section-title::before { background: #4095d6; }
+.user-app.theme-dark:not(.page-home) { background: linear-gradient(165deg, #0b111b, #05080e 58%, #03060b); }
+.user-login.theme-dark::before, .user-app.page-home.theme-dark::before { opacity: .08; }
+.user-app.theme-dark .card, .user-login.theme-dark .card { background: #0b0e12f2; border-color: #343b45; }
+.user-app.theme-dark.page-home .action-card { background: #0d1014f2; border-color: #303841; box-shadow: 0 8px 18px #000b; }
+.user-app.theme-dark.page-home button.action-card:first-of-type { background: #0d1014f2; border-color: #303841; box-shadow: 0 8px 18px #000b; }
+.user-app.theme-dark.page-home .action-card:hover { background: #151b24f5; border-color: #4b6c8d; }
+.user-app.theme-dark.page-home .action-card.home-link-banner,
+.user-app.theme-dark.page-home .action-card.home-link-banner:hover { background: transparent; border: 0; box-shadow: none; }
+.user-app.theme-dark.page-home .action-card .icon-circle { background: #07101a; border-color: #168fe5; color: #52bfff; box-shadow: 0 0 10px #007cff55; }
+.user-app.theme-dark.page-home .home-profile-button { background: #0e1219ef; border-color: #384757; }
+.user-app.theme-dark.page-home .bonus-banner { border-color: #236bb1; box-shadow: 0 9px 22px #000b, 0 0 16px #006dff30; }
+.user-app.theme-dark.page-home .section-title::before { background: #008cff; }
+.user-app.theme-dark.page-home .home-welcome-name { color: #168cff; }
+.user-app.theme-dark.page-home .player-notifications { background: #0d1015ed; border-color: #343b45; }
+.user-app.theme-dark.page-home .portal-install-button { background: #0a0e15e8; border-color: #2674a6; color: #84d4ff; }
 .user-app.theme-dark:not(.page-home) .back-button { background: #17202a; border-color: #3c5264; }
 .user-app.theme-dark:not(.page-home) .action-card,
 .user-app.theme-dark:not(.page-home) .account-card,
 .user-app.theme-dark:not(.page-home) .transfer-card { background: #121a24; border-color: #344657; }
-.user-app.theme-dark .icon-circle { background: #17212c; border-color: #376483; }
+.user-app.theme-dark .icon-circle { background: #08121e; border-color: #168fe5; color: #52bfff; }
 .user-app.theme-dark input, .user-app.theme-dark select, .user-app.theme-dark textarea { background: #151e29; border-color: #3a5368; }
 .user-app.theme-dark .composer, .user-app.theme-dark .chat-log { background: #0b1119; border-color: #344554; }
 .user-app.theme-dark.page-chat .message p { background: #283747; border-color: #456079; }

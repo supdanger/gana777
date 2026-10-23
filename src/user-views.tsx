@@ -140,7 +140,7 @@ export function UserHome({ name, navigate, whatsappUrl, username, casinoUrl }: {
     { name: 'Instagram', url: safeHttpsLink(settings.instagram_url, ['instagram.com', 'www.instagram.com']), mark: <InstagramMark />, className: 'instagram', animation: contactAnimations.instagram, visible: settings.show_instagram },
   ].filter(contact => contact.visible);
   return <>
-    <h1 className="home-welcome">¡{greeting}, {name}!</h1>
+    <h1 className="home-welcome">¡{greeting}, <span className="home-welcome-name">{name}!</span></h1>
     <BonusBanner />
     <h2 className="section-title">¿Qué querés hacer?</h2>
     <div className="quick-actions">
