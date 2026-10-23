@@ -101,17 +101,17 @@ export function ThemesAdmin({ demo }: { demo: boolean }) {
       </div>
     </section>
     <section className="theme-banner-editor">
-      <div className="theme-editor-heading"><div><span className="eyebrow">02 · CONTENIDO DEL INICIO</span><h2>Banner de bonos</h2><p>Usá una imagen o un video para el banner de bonos. «Ir al casino» conserva su banner.</p></div></div>
+      <div className="theme-editor-heading"><div><span className="eyebrow">02 · CONTENIDO DEL INICIO</span><h2>Banner de bonos</h2><p>{theme === 'dark' ? 'El tema Oscuro muestra su propio banner con la promoción integrada en la imagen.' : 'Usá una imagen o un video para el banner de bonos. «Ir al casino» conserva su banner.'}</p></div></div>
       {error && <p className="alert error" role="alert">{error}</p>}{notice && <p className="alert" role="status">{notice}</p>}
-      <div className="theme-banner-preview" aria-label="Vista previa del banner de bonos">
-        {source ? previewVideo ? <video key={source} src={source} autoPlay muted loop playsInline controls preload="metadata" /> : preview ? <img src={source} alt="Vista previa del nuevo banner" /> : path ? <StorageImage path={path} alt="Banner de bonos actual" /> : null : <img src="/preview-assets/load-bonus-banner-v2.webp" alt="Banner de bonos incluido" />}
+      <div className={`theme-banner-preview ${theme === 'dark' ? 'dark-banner-preview' : ''}`} aria-label="Vista previa del banner de bonos">
+        {theme === 'dark' ? <img src="/preview-assets/dark-bonus-banner.png" alt="Banner de bonos incluido en el tema Oscuro" /> : source ? previewVideo ? <video key={source} src={source} autoPlay muted loop playsInline controls preload="metadata" /> : preview ? <img src={source} alt="Vista previa del nuevo banner" /> : path ? <StorageImage path={path} alt="Banner de bonos actual" /> : null : <img src="/preview-assets/load-bonus-banner-v2.webp" alt="Banner de bonos incluido" />}
       </div>
-      <form onSubmit={event => void save(event)}>
+      {theme === 'dark' ? <p className="theme-banner-note">La imagen ya contiene los textos y montos. El banner «Ir al casino» conserva su configuración.</p> : <form onSubmit={event => void save(event)}>
         <label htmlFor="theme-bonus-media"><ImagePlus size={17} /> Imagen o video del banner</label>
         <input id="theme-bonus-media" ref={input} type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" disabled={busy || demo} onChange={event => { setFile(event.target.files?.[0] ?? null); setError(''); setNotice(''); }} />
         <small><Video size={14} /> JPG, PNG, WebP, MP4 o WebM · máximo 20 MB. El video se reproduce sin sonido y en bucle.</small>
         <div className="theme-banner-actions"><button className="primary" type="submit" disabled={busy || demo || !file}>{busy ? 'Guardando…' : 'Guardar banner'}</button>{(path || file) && <button type="button" disabled={busy || demo} onClick={() => void restore()}>Usar imagen incluida</button>}</div>
-      </form>
+      </form>}
     </section>
   </div>;
 }
