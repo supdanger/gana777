@@ -137,7 +137,8 @@ export function BonusBanner() {
   const promotion = promotions.find(p => p.show_banner);
   if (!promotion) return null;
   if (settings.portal_theme === 'dark') return <section className="bonus-banner image-banner dark-bonus-banner" aria-label="Bonos por carga">
-    <img className="bonus-image" src="/preview-assets/dark-bonus-banner.png" alt="Bonos por carga: desde $5.000 recibís $1.000 y desde $10.000 recibís $2.000" draggable={false} decoding="async" />
+    <img className="bonus-image" src="/preview-assets/dark-bonus-banner-card.png" alt="Bonos por carga: desde $5.000 recibís $1.000 y desde $10.000 recibís $2.000" draggable={false} decoding="async" />
+    <video className="bonus-image" src="/preview-assets/dark-bonus-banner.mp4" poster="/preview-assets/dark-bonus-banner-card.png" autoPlay muted loop playsInline preload="metadata" aria-hidden="true" onPlaying={event => { event.currentTarget.dataset.ready = 'true'; }} />
   </section>;
   if (settings.home_bonus_media_path) {
     const path = settings.home_bonus_media_path;

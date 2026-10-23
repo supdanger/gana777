@@ -1104,8 +1104,10 @@ body:has(.user-app.theme-dark), body:has(.user-login.theme-dark) { background: #
 .user-app.theme-dark.page-home .action-card .icon-circle { background: #07101a; border-color: #168fe5; color: #52bfff; box-shadow: 0 0 10px #007cff55; }
 .user-app.theme-dark.page-home .home-profile-button { background: #0e1219ef; border-color: #384757; }
 .user-app.theme-dark.page-home .bonus-banner { border-color: #236bb1; box-shadow: 0 9px 22px #000b, 0 0 16px #006dff30; }
-.user-app.theme-dark.page-home .dark-bonus-banner { width: 100%; aspect-ratio: 760 / 370; margin: 0 auto 14px; border: 1px solid #292e35; background: #02050b; }
-.user-app.theme-dark.page-home .dark-bonus-banner .bonus-image { position: absolute; inset: auto; top: 50%; left: 50%; display: block; width: 109%; max-width: none; height: auto; object-fit: contain; transform: translate(-50%, -50%); }
+.user-app.theme-dark.page-home .dark-bonus-banner { width: 100%; aspect-ratio: 848 / 416; margin: 0 auto 14px; overflow: hidden; border: 1px solid #292e35; border-radius: 3.6% / 7.3%; background: #02050b; }
+.user-app.theme-dark.page-home .dark-bonus-banner .bonus-image { position: absolute; inset: 0; display: block; width: 100%; max-width: none; height: 100%; object-fit: cover; object-position: center; transform: none; }
+.user-app.theme-dark.page-home .dark-bonus-banner video.bonus-image { top: 50%; height: calc(100% * 480 / 416); object-fit: fill; transform: translateY(-50%); opacity: 0; }
+.user-app.theme-dark.page-home .dark-bonus-banner video.bonus-image[data-ready] { opacity: 1; }
 .user-app.theme-dark.page-home .section-title::before { background: #008cff; }
 .user-app.theme-dark.page-home .home-welcome-name { color: #168cff; }
 .user-app.theme-dark.page-home .player-notifications { background: #0d1015ed; border-color: #343b45; }

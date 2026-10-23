@@ -31,8 +31,9 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .theme-editor-heading h2 { margin: 4px 0 0; font-size: 22px; }
 .theme-banner-preview { display: grid; place-items: center; width: 100%; max-width: 680px; aspect-ratio: 848 / 365; overflow: hidden; margin: 18px 0; border: 1px solid #335775; border-radius: 10px; background: #0a1b2b; }
 .theme-banner-preview img, .theme-banner-preview video { display: block; width: 100%; height: 100%; object-fit: cover; }
-.theme-banner-preview.dark-banner-preview { aspect-ratio: 760 / 370; }
-.theme-banner-preview.dark-banner-preview img { width: 109%; height: auto; max-width: none; object-fit: contain; }
+.theme-banner-preview.dark-banner-preview { position: relative; aspect-ratio: 848 / 416; overflow: hidden; border-radius: 3.6% / 7.3%; background: #02050b url('/preview-assets/dark-bonus-banner-card.png') center / cover no-repeat; }
+.theme-banner-preview.dark-banner-preview video { position: absolute; left: 0; top: 50%; width: 100%; height: calc(100% * 480 / 416); object-fit: fill; transform: translateY(-50%); opacity: 0; }
+.theme-banner-preview.dark-banner-preview video[data-ready] { opacity: 1; }
 .theme-banner-editor label { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 8px; color: #d8eafa; font-size: 13px; }
 .theme-banner-editor input[type='file'] { margin: 0; background: #112536; }
 .theme-banner-editor small { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
