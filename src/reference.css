@@ -869,7 +869,7 @@ body:has(.user-app.page-home) { min-height: 100svh; }
   overflow: hidden;
   padding-top: max(8px, env(safe-area-inset-top));
   padding-bottom: max(8px, env(safe-area-inset-bottom));
-  background: linear-gradient(155deg, #092b35, #0a2544 58%, #0b1c3b);
+  background: linear-gradient(155deg, #061b27, #071a30 58%, #09132d);
 }
 .user-app.page-home .home-header { justify-content: space-between; gap: 10px; margin-bottom: 8px; }
 .user-app.page-home .home-header .brand { font-size: clamp(25px, 7vw, 30px); }
@@ -880,6 +880,8 @@ body:has(.user-app.page-home) { min-height: 100svh; }
 .user-app.page-home .home-profile-button > svg { flex: 0 0 auto; }
 .user-app.page-home .home-welcome { margin: 0 0 12px; color: #f5f8fc; font-size: 24px; font-weight: 750; line-height: 1.2; letter-spacing: -.4px; overflow-wrap: anywhere; }
 .user-app.page-home .bonus-banner { width: calc(100% - 8px); margin: 0 auto 14px; }
+.user-app.page-home .bonus-banner.custom-bonus-media { aspect-ratio: 848 / 365; }
+.user-app.page-home .bonus-banner.custom-bonus-media .bonus-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .user-app.page-home .section-title { margin-bottom: 10px; padding-left: 11px; font-size: 24px; }
 .user-app.page-home .section-title::before { width: 3px; }
 .user-app.page-home .quick-actions { gap: 8px; margin-bottom: 18px; }
@@ -912,7 +914,7 @@ body:has(.user-login) { min-height: 100svh; }
   max-width: 480px;
   min-height: 100svh;
   padding: max(clamp(12px, calc((100svh - 700px) * .35), 80px), env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
-  background: linear-gradient(155deg, #092b35, #0a2544 58%, #0b1c3b);
+  background: linear-gradient(155deg, #061b27, #071a30 58%, #09132d);
 }
 .user-login::before,
 .user-app.page-home::before {
@@ -926,7 +928,7 @@ body:has(.user-login) { min-height: 100svh; }
     radial-gradient(circle at 88% 65%, #00adfa9c 0, transparent 42%),
     radial-gradient(circle at 42% 95%, #0651ffb3 0, transparent 40%);
   filter: blur(26px);
-  opacity: .78;
+  opacity: .48;
   will-change: transform;
   animation: login-blue-drift 18s ease-in-out infinite alternate;
 }

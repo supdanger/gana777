@@ -18,6 +18,7 @@ export type AppContent = HomeBannerSettings & {
   show_telegram: boolean;
   show_instagram: boolean;
   allow_player_logout: boolean;
+  home_bonus_media_path: string | null;
 };
 export type Promotion = {
   id: string; title: string; description: string; image_path: string | null;
@@ -31,7 +32,7 @@ const defaults: AppContent = {
   ...defaultHomeBanner,
   id: true, logo_path: null, login_image_path: 'brand/panda-login-transparent.png',
   login_image_layout: 'image', whatsapp_url: null, telegram_url: null,
-  instagram_url: null, help_url: null, show_whatsapp: true, show_telegram: true, show_instagram: true, allow_player_logout: false,
+  instagram_url: null, help_url: null, show_whatsapp: true, show_telegram: true, show_instagram: true, allow_player_logout: false, home_bonus_media_path: null,
 };
 const loadBonusPromotionId = '00000000-0000-4000-8000-000000000777';
 const welcome: Promotion = {
@@ -130,9 +131,16 @@ export function StorageImage({ path, alt, className = '', fallbackPath }: { path
     onError={() => { if (source === remote && local) setLoadedRemote(null); }} />;
 }
 export function BonusBanner() {
-  const { promotions } = useContent();
+  const { promotions, settings } = useContent();
   const promotion = promotions.find(p => p.show_banner);
   if (!promotion) return null;
+  if (settings.home_bonus_media_path) {
+    const path = settings.home_bonus_media_path;
+    const video = /\.(mp4|webm)$/i.test(path);
+    return <section className="bonus-banner image-banner custom-bonus-media" aria-label={promotion.title}>
+      {video ? <video key={path} className="bonus-image" src={supabase?.storage.from('app-assets').getPublicUrl(path).data.publicUrl} poster="/preview-assets/load-bonus-banner-v2.webp" autoPlay muted loop playsInline preload="metadata" aria-label={promotion.title} /> : <StorageImage key={path} path={path} alt={promotion.title} className="bonus-image" />}
+    </section>;
+  }
   if (promotion.image_path) return <section className="bonus-banner image-banner has-copy" aria-label={promotion.title}>
     <StorageImage key={promotion.image_path} path={promotion.image_path} alt={promotion.title} className="bonus-image" />
     <div className="bonus-image-copy"><strong>{promotion.title}</strong>{promotion.description && <p>{promotion.description}</p>}</div>

@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   ArrowDownToLine, ArrowUpFromLine, Clock3, Gift, History, Landmark,
-  LayoutDashboard, LogOut, Menu, MessagesSquare, PhoneCall, UserCog, Users, X, PanelsTopLeft, UserRound, Layers3, BellRing,
+  LayoutDashboard, LogOut, Menu, MessagesSquare, PhoneCall, UserCog, Users, X, PanelsTopLeft, UserRound, Layers3, BellRing, Palette,
 } from 'lucide-react';
 import { Brand, titles, type Page } from './user-views';
 import { canOpenAdminPage, type StaffPermissions } from './staff';
@@ -25,6 +25,7 @@ const groups: Array<{ label: string; items: Array<{ page: Page; Icon: typeof Lay
   { label: 'Configuración', items: [
     { page: 'contacts', Icon: PhoneCall },
     { page: 'portal', Icon: PanelsTopLeft },
+    { page: 'themes', Icon: Palette },
     { page: 'bonuses', Icon: Gift },
     { page: 'accounts', Icon: Landmark },
   ] },

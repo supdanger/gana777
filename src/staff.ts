@@ -21,6 +21,7 @@ export function canOpenAdminPage(page: Page, permissions: StaffPermissions, supe
   if (page === 'platform') return superAdmin || permissions.users;
   if (page === 'referrals') return superAdmin || permissions.users || permissions.bonuses;
   if (page === 'announcements') return superAdmin;
+  if (page === 'themes') return superAdmin;
   return superAdmin || (isStaffPermissionPage(page) && permissions[page]);
 }
 

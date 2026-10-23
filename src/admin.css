@@ -1,4 +1,31 @@
 /* Estructura principal del panel: navegación jerárquica y espacio de trabajo. */
+.themes-admin { display: grid; gap: 22px; }
+.themes-admin .page-title { margin-bottom: 0; }
+.themes-admin .page-title h1 { background: linear-gradient(145deg, #38ffff, #00adfa 45%, #0651ff); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.themes-admin .page-title p, .theme-editor-heading p { margin: 5px 0 0; color: #a9c4d8; font-size: 13px; }
+.theme-presets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.theme-preset { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 15px; border: 1px solid #304a60; border-radius: 12px; background: #07131d; }
+.theme-preset.active { border-color: #28a8e8; background: #0a2032; box-shadow: inset 3px 0 #00b8f6; }
+.theme-preset h2 { margin: 0 0 3px; font-size: 15px; }
+.theme-preset p { margin: 0; color: #9bb5c9; font-size: 11px; line-height: 1.4; }
+.theme-preset strong { align-self: flex-start; margin-left: auto; color: #6ce1ff; font-size: 10px; }
+.theme-swatch { display: grid; place-items: center; width: 40px; height: 40px; flex: 0 0 auto; border: 1px solid #3b617e; border-radius: 10px; color: #8edfff; background: linear-gradient(145deg, #061b27, #0c65b5); }
+.theme-swatch svg { width: 20px; height: 20px; }
+.theme-swatch.dark { background: linear-gradient(145deg, #05070b, #293240); color: #b7c3da; }
+.theme-swatch.christmas { background: linear-gradient(145deg, #07533f, #9c1f39); color: #fff; }
+.theme-swatch.new-year { background: linear-gradient(145deg, #16254d, #8e6818); color: #ffe6a2; }
+.theme-banner-editor { max-width: 760px; padding: 21px; border: 1px solid #304a60; border-radius: 14px; background: #000; }
+.theme-editor-heading h2 { margin: 4px 0 0; font-size: 22px; }
+.theme-banner-preview { display: grid; place-items: center; width: 100%; aspect-ratio: 848 / 365; overflow: hidden; margin: 20px 0; border: 1px solid #335775; border-radius: 10px; background: #0a1b2b; }
+.theme-banner-preview img, .theme-banner-preview video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.theme-banner-editor label { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 8px; color: #d8eafa; font-size: 13px; }
+.theme-banner-editor input[type='file'] { margin: 0; background: #112536; }
+.theme-banner-editor small { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.theme-banner-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.theme-banner-actions .primary { width: auto; min-width: 170px; margin: 0; padding: 12px 16px; font-size: 13px; }
+.theme-banner-actions button:not(.primary) { border-radius: 9px; font-size: 12px; }
+@media (max-width: 900px) { .theme-presets { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .theme-presets { grid-template-columns: 1fr; } .theme-banner-editor { padding: 15px; } }
 .admin-shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100dvh; background: radial-gradient(ellipse at 62% 0, #042c4b 0, #001322 58%); }
 .admin-sidebar { position: sticky; top: 0; z-index: 50; display: flex; flex-direction: column; height: 100dvh; min-height: 0; overflow-y: auto; padding: 22px 15px 16px; border-right: 1px solid #173d5a; background: linear-gradient(180deg, #061b2b 0%, #020d16 100%); box-shadow: 16px 0 38px #0002; }
 .admin-sidebar-brand { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 0 8px 19px; border-bottom: 1px solid #173d5a; }

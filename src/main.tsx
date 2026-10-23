@@ -48,6 +48,7 @@ import { removeChatImage, uploadChatImage } from './chat-images';
 import { playerSignInEmail } from './players';
 import { PlayerNotifications, unlinkDeviceSubscription } from './notifications';
 import { ScheduledAnnouncementsAdmin } from './scheduled-announcements-admin';
+import { ThemesAdmin } from './themes-admin';
 import { allStaffPermissions, canOpenAdminPage, noStaffPermissions, staffPermissionPages, staffSignInEmail, type StaffPermissions } from './staff';
 import './styles.css';
 import './mobile.css';
@@ -887,6 +888,7 @@ function App() {
       {adminApp && page === 'access-requests' && <AdminPlayerAccess demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'contacts' && <ContactAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'portal' && <PortalAdmin demo={demo} busy={busy} action={action} />}
+      {adminApp && page === 'themes' && staffContext.superAdmin && <ThemesAdmin demo={demo} />}
       {adminApp && page === 'announcements' && staffContext.superAdmin && <ScheduledAnnouncementsAdmin demo={demo} />}
       {adminApp && page === 'bonuses' && <BonusAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'referrals' && <ReferralRewardsAdmin demo={demo} busy={busy} action={action} userId={userId} superAdmin={demo || staffContext.superAdmin} />}
