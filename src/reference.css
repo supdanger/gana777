@@ -1105,7 +1105,7 @@ body:has(.user-app.theme-dark), body:has(.user-login.theme-dark) { background: #
 .user-app.theme-dark.page-home .action-card .icon-circle { background: #07101a; border-color: #168fe5; color: #52bfff; box-shadow: 0 0 10px #007cff55; }
 .user-app.theme-dark.page-home .home-profile-button { background: #0e1219ef; border-color: #384757; }
 .user-app.theme-dark.page-home .bonus-banner { border-color: #236bb1; box-shadow: 0 9px 22px #000b, 0 0 16px #006dff30; }
-.user-app.theme-dark.page-home .dark-bonus-banner { width: 100%; aspect-ratio: 760 / 370; margin: 0 auto 14px; border: 0; background: #02050b; }
+.user-app.theme-dark.page-home .dark-bonus-banner { width: 100%; aspect-ratio: 760 / 370; margin: 0 auto 14px; border: 1px solid #292e35; background: #02050b; }
 .user-app.theme-dark.page-home .dark-bonus-banner .bonus-image { position: absolute; inset: auto; top: 50%; left: 50%; display: block; width: 109%; max-width: none; height: auto; object-fit: contain; transform: translate(-50%, -50%); }
 .user-app.theme-dark.page-home .section-title::before { background: #008cff; }
 .user-app.theme-dark.page-home .home-welcome-name { color: #168cff; }
