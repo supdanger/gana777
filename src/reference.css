@@ -1091,10 +1091,9 @@ body:has(.user-login) { min-height: 100svh; }
 
 /* Tema oscuro: grafito casi negro con acentos azules discretos. */
 body:has(.user-app.theme-dark), body:has(.user-login.theme-dark) { background: #03060b; }
-.user-app.page-home.theme-dark, .user-login.theme-dark {
+.user-app.theme-dark, .user-login.theme-dark {
   background: #03060b url('/preview-assets/dark-theme-background.png') center / cover no-repeat;
 }
-.user-app.theme-dark:not(.page-home) { background: linear-gradient(165deg, #0b111b, #05080e 58%, #03060b); }
 .user-login.theme-dark::before, .user-app.page-home.theme-dark::before { opacity: .08; }
 .user-app.theme-dark .card, .user-login.theme-dark .card { background: #0b0e12f2; border-color: #343b45; }
 .user-app.theme-dark.page-home .action-card { background: #0d1014f2; border-color: #303841; box-shadow: 0 8px 18px #000b; }
