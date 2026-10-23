@@ -1088,3 +1088,36 @@ body:has(.user-login) { min-height: 100svh; }
   .player-access-name { flex-wrap: wrap; }
   .player-access-name input { flex: 1 1 calc(100% - 120px); }
 }
+
+/* Tema oscuro: grafito casi negro con acentos azules discretos. */
+body:has(.user-app.theme-dark), body:has(.user-login.theme-dark) { background: #070a0f; }
+.user-login.theme-dark, .user-app.page-home.theme-dark, .user-app.theme-dark:not(.page-home) {
+  background: linear-gradient(165deg, #10151d 0%, #090d14 54%, #06090f 100%);
+}
+.user-login.theme-dark::before, .user-app.page-home.theme-dark::before {
+  background: radial-gradient(circle at 16% 18%, #15598756, transparent 40%), radial-gradient(circle at 80% 72%, #19376c4d, transparent 44%);
+  opacity: .36;
+}
+.user-app.theme-dark .card, .user-login.theme-dark .card { background: #0b1017; border-color: #34414e; }
+.user-app.theme-dark.page-home .action-card { background: #151d27; border-color: #344554; box-shadow: 0 10px 24px #0008; }
+.user-app.theme-dark.page-home button.action-card:first-of-type { background: #1b2632; border-color: #466177; }
+.user-app.theme-dark.page-home .action-card:hover { background: #202c38; }
+.user-app.theme-dark.page-home .action-card .icon-circle { background: #101923; border-color: #40596f; }
+.user-app.theme-dark.page-home .home-profile-button { background: #171f2a; border-color: #425467; }
+.user-app.theme-dark.page-home .bonus-banner { border-color: #40566a; }
+.user-app.theme-dark.page-home .section-title::before { background: #4095d6; }
+.user-app.theme-dark:not(.page-home) .back-button { background: #17202a; border-color: #3c5264; }
+.user-app.theme-dark:not(.page-home) .action-card,
+.user-app.theme-dark:not(.page-home) .account-card,
+.user-app.theme-dark:not(.page-home) .transfer-card { background: #121a24; border-color: #344657; }
+.user-app.theme-dark .icon-circle { background: #17212c; border-color: #376483; }
+.user-app.theme-dark input, .user-app.theme-dark select, .user-app.theme-dark textarea { background: #151e29; border-color: #3a5368; }
+.user-app.theme-dark .composer, .user-app.theme-dark .chat-log { background: #0b1119; border-color: #344554; }
+.user-app.theme-dark.page-chat .message p { background: #283747; border-color: #456079; }
+.user-app.theme-dark.page-chat .message.mine p { background: #174b79; border-color: #256da6; }
+.user-login.theme-dark .login-card, .user-login.theme-dark .player-access-open { background: #05080d; border-color: #3a4858; }
+.user-login.theme-dark .icon-input input { background: #26323e; border-color: #506477; color: #f2f7fb; caret-color: #fff; }
+.user-login.theme-dark .icon-input input::placeholder { color: #b9c9d6; }
+.user-login.theme-dark .icon-input input:-webkit-autofill { -webkit-text-fill-color: #f2f7fb; -webkit-box-shadow: 0 0 0 1000px #26323e inset; }
+.user-login.theme-dark .password button { color: #b3d7ed; }
+.user-login.theme-dark .player-access-card { background: #0a1018; }

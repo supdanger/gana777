@@ -9,7 +9,7 @@ import { bonusCounters, type BonusCounter } from './bonus-counters';
 import { loginFailure, readLoginRetryAt, saveLoginRetryAt } from './login-security';
 import { assertFormFields, InputError, parseAmount, parseAlias, parseCbu, parseHolder, parseMessage, parseUuid, validateReceipt } from '../supabase/functions/_shared/validation';
 import { publicError } from './security';
-import { ContentProvider } from './content';
+import { ContentProvider, useContent } from './content';
 import { DepositRateLimitError, submitDeposit, receiptUrl } from './receipt';
 import { creditAmounts } from './amounts';
 import { userHistoryWindow } from './user-history';
@@ -58,6 +58,7 @@ import './admin.css';
 if (adminApp) document.title = 'GANA777 Panel';
 
 function App() {
+  const { settings } = useContent();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(!!supabase);
   const [demo, setDemo] = useState(false);
@@ -900,7 +901,7 @@ function App() {
   </>;
   const staffAvatarUrl = staffContext.avatarPath && supabase ? supabase.storage.from('cashier-avatars').getPublicUrl(staffContext.avatarPath).data.publicUrl : null;
   if (adminApp) return <AdminShell page={page} counts={pendingCounts} permissions={demo ? allStaffPermissions : staffContext.permissions} superAdmin={demo || staffContext.superAdmin} staffName={demo ? 'Superadministrador' : staffContext.displayName || name} avatarUrl={staffAvatarUrl} busy={busy} navigate={navigate} logout={() => void logout()}>{content}</AdminShell>;
-  return <div className={`app user-app page-${page}`}>
+  return <div className={`app user-app page-${page} theme-${settings.portal_theme}`}>
     <UserHeader page={page} navigate={navigate} name={name} />
     {content}
   </div>;

@@ -7,6 +7,7 @@ import pandaAvatar from './assets/panda-user-avatar.png';
 
 export type AppContent = HomeBannerSettings & {
   id: boolean;
+  portal_theme: 'base' | 'dark';
   logo_path: string | null;
   login_image_path: string;
   login_image_layout: 'reference' | 'image';
@@ -30,7 +31,7 @@ export type ContactChannel = 'whatsapp' | 'telegram' | 'instagram';
 const emptyAnimations: Record<ContactChannel, string | null> = { whatsapp: null, telegram: null, instagram: null };
 const defaults: AppContent = {
   ...defaultHomeBanner,
-  id: true, logo_path: null, login_image_path: 'brand/panda-login-transparent.png',
+  id: true, portal_theme: 'base', logo_path: null, login_image_path: 'brand/panda-login-transparent.png',
   login_image_layout: 'image', whatsapp_url: null, telegram_url: null,
   instagram_url: null, help_url: null, show_whatsapp: true, show_telegram: true, show_instagram: true, allow_player_logout: false, home_bonus_media_path: null,
 };

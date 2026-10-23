@@ -50,7 +50,7 @@ export function LoginView({ admin, busy, configured, feedback, onLogin, onDemo, 
     finally { setCaptchaToken(null); setCaptchaReset(value => value + 1); }
   }
   const { settings } = useContent();
-  return <main className={`login ${admin ? 'admin-login' : 'user-login'}`}>
+  return <main className={`login ${admin ? 'admin-login' : `user-login theme-${settings.portal_theme}`}`}>
     {admin && <Brand panel />}
     {admin ? <p className="eyebrow">PANEL DE ADMINISTRACIÓN</p> : <div className={`login-character ${settings.login_image_path === 'brand/panda-login-transparent.png' ? 'transparent-character' : settings.login_image_layout === 'reference' ? 'reference-character' : ''}`}><StorageImage path={settings.login_image_path} fallbackPath="brand/panda-login-transparent.png" alt="Panda GANA777 con gorra y campera azul" /></div>}
     {!admin && requestingAccess ? <PlayerAccessRequest onBack={() => setRequestingAccess(false)} /> : <><section className="card login-card">{!admin && <span className="brand login-domain-brand">gana777bet.com</span>}<h1>Bienvenido</h1>{admin && <p>Ingresá a tu cuenta</p>}
