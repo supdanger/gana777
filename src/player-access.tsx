@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowLeft, Dices, Send, UserRound } from 'lucide-react';
 import { InputError } from '../supabase/functions/_shared/validation';
+import { deviceFootprint } from './device-footprint';
 import { supabase } from './lib';
 
 const tokenKey = 'gana777-access-chat-token';
@@ -83,7 +84,7 @@ export function PlayerAccessRequest({ onBack }: { onBack: () => void }) {
     localStorage.setItem(tokenKey, currentToken);
     setToken(currentToken); setDevice(currentDevice);
     try {
-      const result = await callAccess({ action: 'create', username: form.get('username'), referral_code: form.get('referral_code'), access_token: currentToken, device_id: currentDevice, website: form.get('website') });
+      const result = await callAccess({ action: 'create', username: form.get('username'), referral_code: form.get('referral_code'), access_token: currentToken, device_id: currentDevice, footprint: await deviceFootprint(), website: form.get('website') });
       setUsername(String(result.username));
       const resumed = await callAccess({ action: 'resume', access_token: currentToken });
       setThread(resumed.thread as AccessThread); setMessages(resumed.messages as AccessMessage[]);
@@ -118,9 +119,9 @@ export function PlayerAccessRequest({ onBack }: { onBack: () => void }) {
       {error && <p className="player-access-error" role="alert">{error}</p>}
       <button className="primary" disabled={busy || restoring}>{restoring ? 'Cargando…' : busy ? 'Enviando solicitud…' : 'Solicitar usuario'}</button>
       <small>La cuenta se crea manualmente después de revisar tu solicitud. No envíes documentos ni datos bancarios por este chat.</small>
-      <small>Por seguridad usamos una referencia protegida de tu conexión. Si esa conexión ya tiene un usuario, no se crea otra cuenta.</small>
+      <small>Cada celular puede pedir una sola cuenta, aunque se borren los datos del navegador. Otra persona en la misma WiFi puede pedir la suya.</small>
     </form> : <>
-      <div className={`player-access-status${thread.ip_blocked ? ' is-blocked' : ''}`}><strong>{thread.ip_blocked ? 'No se crea otra cuenta' : thread.status === 'approved' ? 'Usuario creado' : thread.status === 'rejected' ? 'Solicitud cerrada' : 'Esperando al equipo'}</strong><span>{thread.ip_blocked ? 'Esta conexión ya tiene un usuario.' : `Usuario solicitado: @${thread.username}`}</span>{thread.referral_code && !thread.ip_blocked && <small>Recomendado por @{thread.referral_code}</small>}</div>
+      <div className={`player-access-status${thread.ip_blocked ? ' is-blocked' : ''}`}><strong>{thread.ip_blocked ? 'No se crea otra cuenta' : thread.status === 'approved' ? 'Usuario creado' : thread.status === 'rejected' ? 'Solicitud cerrada' : 'Esperando al equipo'}</strong><span>{thread.ip_blocked ? 'Este celular ya tiene un usuario.' : `Usuario solicitado: @${thread.username}`}</span>{thread.referral_code && !thread.ip_blocked && <small>Recomendado por @{thread.referral_code}</small>}</div>
       <div className="player-access-messages" ref={log} role="log" aria-live="polite">
         {messages.map(message => <article key={message.id} className={`player-access-message${message.sender === 'admin' ? ' from-admin' : ''}`}><p>{message.body}</p><time>{new Intl.DateTimeFormat('es', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(message.created_at))}</time></article>)}
       </div>

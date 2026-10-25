@@ -9,7 +9,7 @@ type AccessMessage = { id: number; sender: 'player' | 'admin'; body: string; cre
 type Latest = { sender: string; body: string; created_at: string } | null;
 type AccessRequest = { id: string; username: string; referral_code: string | null; status: 'pending' | 'approved' | 'rejected'; player_user_id: string | null; has_personal_url: boolean; created_at: string; updated_at: string; latest_message: Latest; ip_blocked?: boolean; matched_username?: string | null };
 function requestPreview(item: AccessRequest) {
-  if (item.ip_blocked) return `IP repetida · ya tiene @${item.matched_username || 'otro usuario'}`;
+  if (item.ip_blocked) return `Celular repetido · ya tiene @${item.matched_username || 'otro usuario'}`;
   if (item.status === 'approved' && !item.has_personal_url) return 'Acceso creado · falta enlace personal';
   return item.latest_message?.body ?? (item.referral_code ? `Recomendado por @${item.referral_code}` : 'Sin código de recomendado');
 }
@@ -107,7 +107,7 @@ export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy:
     {threadError && <p className="access-admin-error" role="alert">{threadError}</p>}
     <div className="access-admin-layout">
       <aside className="access-admin-inbox">
-        <strong>Solicitudes de acceso</strong><small>{requests.filter(needsSetup).length} por configurar{repeatedIp ? <> · <em className="is-alert">{repeatedIp} {repeatedIp === 1 ? 'aviso de IP repetida' : 'avisos de IP repetida'}</em></> : null} · {requests.length} recientes</small>
+        <strong>Solicitudes de acceso</strong><small>{requests.filter(needsSetup).length} por configurar{repeatedIp ? <> · <em className="is-alert">{repeatedIp} {repeatedIp === 1 ? 'aviso de celular repetido' : 'avisos de celular repetido'}</em></> : null} · {requests.length} recientes</small>
         <label><span className="sr-only">Buscar solicitud</span><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar usuario o recomendado" /></label>
         <div className="access-admin-filters"><button type="button" className={filter === 'setup' ? 'active' : ''} onClick={() => setFilter('setup')}>Por configurar</button><button type="button" className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>Todas</button></div>
         <div className="access-admin-list">
@@ -116,8 +116,8 @@ export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy:
       </aside>
       <section className="access-admin-thread" aria-label={selected ? `Solicitud de ${selected.username}` : 'Elegí una solicitud'}>
         {selected ? <>
-          <header><span className="access-admin-avatar"><UserRound size={20} /></span><div><strong>@{selected.username}</strong><small>{selected.referral_code ? `Código recomendado: @${selected.referral_code}` : 'Sin código de recomendado'} · {selected.ip_blocked ? 'IP repetida' : selected.status === 'pending' ? 'Pendiente' : selected.status === 'approved' ? 'Acceso creado' : 'Cerrada'}</small></div></header>
-          {selected.ip_blocked && <p className="access-admin-ip-alert" role="alert">Alguien intentó crear @{selected.username} desde una IP que ya tiene @{selected.matched_username || 'otro usuario'}. No se crea otra cuenta.</p>}
+          <header><span className="access-admin-avatar"><UserRound size={20} /></span><div><strong>@{selected.username}</strong><small>{selected.referral_code ? `Código recomendado: @${selected.referral_code}` : 'Sin código de recomendado'} · {selected.ip_blocked ? 'Celular repetido' : selected.status === 'pending' ? 'Pendiente' : selected.status === 'approved' ? 'Acceso creado' : 'Cerrada'}</small></div></header>
+          {selected.ip_blocked && <p className="access-admin-ip-alert" role="alert">Este celular ya coincide con @{selected.matched_username || 'otro usuario'}. No se crea otra cuenta, aunque hayan borrado el navegador.</p>}
           <div className="access-admin-messages" ref={log} role="log" aria-live="polite">{messages.map(message => <article key={message.id} className={`access-admin-message${message.sender === 'admin' ? ' from-admin' : ''}`}><p>{message.body}</p><time>{date(message.created_at)}</time></article>)}</div>
           {(selected.status === 'pending' || selected.status === 'approved') && !selected.ip_blocked && <>
             <form className="access-admin-create" onSubmit={event => void saveAccess(event)}>

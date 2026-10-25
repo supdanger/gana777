@@ -1385,3 +1385,27 @@ body:has(.user-app.theme-halloween), body:has(.user-login.theme-halloween) { bac
 .user-login.theme-card-general-custom .card { background: var(--theme-general-background) !important; border: var(--theme-general-border-width) solid var(--theme-general-border) !important; border-radius: var(--theme-general-radius) !important; }
 .user-app.theme-card-install-custom .portal-install-button,
 .user-login.theme-card-install-custom .portal-install-button { background: var(--theme-install-background) !important; border: var(--theme-install-border-width) solid var(--theme-install-border) !important; border-radius: var(--theme-install-radius) !important; }
+
+/* Mantener pulsado no muestra la ficha de la imagen ni el recuadro azul. Los campos siguen editables. */
+html.player-portal,
+html.player-portal * {
+  -webkit-touch-callout: none;
+}
+html.player-portal body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+html.player-portal :is(input, textarea, select, [contenteditable]:not([contenteditable='false'])) {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-tap-highlight-color: initial;
+}
+html.player-portal :is(img, video) {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}

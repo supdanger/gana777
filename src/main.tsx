@@ -49,6 +49,7 @@ import { playerSignInEmail } from './players';
 import { PlayerNotifications, unlinkDeviceSubscription } from './notifications';
 import { ScheduledAnnouncementsAdmin } from './scheduled-announcements-admin';
 import { ThemesAdmin } from './themes-admin';
+import { deviceFootprint } from './device-footprint';
 import { themeSurface } from './portal-theme-design';
 import { allStaffPermissions, canOpenAdminPage, noStaffPermissions, staffPermissionPages, staffSignInEmail, type StaffPermissions } from './staff';
 import './styles.css';
@@ -57,6 +58,26 @@ import './reference.css';
 import './admin.css';
 
 if (adminApp) document.title = 'GANA777 Panel';
+
+function playerTextField(target: EventTarget | null) {
+  const node = target instanceof Node ? target : null;
+  const element = node instanceof Element ? node : node?.parentElement ?? null;
+  const field = element?.closest('input, textarea, select, [contenteditable]');
+  return !!field && field.getAttribute('contenteditable') !== 'false';
+}
+
+// En el portal del jugador, mantener pulsado no abre la ficha de la imagen ni el recuadro azul.
+// Los campos siguen pudiendo seleccionarse para escribir y pegar.
+if (!adminApp && typeof document !== 'undefined') {
+  document.documentElement.classList.add('player-portal');
+  const blockPlayerCallout = (event: Event) => {
+    if (playerTextField(event.target)) return;
+    event.preventDefault();
+  };
+  document.addEventListener('contextmenu', blockPlayerCallout, true);
+  document.addEventListener('selectstart', blockPlayerCallout, true);
+  document.addEventListener('dragstart', blockPlayerCallout, true);
+}
 
 function App() {
   const { settings } = useContent();
@@ -118,6 +139,16 @@ function App() {
   const depositTrigger = useRef<HTMLButtonElement | null>(null);
   const bankAssignmentId = useRef<string | null>(null);
   const userId = session?.user.id ?? 'demo';
+  useEffect(() => {
+    if (adminApp || demo || !session || !supabase) return;
+    const client = supabase;
+    let alive = true;
+    void deviceFootprint().then(footprint => {
+      if (!alive || !footprint) return;
+      return client.functions.invoke('player-access', { body: { action: 'remember-footprint', footprint } });
+    }).catch(() => undefined);
+    return () => { alive = false; };
+  }, [demo, session?.user.id]);
 
   function navigate(nextPage: Page) { setPage(nextPage); setSelectedDepositId(null); setApprovedDeposit(null); setError(''); setNotice(''); }
   useEffect(() => {
