@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { bannerImageExtension, defaultHomeBanner, homeBannerLink, parseHomeBanner } from '../src/home-banner.ts';
+import { bannerImageExtension, defaultHomeBanner, homeBannerImage, homeBannerLayout, homeBannerLayoutStyles, homeBannerLink, normalizeHomeBannerLayout, parseHomeBanner } from '../src/home-banner.ts';
 
 test('el panel ofrece el último banner definitivo enviado por el usuario', () => {
   const panel = readFileSync(new URL('../src/portal-admin.tsx', import.meta.url), 'utf8');
@@ -53,6 +53,35 @@ test('el banner permanece oculto hasta habilitarlo con imagen y destino seguro',
   assert.throws(() => parseHomeBanner(true, 'Juegos', 'https://ejemplo.com', null));
   assert.throws(() => parseHomeBanner(false, '', '', null));
   assert.doesNotThrow(() => parseHomeBanner(false, 'Juegos', '', null));
+});
+
+test('cada tema usa su imagen y conserva las imágenes de respaldo', () => {
+  const settings = {
+    ...defaultHomeBanner,
+    home_banner_path: 'home-banners/base.png',
+    home_banner_dark_path: 'home-banners/dark.png',
+    home_banner_christmas_path: 'home-banners/christmas.png',
+  };
+  assert.equal(homeBannerImage(settings, 'base'), 'home-banners/base.png');
+  assert.equal(homeBannerImage(settings, 'dark'), 'home-banners/dark.png');
+  assert.equal(homeBannerImage(settings, 'christmas'), 'home-banners/christmas.png');
+  assert.equal(homeBannerImage(settings, 'new-year'), 'home-banners/base.png');
+  assert.equal(homeBannerImage({ ...settings, home_banner_christmas_path: null }, 'christmas'), '/preview-assets/christmas-casino-banner.webp');
+  assert.equal(homeBannerImage(settings, 'halloween'), '/preview-assets/halloween-casino-banner.webp');
+  assert.equal(homeBannerImage({ ...settings, home_banner_halloween_path: 'home-banners/halloween.webp' }, 'halloween'), 'home-banners/halloween.webp');
+});
+
+test('el encuadre se guarda por tema y limita valores fuera de rango', () => {
+  const settings = { ...defaultHomeBanner, home_banner_layouts: {
+    christmas: { height: 22, width: 180, imageHeight: 130, x: 12, y: -8, radius: 24 },
+    dark: { height: 999, width: -10, imageHeight: '200', x: Infinity, y: -999, radius: 999 },
+  } };
+  assert.deepEqual(homeBannerLayout(settings, 'christmas'), { height: 22, width: 180, imageHeight: 130, x: 12, y: -8, radius: 24 });
+  assert.deepEqual(homeBannerLayout(settings, 'base'), { height: 16.8, width: 100, imageHeight: 100, x: 0, y: 0, radius: 7 });
+  assert.deepEqual(homeBannerLayout(settings, 'dark'), { height: 35, width: 50, imageHeight: 100, x: 0, y: -100, radius: 40 });
+  assert.equal(homeBannerLayoutStyles(normalizeHomeBannerLayout(settings.home_banner_layouts.christmas))['--home-banner-image-x'], '12%');
+  assert.equal(homeBannerLayoutStyles(homeBannerLayout(settings, 'christmas'))['--home-banner-radius'], '24px');
+  assert.deepEqual(homeBannerLayout(settings, 'halloween'), { height: 18, width: 100, imageHeight: 100, x: 0, y: 0, radius: 10 });
 });
 
 test('rechaza esquemas inseguros, enlaces con credenciales y textos excesivos', () => {

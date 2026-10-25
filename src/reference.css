@@ -416,8 +416,10 @@ a.social.instagram:hover { border-color: #ff8ab8; }
 /* Retiros */
 .user-app.page-withdrawal .request-form { gap: 12px; }
 .user-app.page-withdrawal .withdrawal-window { position: relative; min-height: 132px; aspect-ratio: 1942 / 809; overflow: hidden; padding: 0; background: #07182a url('/preview-assets/withdrawal-countdown-banner.webp') center / cover no-repeat; }
-.user-app.page-withdrawal .withdrawal-window::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, #061520fa 0%, #061520e8 43%, #0615207a 61%, transparent 76%); }
-.user-app.page-withdrawal .withdrawal-window-copy { position: relative; z-index: 1; display: flex; flex-direction: column; justify-content: center; width: 60%; min-height: 132px; padding: 14px 0 14px 16px; text-align: left; }
+.user-app.page-withdrawal .withdrawal-window.has-withdrawal-art { background-image: none; aspect-ratio: var(--home-banner-ratio, 1942 / 809); border-radius: var(--home-banner-radius, 12px); }
+.user-app.page-withdrawal .withdrawal-banner-art { position: absolute; z-index: 0; inset: auto; left: calc(50% + var(--home-banner-image-x, 0%)); top: calc(50% + var(--home-banner-image-y, 0%)); display: block; width: var(--home-banner-image-width, 100%); height: var(--home-banner-image-height, 100%); max-width: none; object-fit: cover; object-position: center; transform: translate(-50%, -50%); pointer-events: none; }
+.user-app.page-withdrawal .withdrawal-window::before { content: ''; position: absolute; inset: 0; z-index: 1; background: linear-gradient(90deg, #061520fa 0%, #061520e8 43%, #0615207a 61%, transparent 76%); }
+.user-app.page-withdrawal .withdrawal-window-copy { position: relative; z-index: 2; display: flex; flex-direction: column; justify-content: center; width: 60%; min-height: 132px; padding: 14px 0 14px 16px; text-align: left; }
 .user-app.page-withdrawal .withdrawal-window p { margin: 0; color: var(--portal-muted); font-size: 13px; font-weight: 600; line-height: 1.3; }
 .user-app.page-withdrawal .withdrawal-countdown { display: block; margin: 5px 0 4px; color: #69c9ff; font-size: clamp(30px, 9.2vw, 42px); line-height: 1; letter-spacing: -.8px; text-shadow: 0 2px 12px #001638; }
 .user-app.page-withdrawal .withdrawal-state-title { color: #69c9ff; font-size: clamp(20px, 6vw, 27px); line-height: 1.05; }
@@ -1179,38 +1181,207 @@ body:has(.user-app.theme-new-year), body:has(.user-login.theme-new-year) { backg
   background-size: 107px 95px, 151px 149px;
   opacity: .5;
 }
-.user-app.page-home.theme-christmas, .user-app.page-home.theme-new-year { --home-accent: var(--season-accent); }
-.user-app.theme-christmas:not(.page-home), .user-app.theme-new-year:not(.page-home) { --portal-accent: var(--season-accent); --portal-card: var(--season-card); --portal-card-strong: var(--season-card-strong); --portal-border: var(--season-border); }
-.user-app:is(.theme-christmas, .theme-new-year) .card,
-.user-login:is(.theme-christmas, .theme-new-year) .card { background: var(--season-card); border-color: var(--season-border); }
-.user-app:is(.theme-christmas, .theme-new-year).page-home .action-card { background: var(--season-card); border-color: var(--season-border); }
-.user-app:is(.theme-christmas, .theme-new-year).page-home button.action-card:first-of-type { background: var(--season-card-strong); border-color: var(--season-accent); }
-.user-app:is(.theme-christmas, .theme-new-year).page-home .action-card:hover { background: var(--season-card-strong); }
-.user-app:is(.theme-christmas, .theme-new-year).page-home .home-profile-button { background: var(--season-card-strong); border-color: var(--season-border); }
-.user-app:is(.theme-christmas, .theme-new-year).page-home .bonus-banner { border-color: var(--season-border); }
-.user-app:is(.theme-christmas, .theme-new-year).page-home .section-title::before { background: var(--season-accent); }
-.user-app:is(.theme-christmas, .theme-new-year) .icon-circle { background: var(--season-card-strong); border-color: var(--season-accent); color: var(--season-icon); }
-.user-app:is(.theme-christmas, .theme-new-year):not(.page-home) .back-button,
-.user-app:is(.theme-christmas, .theme-new-year):not(.page-home) .action-card,
-.user-app:is(.theme-christmas, .theme-new-year):not(.page-home) .account-card,
-.user-app:is(.theme-christmas, .theme-new-year):not(.page-home) .transfer-card { background: var(--season-card); border-color: var(--season-border); }
-.user-app:is(.theme-christmas, .theme-new-year) input,
-.user-app:is(.theme-christmas, .theme-new-year) select,
-.user-app:is(.theme-christmas, .theme-new-year) textarea { background: var(--season-card-strong); border-color: var(--season-border); color: #f8f8f2; }
-.user-app:is(.theme-christmas, .theme-new-year) .primary,
-.user-login:is(.theme-christmas, .theme-new-year) .primary { background: var(--season-button); border-color: var(--season-accent); color: #fff; }
-.user-app:is(.theme-christmas, .theme-new-year) .composer,
-.user-app:is(.theme-christmas, .theme-new-year) .chat-log { background: var(--season-card); border-color: var(--season-border); }
-.user-app:is(.theme-christmas, .theme-new-year).page-chat .message p { background: var(--season-card-strong); border-color: var(--season-border); }
-.user-app:is(.theme-christmas, .theme-new-year).page-chat .message.mine p { background: var(--season-button); border-color: var(--season-accent); }
-.user-login:is(.theme-christmas, .theme-new-year) .login-card,
-.user-login:is(.theme-christmas, .theme-new-year) .player-access-open,
-.user-login:is(.theme-christmas, .theme-new-year) .player-access-card { background: var(--season-card); border-color: var(--season-border); }
-.user-login:is(.theme-christmas, .theme-new-year) .icon-input input { background: var(--season-card-strong); border-color: var(--season-border); color: #f8f8f2; caret-color: #fff; }
-.user-login:is(.theme-christmas, .theme-new-year) .icon-input input::placeholder { color: #c6d2cf; }
-.user-login:is(.theme-christmas, .theme-new-year) .icon-input input:-webkit-autofill { -webkit-text-fill-color: #f8f8f2; -webkit-box-shadow: 0 0 0 1000px var(--season-card-strong) inset; }
-.user-login:is(.theme-christmas, .theme-new-year) .password button { color: var(--season-accent); }
-.user-login:is(.theme-christmas, .theme-new-year) .login-card h1,
-.user-login:is(.theme-christmas, .theme-new-year) .login-domain-brand,
-.user-login:is(.theme-christmas, .theme-new-year) .brand span,
-.user-app:is(.theme-christmas, .theme-new-year) .brand span { background: linear-gradient(110deg, var(--season-icon), var(--season-accent)); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.user-app.page-home.theme-christmas, .user-app.page-home.theme-new-year, .user-app.page-home.theme-halloween { --home-accent: var(--season-accent); }
+.user-app.theme-christmas:not(.page-home), .user-app.theme-new-year:not(.page-home), .user-app.theme-halloween:not(.page-home) { --portal-accent: var(--season-accent); --portal-card: var(--season-card); --portal-card-strong: var(--season-card-strong); --portal-border: var(--season-border); }
+.user-app:is(.theme-christmas, .theme-new-year, .theme-halloween) .card,
+.user-login:is(.theme-christmas, .theme-new-year, .theme-halloween) .card { background: var(--season-card); border-color: var(--season-border); }
+.user-app:is(.theme-christmas, .theme-new-year, .theme-halloween).page-home .action-card { background: var(--season-card); border-color: var(--season-border); }
+.user-app:is(.theme-christmas, .theme-new-year, .theme-halloween).page-home button.action-card:first-of-type { background: var(--season-card-strong); border-color: var(--season-accent); }
+.user-app:is(.theme-christmas, .theme-new-year, .theme-halloween).page-home .action-card:hover { background: var(--season-card-strong); }
+.user-app:is(.theme-christmas, .theme-new-year, .theme-halloween).page-home .home-profile-button { background: var(--season-card-strong); border-color: var(--season-border); }
+.user-app:is(.theme-christmas, .theme-new-year, .theme-halloween).page-home .bonus-banner { border-color: var(--season-border); }
+.user-app:is(.theme-christmas, .theme-new-year, .theme-halloween).page-home .section-title::before { background: var(--season-accent); }
+.user-app:is(.theme-christmas, .theme-new-year, .theme-halloween) .icon-circle { background: var(--season-card-strong); border-color: var(--season-accent); color: var(--season-icon); }
+.user-app:is(.theme-christmas, .theme-new-year, .theme-halloween):not(.page-home) .back-button,
+.user-app:is(.theme-christmas, .theme-new-year, .theme-halloween):not(.page-home) .action-card,
+.user-app:is(.theme-christmas, .theme-new-year, .theme-halloween):not(.page-home) .account-card,
+.user-app:is(.theme-christmas, .theme-new-year, .theme-halloween):not(.page-home) .transfer-card { background: var(--season-card); border-color: var(--season-border); }
+.user-app:is(.theme-christmas, .theme-new-year, .theme-halloween) input,
+.user-app:is(.theme-christmas, .theme-new-year, .theme-halloween) select,
+.user-app:is(.theme-christmas, .theme-new-year, .theme-halloween) textarea { background: var(--season-card-strong); border-color: var(--season-border); color: #f8f8f2; }
+.user-app:is(.theme-christmas, .theme-new-year, .theme-halloween) .primary,
+.user-login:is(.theme-christmas, .theme-new-year, .theme-halloween) .primary { background: var(--season-button); border-color: var(--season-accent); color: #fff; }
+.user-app:is(.theme-christmas, .theme-new-year, .theme-halloween) .composer,
+.user-app:is(.theme-christmas, .theme-new-year, .theme-halloween) .chat-log { background: var(--season-card); border-color: var(--season-border); }
+.user-app:is(.theme-christmas, .theme-new-year, .theme-halloween).page-chat .message p { background: var(--season-card-strong); border-color: var(--season-border); }
+.user-app:is(.theme-christmas, .theme-new-year, .theme-halloween).page-chat .message.mine p { background: var(--season-button); border-color: var(--season-accent); }
+.user-login:is(.theme-christmas, .theme-new-year, .theme-halloween) .login-card,
+.user-login:is(.theme-christmas, .theme-new-year, .theme-halloween) .player-access-open,
+.user-login:is(.theme-christmas, .theme-new-year, .theme-halloween) .player-access-card { background: var(--season-card); border-color: var(--season-border); }
+.user-login:is(.theme-christmas, .theme-new-year, .theme-halloween) .icon-input input { background: var(--season-card-strong); border-color: var(--season-border); color: #f8f8f2; caret-color: #fff; }
+.user-login:is(.theme-christmas, .theme-new-year, .theme-halloween) .icon-input input::placeholder { color: #c6d2cf; }
+.user-login:is(.theme-christmas, .theme-new-year, .theme-halloween) .icon-input input:-webkit-autofill { -webkit-text-fill-color: #f8f8f2; -webkit-box-shadow: 0 0 0 1000px var(--season-card-strong) inset; }
+.user-login:is(.theme-christmas, .theme-new-year, .theme-halloween) .password button { color: var(--season-accent); }
+.user-login:is(.theme-christmas, .theme-new-year, .theme-halloween) .login-card h1,
+.user-login:is(.theme-christmas, .theme-new-year, .theme-halloween) .login-domain-brand,
+.user-login:is(.theme-christmas, .theme-new-year, .theme-halloween) .brand span,
+.user-app:is(.theme-christmas, .theme-new-year, .theme-halloween) .brand span { background: linear-gradient(110deg, var(--season-icon), var(--season-accent)); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+/* Portada de Navidad: negro, rojo y reflejos dorados de la referencia. */
+.user-login.theme-christmas, .user-app.theme-christmas {
+  --season-card: #080605f2; --season-card-strong: #160807f2; --season-border: #bd181b;
+  --season-icon: #ffe4a5; --season-accent: #ef252a; --season-button: #8e1015;
+}
+body:has(.user-app.theme-christmas), body:has(.user-login.theme-christmas) { background: #030201; }
+.user-login.theme-christmas, .user-app.theme-christmas,
+.user-app.page-home.theme-christmas, .user-app.theme-christmas:not(.page-home) {
+  background: #030201 url('/preview-assets/christmas-background.webp') center top / cover no-repeat;
+}
+.user-login.theme-christmas::before, .user-app.page-home.theme-christmas::before,
+.user-login.theme-christmas::after, .user-app.theme-christmas::after { display: none; }
+.user-app.theme-christmas .brand, .user-login.theme-christmas .brand { color: #fff3d5; text-shadow: 0 1px 5px #a2672a77; }
+.user-login.theme-christmas .brand span, .user-app.theme-christmas .brand span {
+  background: none; color: #f0252d; -webkit-text-fill-color: #f0252d;
+}
+.user-app.page-home.theme-christmas { --home-accent: #ee252b; --home-muted: #bbb4b2; }
+.user-app.page-home.theme-christmas .home-header { margin-bottom: 6px; }
+.user-app.page-home.theme-christmas .home-profile-button { min-height: 36px; background: #080606e8; border-color: #c61a1e; box-shadow: 0 0 10px #a81b1b55; }
+.user-app.page-home.theme-christmas .home-profile-button .user-avatar { border-color: #e32329; }
+.user-app.page-home.theme-christmas .player-notifications { margin: 5px 0 8px; padding: 0 11px; background: #080606eb; border-color: #c51d20; box-shadow: 0 0 10px #9e2b1b44; }
+.user-app.page-home.theme-christmas .player-notification-settings { padding: 7px 0; }
+.user-app.page-home.theme-christmas .player-notifications-heading { margin-bottom: 1px; }
+.user-app.page-home.theme-christmas .player-notifications-heading svg,
+.user-app.page-home.theme-christmas .player-notification > svg { color: #ef252b; }
+.user-app.page-home.theme-christmas .player-notifications-heading h2 { font-size: 14px; }
+.user-app.page-home.theme-christmas .player-notification-settings p { color: #c5bfc0; font-size: 10px; }
+.user-app.page-home.theme-christmas .player-notification-switch[aria-checked="true"] { background: #a61920; border-color: #ef343a; }
+.user-app.page-home.theme-christmas .home-welcome { margin-bottom: 8px; font-size: clamp(19px, 5.8vw, 23px); }
+.user-app.page-home.theme-christmas .home-welcome-name { color: #fff; }
+.user-app.page-home.theme-christmas .bonus-banner { border-color: #c69a52; box-shadow: 0 8px 18px #000b, 0 0 10px #c38a4344; }
+.user-app.page-home.theme-christmas .christmas-bonus-banner { width: 100%; aspect-ratio: 2 / 1; margin-bottom: 10px; background: #160302; }
+.user-app.page-home.theme-christmas .christmas-bonus-banner .bonus-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #160302; }
+.user-app.page-home.theme-christmas .christmas-bonus-banner .bonus-offer-copy { right: 3%; width: 49%; text-shadow: 0 2px 6px #000, 0 1px 2px #000; }
+.user-app.page-home.theme-christmas .christmas-bonus-banner .bonus-offer-copy > strong { color: #fff0b4; font-size: clamp(14px, 4.4vw, 21px); }
+.user-app.page-home.theme-christmas .christmas-bonus-banner .bonus-offer-tiers p { border-color: #d72b2b8c; }
+.user-app.page-home.theme-christmas .christmas-bonus-banner .bonus-offer-tiers b { color: #ffe2a1; }
+.user-app.page-home.theme-christmas .section-title { margin-bottom: 7px; font-size: clamp(19px, 5.8vw, 23px); }
+.user-app.page-home.theme-christmas .quick-actions { gap: 6px; margin-bottom: 10px; }
+.user-app.page-home.theme-christmas .action-card { min-height: 72px; padding: 12px 14px; gap: 12px; background: #050404ec; border-color: #d1181d; box-shadow: 0 5px 13px #000b, inset 0 0 8px #c2191a1b; }
+.user-app.page-home.theme-christmas button.action-card:first-of-type { background: #050404ec; border-color: #d1181d; box-shadow: 0 5px 13px #000b, inset 0 0 8px #c2191a1b; }
+.user-app.page-home.theme-christmas .action-card:hover { background: #1c0909f2; border-color: #f43a35; }
+.user-app.page-home.theme-christmas .action-card .icon-circle,
+.user-app.page-home.theme-christmas button.action-card:first-of-type .icon-circle { width: 42px; height: 42px; background: #080404; border-color: #ef2028; color: #ed242d; box-shadow: 0 0 8px #dd161833; }
+.user-app.page-home.theme-christmas .action-card .icon-circle svg { width: 22px; height: 22px; }
+.user-app.page-home.theme-christmas .action-card strong { margin-bottom: 3px; font-size: 18px; line-height: 1.15; }
+.user-app.page-home.theme-christmas .action-card small { color: #d2cecd; font-size: 14px; line-height: 1.3; }
+.user-app.page-home.theme-christmas .action-card.home-link-banner,
+.user-app.page-home.theme-christmas .action-card.home-link-banner:hover { position: relative; padding: 0; overflow: hidden; background: transparent; border: 0; border-radius: 10px; box-shadow: 0 5px 13px #000b; aspect-ratio: 2171 / 365; }
+.user-app.page-home.theme-christmas .action-card.home-link-banner:hover { box-shadow: 0 0 13px #d8322e88; }
+.user-app.page-home.theme-christmas:has(.home-link-banner) .action-card { min-height: 72px; padding: 12px 14px; }
+.user-app.page-home.theme-christmas:has(.home-link-banner) .action-card.home-link-banner { min-height: 0; aspect-ratio: 2171 / 365; padding: 0; }
+.user-app.page-home.theme-christmas .home-link-banner img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; max-width: none; border: 0; border-radius: 0; object-fit: cover; object-position: center; transform: none; }
+.user-app.page-home.theme-christmas .home-link-banner:focus-visible { outline-color: #ffdb8c; }
+.user-app.page-home.theme-christmas:has(.home-link-banner) .action-card .icon-circle { width: 42px; height: 42px; }
+.user-app.page-home.theme-christmas:has(.home-link-banner) .action-card strong { font-size: 18px; line-height: 1.15; }
+.user-app.page-home.theme-christmas:has(.home-link-banner) .action-card small { font-size: 14px; line-height: 1.3; }
+
+/* El panel controla el alto del botón y el encuadre de cada imagen por tema. */
+.user-app.page-home:has(.home-link-banner) .action-card.home-link-banner,
+.user-app.page-home.theme-christmas:has(.home-link-banner) .action-card.home-link-banner { aspect-ratio: var(--home-banner-ratio, 6 / 1); border-radius: var(--home-banner-radius, 7px); }
+.user-app.page-home .home-link-banner img,
+.user-app.page-home.theme-christmas .home-link-banner img {
+  inset: auto;
+  left: calc(50% + var(--home-banner-image-x, 0%));
+  top: calc(50% + var(--home-banner-image-y, 0%));
+  width: var(--home-banner-image-width, 100%);
+  height: var(--home-banner-image-height, 100%);
+  max-width: none;
+  object-fit: cover;
+  object-position: center;
+  transform: translate(-50%, -50%);
+}
+
+/* Encuadre manual del banner de bonos, con los mismos controles del panel. */
+.user-app.page-home .bonus-banner,
+.user-app.page-home .bonus-banner.image-banner,
+.user-app.theme-dark.page-home .dark-bonus-banner,
+.user-app.page-home.theme-christmas .christmas-bonus-banner { aspect-ratio: var(--home-banner-ratio, 848 / 365); border-radius: var(--home-banner-radius, 12px); }
+.user-app.page-home .bonus-banner.image-banner .bonus-image,
+.user-app.theme-dark.page-home .dark-bonus-banner .bonus-image,
+.user-app.theme-dark.page-home .dark-bonus-banner video.bonus-image,
+.user-app.page-home.theme-christmas .christmas-bonus-banner .bonus-image {
+  position: absolute;
+  inset: auto;
+  left: calc(50% + var(--home-banner-image-x, 0%));
+  top: calc(50% + var(--home-banner-image-y, 0%));
+  width: var(--home-banner-image-width, 100%);
+  height: var(--home-banner-image-height, 100%);
+  max-width: none;
+  object-fit: cover;
+  object-position: center;
+  transform: translate(-50%, -50%);
+}
+
+/* Logo configurable del encabezado principal. */
+.user-app.page-home .home-header:has(.portal-header-logo) { position: relative; z-index: 2; overflow: visible; }
+.user-app.page-home .home-header .brand.has-portal-header-logo { position: relative; z-index: 1; display: block; flex: 0 1 auto; min-width: 0; max-width: 65%; line-height: 0; }
+.user-app.page-home .portal-header-logo { display: block; width: var(--portal-logo-width, 140px); max-width: none; height: var(--portal-logo-height, 40px); overflow: visible; transform: translate(var(--portal-logo-x, 0px), var(--portal-logo-y, 0px)); }
+.user-app.page-home .portal-header-logo-image { display: block; width: 100%; height: 100%; object-fit: contain; transform: scale(var(--portal-logo-scale, 1)); }
+.user-app.page-home.theme-christmas .portal-install-button,
+.user-login.theme-christmas .portal-install-button { background: #100705ec; border-color: #d21c21; color: #ffe0a1; }
+.user-app.theme-christmas .icon-circle { border-color: #df2329; color: #f02a30; }
+
+/* Halloween: bosque negro, detalles violeta y calabazas en los extremos. */
+.user-login.theme-halloween, .user-app.theme-halloween {
+  --season-card: #08070bef; --season-card-strong: #17101eec; --season-border: #9c29be;
+  --season-icon: #e5a7ff; --season-accent: #b735e8; --season-button: #75189e;
+}
+body:has(.user-app.theme-halloween), body:has(.user-login.theme-halloween) { background: #030503; }
+.user-login.theme-halloween, .user-app.theme-halloween,
+.user-app.page-home.theme-halloween, .user-app.theme-halloween:not(.page-home) {
+  background: #030503 url('/preview-assets/halloween-background.webp') center top / cover no-repeat;
+}
+.user-login.theme-halloween::before, .user-app.page-home.theme-halloween::before,
+.user-login.theme-halloween::after, .user-app.theme-halloween::after { display: none; }
+.user-app.page-home.theme-halloween { --home-accent: #ad36df; --home-muted: #d0c6d4; }
+.user-app.theme-halloween .brand, .user-login.theme-halloween .brand { color: #f5f1f4; text-shadow: 0 1px 5px #ae24d888; }
+.user-app.theme-halloween .brand span, .user-login.theme-halloween .brand span { background: none; color: #bf37f4; -webkit-text-fill-color: #bf37f4; }
+.user-app.page-home.theme-halloween .brand.halloween-brand { font-style: italic; letter-spacing: -1.4px; }
+.user-app.page-home.theme-halloween .brand.halloween-brand:not(.has-portal-header-logo) > span { position: relative; }
+.user-app.page-home.theme-halloween .brand.halloween-brand:not(.has-portal-header-logo) > span::before { content: '♛'; position: absolute; left: 42%; top: -.65em; color: #c94cf5; font-size: .38em; font-style: normal; line-height: 1; -webkit-text-fill-color: #c94cf5; }
+.user-app.page-home.theme-halloween .brand.halloween-brand small { margin-left: 1px; font-size: .44em; font-style: italic; letter-spacing: -.4px; }
+.user-app.page-home.theme-halloween .home-profile-button { background: #08070de8; border-color: #9830b3; box-shadow: 0 0 9px #af25de55; }
+.user-app.page-home.theme-halloween .home-profile-button .user-avatar { border-color: #9f31d9; }
+.user-app.page-home.theme-halloween .player-notifications { background: #070609e8; border-color: #ad31d4; box-shadow: 0 0 11px #9f32c348; }
+.user-app.page-home.theme-halloween .player-notifications-heading svg,
+.user-app.page-home.theme-halloween .player-notification > svg { color: #c241f4; }
+.user-app.page-home.theme-halloween .player-notification-switch[aria-checked="true"] { background: #9e29d4; border-color: #bc53e3; }
+.user-app.page-home.theme-halloween .home-welcome-name { color: #c545f5; }
+.user-app.page-home.theme-halloween .section-title::before { background: #c332f4; }
+.user-app.page-home.theme-halloween .bonus-banner { border-color: #a737d2; box-shadow: 0 6px 17px #000c, 0 0 10px #a322d144; }
+.user-app.page-home.theme-halloween .halloween-bonus-banner { width: 100%; margin-bottom: 10px; background: #16091b; }
+.user-app.page-home.theme-halloween .halloween-bonus-banner .bonus-offer-copy { right: 2%; width: 48%; text-shadow: 0 2px 6px #000, 0 0 9px #000; }
+.user-app.page-home.theme-halloween .halloween-bonus-banner .bonus-offer-copy > strong { color: #da4bff; font-size: clamp(13px, 4vw, 21px); }
+.user-app.page-home.theme-halloween .halloween-bonus-banner .bonus-offer-tiers p { border-color: #9b35bd96; }
+.user-app.page-home.theme-halloween .halloween-bonus-banner .bonus-offer-tiers b { color: #ffb344; }
+.user-app.page-home.theme-halloween .quick-actions { gap: 6px; margin-bottom: 10px; }
+.user-app.page-home.theme-halloween .action-card { min-height: 70px; background: #09080ced; border-color: #8b2ca8; box-shadow: 0 5px 13px #000a; }
+.user-app.page-home.theme-halloween button.action-card:first-of-type { background: #09080ced; border-color: #8b2ca8; }
+.user-app.page-home.theme-halloween .action-card:hover { background: #1c1022f0; border-color: #c346ed; }
+.user-app.page-home.theme-halloween .action-card .icon-circle { background: #0c0811; border-color: #b934e5; color: #c443ec; }
+.user-app.page-home.theme-halloween .action-card.home-link-banner { min-height: 0; padding: 0; overflow: hidden; border: 1px solid #9b2fbb; border-radius: var(--home-banner-radius, 10px); aspect-ratio: var(--home-banner-ratio, 100 / 18); }
+.user-app.page-home.theme-halloween .home-link-banner:focus-visible { outline-color: #d347fa; }
+.user-app.page-home.theme-halloween .portal-install-button,
+.user-login.theme-halloween .portal-install-button { background: #0b0710ec; border-color: #ae35d7; color: #d747fc; }
+
+/* Ajustes manuales de color y borde por tarjeta, guardados por tema. */
+.user-app.theme-card-notifications-custom .player-notifications { background: var(--theme-notifications-background) !important; border: var(--theme-notifications-border-width) solid var(--theme-notifications-border) !important; border-radius: var(--theme-notifications-radius) !important; }
+.user-app.theme-card-profile-custom .home-profile-button { background: var(--theme-profile-background) !important; border: var(--theme-profile-border-width) solid var(--theme-profile-border) !important; border-radius: var(--theme-profile-radius) !important; }
+.user-app.theme-card-bonus-custom .bonus-banner { background: var(--theme-bonus-background) !important; }
+/* El banner de bonos se ve como en el editor: la imagen trae su propio marco y el tema no le suma otro contorno. */
+.user-app.page-home .bonus-banner { border: 0 !important; box-shadow: none !important; border-radius: var(--home-banner-radius, 12px) !important; }
+.user-app .portal-extra-banners { display: grid; gap: 10px; width: 100%; margin: 0 0 12px; }
+.user-app.page-home .portal-extra-banners { width: calc(100% - 8px); margin: 0 auto 12px; }
+.user-app.page-home.theme-halloween .portal-extra-banners,
+.user-app.page-home.theme-christmas .portal-extra-banners,
+.user-app.page-home.theme-dark .portal-extra-banners { width: 100%; margin: 0 0 12px; }
+.user-app .portal-extra-banner { position: relative; width: 100%; margin: 0; overflow: hidden; border: 0 !important; box-shadow: none !important; background: #0b1016; aspect-ratio: var(--home-banner-ratio, 100 / 43); border-radius: var(--home-banner-radius, 12px) !important; }
+.user-app .portal-extra-banner .bonus-image { position: absolute; inset: auto; left: calc(50% + var(--home-banner-image-x, 0%)); top: calc(50% + var(--home-banner-image-y, 0%)); display: block; width: var(--home-banner-image-width, 100%); height: var(--home-banner-image-height, 100%); max-width: none; object-fit: cover; object-position: center; transform: translate(-50%, -50%); background: transparent; }
+.user-app.theme-card-casino-custom .home-link-banner { background: var(--theme-casino-background) !important; border: var(--theme-casino-border-width) solid var(--theme-casino-border) !important; border-radius: var(--theme-casino-radius) !important; }
+.user-app.theme-card-deposit-custom .action-card[data-theme-card='deposit'] { background: var(--theme-deposit-background) !important; border: var(--theme-deposit-border-width) solid var(--theme-deposit-border) !important; border-radius: var(--theme-deposit-radius) !important; }
+.user-app.theme-card-withdrawal-custom .action-card[data-theme-card='withdrawal'] { background: var(--theme-withdrawal-background) !important; border: var(--theme-withdrawal-border-width) solid var(--theme-withdrawal-border) !important; border-radius: var(--theme-withdrawal-radius) !important; }
+.user-app.theme-card-chat-custom .action-card[data-theme-card='chat'] { background: var(--theme-chat-background) !important; border: var(--theme-chat-border-width) solid var(--theme-chat-border) !important; border-radius: var(--theme-chat-radius) !important; }
+.user-app.theme-card-general-custom .card:not(.player-notifications):not(.bonus-banner),
+.user-login.theme-card-general-custom .card { background: var(--theme-general-background) !important; border: var(--theme-general-border-width) solid var(--theme-general-border) !important; border-radius: var(--theme-general-radius) !important; }
+.user-app.theme-card-install-custom .portal-install-button,
+.user-login.theme-card-install-custom .portal-install-button { background: var(--theme-install-background) !important; border: var(--theme-install-border-width) solid var(--theme-install-border) !important; border-radius: var(--theme-install-radius) !important; }

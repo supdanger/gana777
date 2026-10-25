@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { ArrowLeft, Camera, ChevronRight, Eye, EyeOff, FileText, Images, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserPlus, UserRound } from 'lucide-react';
-import { BonusBanner, StorageImage, useContent } from './content';
+import { BonusBanner, PortalBanners, StorageImage, useContent } from './content';
 import { asBonusRule, bonusEnabled, moneyInputMaxLength, moneyInputPattern, percentText, readMoney } from '../supabase/functions/_shared/bonus-rule';
 import { creditAmounts } from './amounts';
-import { date, money, type Bank, type BankOperationStatus, type RequestRow, type Message } from './lib';
+import { date, money, supabase, type Bank, type BankOperationStatus, type RequestRow, type Message } from './lib';
 import { ContactAnimation } from './contact-animation';
 import { safeHttpsLink } from './security';
 import { Turnstile } from './turnstile';
@@ -11,7 +11,10 @@ import { compressReceipt, readableFileSize } from './image-compression';
 import { BankTransferCard } from './bank-transfer-card';
 import { PlayerFooter } from './player-legal';
 import { PortalInstall } from './portal-install';
-import { homeBannerLink } from './home-banner';
+import { homeBannerImage, homeBannerLayout, homeBannerLayoutStyles, homeBannerLink } from './home-banner';
+import { portalBannersFor } from './portal-banners';
+import { headerLogoLayout, headerLogoStyle } from './header-logo-layout';
+import { themeBase, themeSurface } from './portal-theme-design';
 import { referralShareMessage, referralShareUrl } from './share-referral';
 import referralBannerUrl from './assets/home-casino-banner-v3.png';
 import supportAvatarUrl from './assets/support-panda-avatar.png';
@@ -20,10 +23,13 @@ import { ChatImage, useChatImagePreview } from './chat-images';
 
 export type Page = 'home' | 'profile' | 'deposit' | 'withdrawal' | 'referrals' | 'history' | 'users' | 'platform' | 'access-requests' | 'contacts' | 'portal' | 'themes' | 'bonuses' | 'accounts' | 'shifts' | 'chat' | 'cashiers' | 'announcements';
 export const titles = { home: 'Inicio', profile: 'Mi perfil', deposit: 'Cargas', withdrawal: 'Retiros', referrals: 'Recomendados', history: 'Historial', users: 'Usuarios', platform: 'Platform', 'access-requests': 'Solicitudes', contacts: 'Contactos', portal: 'Portal', themes: 'Temas', bonuses: 'Bonos', accounts: 'Cuentas', shifts: 'Turnos', chat: 'Chat', cashiers: 'Cajeros', announcements: 'Mensajes' };
-export function Brand({ panel = false }: { panel?: boolean }) {
+export function Brand({ panel = false, homeHeader = false }: { panel?: boolean; homeHeader?: boolean }) {
   const { settings } = useContent();
   const name = panel ? 'GANA777 Panel' : 'GANA777';
-  return <span className="brand">{settings.logo_path ? <StorageImage path={settings.logo_path} alt={name} className="brand-image" /> : <>GANA<span>777</span></>}{panel && <span className="brand-role">Panel</span>}</span>;
+  const halloweenHeader = homeHeader && themeBase(settings) === 'halloween';
+  const designLogo = settings.portal_theme_designs?.[settings.portal_theme]?.logoPath;
+  const headerLogo = homeHeader ? designLogo ?? (halloweenHeader ? settings.portal_header_logo_halloween_path : settings.portal_header_logo_path) : null;
+  return <span className={`brand${headerLogo ? ' has-portal-header-logo' : ''}${halloweenHeader ? ' halloween-brand' : ''}`}>{headerLogo ? <span className="portal-header-logo" style={headerLogoStyle(headerLogoLayout(settings, settings.portal_theme)) as CSSProperties}><StorageImage path={headerLogo} alt={name} className="portal-header-logo-image" /></span> : halloweenHeader ? <>Gana<span>777</span><small>bet.com</small></> : settings.logo_path ? <StorageImage path={settings.logo_path} alt={name} className="brand-image" /> : <>GANA<span>777</span></>}{panel && <span className="brand-role">Panel</span>}</span>;
 }
 export function SectionHeading({ icon, title, description }: { icon: ReactNode; title: string; description?: string }) {
   return <div className="section-heading"><span className="icon-circle">{icon}</span><div><h2>{title}</h2>{description && <p>{description}</p>}</div></div>;
@@ -50,7 +56,8 @@ export function LoginView({ admin, busy, configured, feedback, onLogin, onDemo, 
     finally { setCaptchaToken(null); setCaptchaReset(value => value + 1); }
   }
   const { settings } = useContent();
-  return <main className={`login ${admin ? 'admin-login' : `user-login theme-${settings.portal_theme}`}`}>
+  const surface = themeSurface(settings, path => supabase?.storage.from('app-assets').getPublicUrl(path).data.publicUrl ?? null);
+  return <main className={`login ${admin ? 'admin-login' : `user-login ${surface.className}`}`} style={admin ? undefined : surface.style}>
     {admin && <Brand panel />}
     {admin ? <p className="eyebrow">PANEL DE ADMINISTRACIÓN</p> : <div className={`login-character ${settings.login_image_path === 'brand/panda-login-transparent.png' ? 'transparent-character' : settings.login_image_layout === 'reference' ? 'reference-character' : ''}`}><StorageImage path={settings.login_image_path} fallbackPath="brand/panda-login-transparent.png" alt="Panda GANA777 con gorra y campera azul" /></div>}
     {!admin && requestingAccess ? <PlayerAccessRequest onBack={() => setRequestingAccess(false)} /> : <><section className="card login-card">{!admin && <span className="brand login-domain-brand">gana777bet.com</span>}<h1>Bienvenido</h1>{admin && <p>Ingresá a tu cuenta</p>}
@@ -72,7 +79,7 @@ export function LoginView({ admin, busy, configured, feedback, onLogin, onDemo, 
 }
 export function UserHeader({ page, navigate, name = 'Mi perfil' }: { page: Page; navigate: (page: Page) => void; name?: string }) {
   return <header className={page === 'home' ? 'home-header' : 'inner-header'}>
-    {page === 'home' ? <><Brand /><button className="home-profile-button" onClick={() => navigate('profile')} aria-label={`Ver perfil e historial de ${name}`}><span className="user-avatar"><StorageImage path="avatars/panda-user-avatar.png" alt="" /></span><span className="home-profile-name">{name}</span><ChevronRight size={16} aria-hidden="true" /></button></> : <><button className="back-button" aria-label="Volver al inicio" onClick={() => navigate('home')}><ArrowLeft /></button><h1>{titles[page]}</h1><Brand /></>}
+    {page === 'home' ? <><Brand homeHeader /><button className="home-profile-button" onClick={() => navigate('profile')} aria-label={`Ver perfil e historial de ${name}`}><span className="user-avatar"><StorageImage path="avatars/panda-user-avatar.png" alt="" /></span><span className="home-profile-name">{name}</span><ChevronRight size={16} aria-hidden="true" /></button></> : <><button className="back-button" aria-label="Volver al inicio" onClick={() => navigate('home')}><ArrowLeft /></button><h1>{titles[page]}</h1><Brand /></>}
   </header>;
 }
 function WhatsAppMark() {
@@ -104,6 +111,8 @@ function playerGreeting() {
 export function UserHome({ name, navigate, whatsappUrl, username, casinoUrl }: { name: string; navigate: (page: Page) => void; whatsappUrl?: string | null; username?: string | null; casinoUrl?: string | null }) {
   const { settings, contactAnimations } = useContent();
   const bannerUrl = homeBannerLink(settings, casinoUrl);
+  const bannerImage = homeBannerImage(settings, settings.portal_theme);
+  const bannerStyle = homeBannerLayoutStyles(homeBannerLayout(settings, settings.portal_theme)) as CSSProperties;
   const shareUrl = referralShareUrl(username ?? null, whatsappUrl ?? null);
   const shareMessage = referralShareMessage(username ?? null, whatsappUrl ?? null);
   const [referralImage, setReferralImage] = useState<File | null>(null);
@@ -142,14 +151,15 @@ export function UserHome({ name, navigate, whatsappUrl, username, casinoUrl }: {
   return <>
     <h1 className="home-welcome">¡{greeting}, <span className="home-welcome-name">{name}!</span></h1>
     <BonusBanner />
+    <PortalBanners place="home" />
     <h2 className="section-title">¿Qué querés hacer?</h2>
     <div className="quick-actions">
-      {bannerUrl && <a className="action-card home-link-banner" href={bannerUrl} target="_blank" rel="noopener noreferrer" aria-label={`${settings.home_banner_title} (abre en otra pestaña)`}><StorageImage path={settings.home_banner_path!} alt={settings.home_banner_title} /></a>}
+      {bannerUrl && bannerImage && <a className="action-card home-link-banner" style={bannerStyle} href={bannerUrl} target="_blank" rel="noopener noreferrer" aria-label={`${settings.home_banner_title} (abre en otra pestaña)`}>{bannerImage.startsWith('/') ? <img src={bannerImage} alt={settings.home_banner_title} draggable={false} decoding="async" /> : <StorageImage path={bannerImage} alt={settings.home_banner_title} />}</a>}
       {([
         { id: 'deposit', title: 'Cargar', description: 'Hacé tu depósito y subí el comprobante', Icon: Landmark },
         { id: 'withdrawal', title: 'Retiros', description: 'Solicitá tu retiro', Icon: Link2 },
         { id: 'chat', title: 'Chat', description: 'Hablá con soporte', Icon: MessageCircle },
-      ] as const).map(({ id, title, description, Icon }) => <button className="action-card" key={id} onClick={() => navigate(id)}><span className="icon-circle"><Icon /></span><span><strong>{title}</strong><small>{description}</small></span><ChevronRight /></button>)}
+      ] as const).map(({ id, title, description, Icon }) => <button className="action-card" data-theme-card={id} key={id} onClick={() => navigate(id)}><span className="icon-circle"><Icon /></span><span><strong>{title}</strong><small>{description}</small></span><ChevronRight /></button>)}
     </div>
     {contacts.length > 0 && <section className="card contacts"><h2>Contactanos</h2><div className="contact-links">{contacts.map(({ name, url, mark, className, animation }) => {
       const icon = <span className="social-mark"><ContactAnimation path={animation} fallback={mark} /></span>;
@@ -188,7 +198,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
   kind: 'deposit' | 'withdrawal'; requests: RequestRow[]; bank: Bank | null; bankOperation: BankOperationStatus | null; retryAt?: number; busy: boolean; demo: boolean;
   onSubmit: (event: FormEvent<HTMLFormElement>, receipt?: File | null) => void; onCopy: (text: string, label: string) => void; onOpenWithdrawalHistory: () => void; feedback?: ReactNode;
 }) {
-  const { promotions, reloadPromotions } = useContent();
+  const { promotions, reloadPromotions, settings } = useContent();
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     setNow(Date.now());
@@ -270,6 +280,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     setReceiptError('');
     setCompressing(false);
   }
+  const withdrawalArt = portalBannersFor(settings.portal_banners, settings.portal_theme, 'withdrawal')[0];
   const withdrawalAmount = kind === 'withdrawal' ? readMoney(rawAmount) : null;
   const withdrawalPartCount = withdrawalAmount === null ? 0 : Math.ceil(withdrawalAmount / 100000);
   const amount = <label className="amount-label">Monto a {kind === 'deposit' ? 'cargar' : 'retirar'}<span className="amount-input">{(kind !== 'deposit' || rawAmount) && <span aria-hidden="true">$</span>}<input className="amount" name="amount" inputMode="decimal" type="text" pattern={moneyInputPattern} maxLength={moneyInputMaxLength} placeholder={kind === 'deposit' ? 'Carga mínima 3.000' : '10.000'} aria-label={`Monto a ${kind === 'deposit' ? 'cargar' : 'retirar'} en pesos argentinos`} required value={rawAmount} onChange={event => setRawAmount(event.target.value)} />{bonusCreditLabel && <span className="amount-bonus">{bonusCreditLabel}</span>}</span>{kind === 'withdrawal' && withdrawalPartCount > 1 && <small className="withdrawal-split-note">{withdrawalPartCount > 100 ? 'El máximo por solicitud es de $10.000.000.' : `Se pagará en ${withdrawalPartCount} transferencias de hasta ${money(100000)}. Cada pago tendrá su comprobante en el historial.`}</small>}</label>;
@@ -307,7 +318,8 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
         </div>
       </section>
     </> : <>
-      <section className={`card withdrawal-window ${pending ? 'pending' : seconds > 0 ? 'counting' : 'ready'}`}>
+      <section className={`card withdrawal-window${withdrawalArt ? ' has-withdrawal-art' : ''} ${pending ? 'pending' : seconds > 0 ? 'counting' : 'ready'}`} style={withdrawalArt ? homeBannerLayoutStyles(withdrawalArt.layout) as CSSProperties : undefined}>
+        {withdrawalArt && (/\.(mp4|webm)$/i.test(withdrawalArt.path) ? <video className="withdrawal-banner-art" src={supabase?.storage.from('app-assets').getPublicUrl(withdrawalArt.path).data.publicUrl} autoPlay muted loop playsInline preload="metadata" aria-hidden="true" /> : <StorageImage path={withdrawalArt.path} alt="" className="withdrawal-banner-art" />)}
         <div className="withdrawal-window-copy">
           {pending ? <><strong className="withdrawal-state-title">Retiro en proceso</strong><p>El contador comenzará cuando se acredite.</p></> : seconds > 0 ? <><p>Próximo retiro disponible en</p><strong className="withdrawal-countdown" role="timer" aria-label="Tiempo restante para solicitar otro retiro">{countdown}</strong></> : <><strong className="withdrawal-state-title">Retiro disponible</strong><p>Ya podés solicitarlo.</p></>}
         </div>

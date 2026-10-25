@@ -49,6 +49,7 @@ import { playerSignInEmail } from './players';
 import { PlayerNotifications, unlinkDeviceSubscription } from './notifications';
 import { ScheduledAnnouncementsAdmin } from './scheduled-announcements-admin';
 import { ThemesAdmin } from './themes-admin';
+import { themeSurface } from './portal-theme-design';
 import { allStaffPermissions, canOpenAdminPage, noStaffPermissions, staffPermissionPages, staffSignInEmail, type StaffPermissions } from './staff';
 import './styles.css';
 import './mobile.css';
@@ -888,7 +889,7 @@ function App() {
       {adminApp && page === 'platform' && <PlatformAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'access-requests' && <AdminPlayerAccess demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'contacts' && <ContactAdmin demo={demo} busy={busy} action={action} />}
-      {adminApp && page === 'portal' && <PortalAdmin demo={demo} busy={busy} action={action} />}
+      {adminApp && page === 'portal' && <PortalAdmin demo={demo} busy={busy} action={action} canEditThemes={demo || staffContext.superAdmin} />}
       {adminApp && page === 'themes' && staffContext.superAdmin && <ThemesAdmin demo={demo} />}
       {adminApp && page === 'announcements' && staffContext.superAdmin && <ScheduledAnnouncementsAdmin demo={demo} />}
       {adminApp && page === 'bonuses' && <BonusAdmin demo={demo} busy={busy} action={action} />}
@@ -901,7 +902,8 @@ function App() {
   </>;
   const staffAvatarUrl = staffContext.avatarPath && supabase ? supabase.storage.from('cashier-avatars').getPublicUrl(staffContext.avatarPath).data.publicUrl : null;
   if (adminApp) return <AdminShell page={page} counts={pendingCounts} permissions={demo ? allStaffPermissions : staffContext.permissions} superAdmin={demo || staffContext.superAdmin} staffName={demo ? 'Superadministrador' : staffContext.displayName || name} avatarUrl={staffAvatarUrl} busy={busy} navigate={navigate} logout={() => void logout()}>{content}</AdminShell>;
-  return <div className={`app user-app page-${page} theme-${settings.portal_theme}`}>
+  const surface = themeSurface(settings, path => supabase?.storage.from('app-assets').getPublicUrl(path).data.publicUrl ?? null);
+  return <div className={`app user-app page-${page} ${surface.className}`} style={surface.style}>
     <UserHeader page={page} navigate={navigate} name={name} />
     {content}
   </div>;

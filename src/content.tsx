@@ -1,15 +1,23 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { asBonusRule } from '../supabase/functions/_shared/bonus-rule';
 import { supabase } from './lib';
-import { defaultHomeBanner, type HomeBannerSettings } from './home-banner';
+import { defaultHomeBanner, homeBannerLayoutStyles, type HomeBannerSettings } from './home-banner';
+import { bonusBannerLayout } from './bonus-banner-layout';
+import { portalBannersFor, type PortalBannerPlace } from './portal-banners';
+import type { PortalTheme, ThemeDesigns } from './portal-theme-design';
+import { themeBase } from './portal-theme-design';
 import pandaLogin from './assets/panda-login-transparent.png';
 import pandaAvatar from './assets/panda-user-avatar.png';
 
-export type PortalTheme = 'base' | 'dark' | 'christmas' | 'new-year';
+export type { PortalTheme } from './portal-theme-design';
 export type AppContent = HomeBannerSettings & {
   id: boolean;
   portal_theme: PortalTheme;
+  portal_theme_designs: ThemeDesigns;
   logo_path: string | null;
+  portal_header_logo_path: string | null;
+  portal_header_logo_halloween_path: string | null;
+  portal_header_logo_layouts: Record<string, unknown>;
   login_image_path: string;
   login_image_layout: 'reference' | 'image';
   whatsapp_url: string | null;
@@ -21,6 +29,9 @@ export type AppContent = HomeBannerSettings & {
   show_instagram: boolean;
   allow_player_logout: boolean;
   home_bonus_media_path: string | null;
+  home_bonus_halloween_media_path: string | null;
+  home_bonus_layouts: Record<string, unknown>;
+  portal_banners: unknown;
 };
 export type Promotion = {
   id: string; title: string; description: string; image_path: string | null;
@@ -32,9 +43,9 @@ export type ContactChannel = 'whatsapp' | 'telegram' | 'instagram';
 const emptyAnimations: Record<ContactChannel, string | null> = { whatsapp: null, telegram: null, instagram: null };
 const defaults: AppContent = {
   ...defaultHomeBanner,
-  id: true, portal_theme: 'base', logo_path: null, login_image_path: 'brand/panda-login-transparent.png',
+  id: true, portal_theme: 'base', portal_theme_designs: {}, logo_path: null, portal_header_logo_path: null, portal_header_logo_halloween_path: null, portal_header_logo_layouts: {}, login_image_path: 'brand/panda-login-transparent.png',
   login_image_layout: 'image', whatsapp_url: null, telegram_url: null,
-  instagram_url: null, help_url: null, show_whatsapp: true, show_telegram: true, show_instagram: true, allow_player_logout: false, home_bonus_media_path: null,
+  instagram_url: null, help_url: null, show_whatsapp: true, show_telegram: true, show_instagram: true, allow_player_logout: false, home_bonus_media_path: null, home_bonus_halloween_media_path: null, home_bonus_layouts: {}, portal_banners: [],
 };
 const loadBonusPromotionId = '00000000-0000-4000-8000-000000000777';
 const welcome: Promotion = {
@@ -136,29 +147,66 @@ export function BonusBanner() {
   const { promotions, settings } = useContent();
   const promotion = promotions.find(p => p.show_banner);
   if (!promotion) return null;
-  if (settings.portal_theme === 'dark') return <section className="bonus-banner image-banner dark-bonus-banner" aria-label="Bonos por carga">
+  const layoutStyle = homeBannerLayoutStyles(bonusBannerLayout(settings, settings.portal_theme)) as CSSProperties;
+  const designPath = settings.portal_theme_designs?.[settings.portal_theme]?.bonusPath;
+  if (designPath) {
+    const video = /\.(mp4|webm)$/i.test(designPath);
+    return <section className="bonus-banner image-banner custom-bonus-media" style={layoutStyle} aria-label={promotion.title}>
+      {video ? <video key={designPath} className="bonus-image" src={supabase?.storage.from('app-assets').getPublicUrl(designPath).data.publicUrl} autoPlay muted loop playsInline preload="metadata" aria-label={promotion.title} /> : <StorageImage key={designPath} path={designPath} alt={promotion.title} className="bonus-image" />}
+    </section>;
+  }
+  const visualTheme = themeBase(settings);
+  if (visualTheme === 'dark') return <section className="bonus-banner image-banner dark-bonus-banner" style={layoutStyle} aria-label="Bonos por carga">
     <img className="bonus-image" src="/preview-assets/dark-bonus-banner-card.png" alt="Bonos por carga: desde $5.000 recibís $1.000 y desde $10.000 recibís $2.000" draggable={false} decoding="async" />
     <video className="bonus-image" src="/preview-assets/dark-bonus-banner.mp4" poster="/preview-assets/dark-bonus-banner-card.png" autoPlay muted loop playsInline preload="metadata" aria-hidden="true" onPlaying={event => { event.currentTarget.dataset.ready = 'true'; }} />
   </section>;
+  if (visualTheme === 'halloween' && ((settings.portal_theme === 'halloween' && settings.home_bonus_halloween_media_path) || promotion.id === loadBonusPromotionId)) {
+    const path = settings.portal_theme === 'halloween' ? settings.home_bonus_halloween_media_path : null;
+    const video = path ? /\.(mp4|webm)$/i.test(path) : false;
+    return <section className={`bonus-banner image-banner halloween-bonus-banner${path ? ' custom-bonus-media' : ''}`} style={layoutStyle} aria-label={promotion.title}>
+      {path ? video ? <video key={path} className="bonus-image" src={supabase?.storage.from('app-assets').getPublicUrl(path).data.publicUrl} poster="/preview-assets/halloween-bonus-banner.webp" autoPlay muted loop playsInline preload="metadata" aria-label={promotion.title} /> : <StorageImage key={path} path={path} alt={promotion.title} className="bonus-image" /> : <><img className="bonus-image" src="/preview-assets/halloween-bonus-banner.webp" alt="Panda disfrazado de Halloween con una calabaza" draggable={false} decoding="async" /><div className="bonus-offer-copy"><span>Cargá y sumá más</span><strong>Bonos por carga</strong><div className="bonus-offer-tiers"><p>Desde <b>$5.000</b><small>Recibís +$1.000</small></p><p>Desde <b>$10.000</b><small>Recibís +$2.000</small></p></div></div></>}
+    </section>;
+  }
   if (settings.home_bonus_media_path) {
     const path = settings.home_bonus_media_path;
     const video = /\.(mp4|webm)$/i.test(path);
-    return <section className="bonus-banner image-banner custom-bonus-media" aria-label={promotion.title}>
+    return <section className="bonus-banner image-banner custom-bonus-media" style={layoutStyle} aria-label={promotion.title}>
       {video ? <video key={path} className="bonus-image" src={supabase?.storage.from('app-assets').getPublicUrl(path).data.publicUrl} poster="/preview-assets/load-bonus-banner-v2.webp" autoPlay muted loop playsInline preload="metadata" aria-label={promotion.title} /> : <StorageImage key={path} path={path} alt={promotion.title} className="bonus-image" />}
     </section>;
   }
-  if (promotion.image_path) return <section className="bonus-banner image-banner has-copy" aria-label={promotion.title}>
+  if (promotion.image_path) return <section className="bonus-banner image-banner has-copy" style={layoutStyle} aria-label={promotion.title}>
     <StorageImage key={promotion.image_path} path={promotion.image_path} alt={promotion.title} className="bonus-image" />
     <div className="bonus-image-copy"><strong>{promotion.title}</strong>{promotion.description && <p>{promotion.description}</p>}</div>
   </section>;
-  if (promotion.id === loadBonusPromotionId) return <section className="bonus-banner image-banner has-copy default-bonus-banner" aria-label={promotion.title}>
+  if (visualTheme === 'christmas' && promotion.id === loadBonusPromotionId) return <section className="bonus-banner image-banner christmas-bonus-banner" style={layoutStyle} aria-label="Bonos por carga">
+    <img className="bonus-image" src="/preview-assets/christmas-bonus-banner.webp" alt="Panda con traje de Papá Noel y regalos" draggable={false} decoding="async" />
+    <div className="bonus-offer-copy">
+      <span>Cargá y sumá más</span><strong>Bonos por carga</strong>
+      <div className="bonus-offer-tiers"><p>Desde <b>$5.000</b><small>Recibís +$1.000</small></p><p>Desde <b>$10.000</b><small>Recibís +$2.000</small></p></div>
+    </div>
+  </section>;
+  if (promotion.id === loadBonusPromotionId) return <section className="bonus-banner image-banner has-copy default-bonus-banner" style={layoutStyle} aria-label={promotion.title}>
     <img className="bonus-image" src="/preview-assets/load-bonus-banner-v2.webp" alt={promotion.title} draggable={false} decoding="async" />
     <div className="bonus-offer-copy">
       <span>Cargá y sumá más</span><strong>Bonos por carga</strong>
       <div className="bonus-offer-tiers"><p>Desde <b>$5.000</b><small>Recibís +$1.000</small></p><p>Desde <b>$10.000</b><small>Recibís +$2.000</small></p></div>
     </div>
   </section>;
-  return <section className={`bonus-banner ${promotion.image_layout === 'reference' ? 'reference-banner' : ''}`} aria-label={promotion.title}>
+  return <section className={`bonus-banner ${promotion.image_layout === 'reference' ? 'reference-banner' : ''}`} style={layoutStyle} aria-label={promotion.title}>
     <div className="bonus-copy"><strong>{promotion.title}</strong><p>{promotion.description}</p></div>
   </section>;
+}
+export function PortalBanners({ place }: { place: PortalBannerPlace }) {
+  const { settings } = useContent();
+  const banners = portalBannersFor(settings.portal_banners, settings.portal_theme, place);
+  if (!banners.length) return null;
+  const label = place === 'withdrawal' ? 'Banner de retiros' : 'Banner del inicio';
+  return <div className="portal-extra-banners">{banners.map((banner, index) => {
+    const video = /\.(mp4|webm)$/i.test(banner.path);
+    const source = supabase?.storage.from('app-assets').getPublicUrl(banner.path).data.publicUrl;
+    const text = `${label} ${index + 1}`;
+    return <section className="portal-extra-banner" style={homeBannerLayoutStyles(banner.layout) as CSSProperties} key={banner.id} aria-label={text}>
+      {video ? <video className="bonus-image" src={source} autoPlay muted loop playsInline preload="metadata" aria-label={text} /> : <StorageImage path={banner.path} alt={text} className="bonus-image" />}
+    </section>;
+  })}</div>;
 }
