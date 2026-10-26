@@ -4,7 +4,7 @@ import { assertFormFields, InputError, parseBonusRule } from '../supabase/functi
 import { money, supabase } from './lib';
 import { StorageImage, useContent } from './content';
 import { BannerLayoutEditor } from './banner-layout-editor';
-import { defaultBonusBannerLayout, normalizeBonusBannerLayout } from './bonus-banner-layout';
+import { defaultBonusBannerLayout, normalizeBonusBannerLayout, specialBonusDisplayLayout } from './bonus-banner-layout';
 import { bannerImageExtension } from './home-banner';
 import { themeBase } from './portal-theme-design';
 import type { HomeBannerLayout } from './home-banner';
@@ -201,7 +201,7 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
         </div>
         {bonus.cooldown_hours > 0 && <div className="special-bonus-image-editor">
           <label className="portal-extra-add">{bonus.image_path ? 'Cambiar imagen o video' : 'Subir imagen o video'}<input type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" disabled={busy || demo} onChange={event => void uploadImage(bonus, event)} /></label>
-          <BannerLayoutEditor label={bonus.title} layout={bonus.banner_layout} defaults={defaultBonusBannerLayout(theme)} heightRange={[25, 80]} disabled={busy || demo} saved={savedLayoutId === bonus.id} onChange={layout => { setBonuses(old => old.map(item => item.id === bonus.id ? { ...item, banner_layout: normalizeBonusBannerLayout(layout, theme) } : item)); setSavedLayoutId(null); }} onSave={() => void saveLayout(bonus)}>
+          <BannerLayoutEditor label={bonus.title} layout={bonus.banner_layout} previewLayout={specialBonusDisplayLayout(bonus.banner_layout)} defaults={defaultBonusBannerLayout(theme)} heightRange={[25, 80]} disabled={busy || demo} saved={savedLayoutId === bonus.id} onChange={layout => { setBonuses(old => old.map(item => item.id === bonus.id ? { ...item, banner_layout: normalizeBonusBannerLayout(layout, theme) } : item)); setSavedLayoutId(null); }} onSave={() => void saveLayout(bonus)}>
             {bonus.image_path ? /\.(mp4|webm)$/i.test(bonus.image_path) ? <video src={supabase?.storage.from('app-assets').getPublicUrl(bonus.image_path).data.publicUrl} autoPlay muted loop playsInline /> : <StorageImage path={bonus.image_path} alt={bonus.title} /> : <span>{bonus.title} · imagen pendiente</span>}
             <div className="special-banner-copy"><span className="special-banner-name">{bonus.title}</span><span className="special-banner-minimum">Desde {money(bonus.min_amount)}</span><strong className="special-banner-reward">+{money(bonus.bonus_amount)}</strong><button type="button">Obtener bono</button></div>
           </BannerLayoutEditor>

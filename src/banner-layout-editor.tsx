@@ -10,8 +10,8 @@ const sliders: { key: keyof HomeBannerLayout; label: string; min: number; max: n
   { key: 'radius', label: 'Redondeo de esquinas', min: 0, max: 40, unit: 'px' },
 ];
 
-export function BannerLayoutEditor({ label, layout, defaults, heightRange, disabled, saved, onChange, onSave, children }: {
-  label: string; layout: HomeBannerLayout; defaults: HomeBannerLayout; heightRange: readonly [number, number];
+export function BannerLayoutEditor({ label, layout, previewLayout, defaults, heightRange, disabled, saved, onChange, onSave, children }: {
+  label: string; layout: HomeBannerLayout; previewLayout?: HomeBannerLayout; defaults: HomeBannerLayout; heightRange: readonly [number, number];
   disabled: boolean; saved: boolean; onChange: (layout: HomeBannerLayout) => void; onSave: () => void; children: ReactNode;
 }) {
   const drag = useRef<{ pointerId: number; startX: number; startY: number; x: number; y: number; width: number; height: number } | null>(null);
@@ -35,7 +35,7 @@ export function BannerLayoutEditor({ label, layout, defaults, heightRange, disab
   }
 
   return <div className="portal-layout-editor">
-    <div className={`portal-banner-preview portal-layout-preview${dragging ? ' is-dragging' : ''}`} style={homeBannerLayoutStyles(layout) as CSSProperties} aria-label={`Vista previa ajustable de ${label}`} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>{children}</div>
+    <div className={`portal-banner-preview portal-layout-preview${dragging ? ' is-dragging' : ''}`} style={homeBannerLayoutStyles(previewLayout ?? layout) as CSSProperties} aria-label={`Vista previa ajustable de ${label}`} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>{children}</div>
     <p>Arrastrá la imagen para moverla. Los controles ajustan el tamaño y la posición.</p>
     <div className="portal-layout-sliders">{sliders.map(({ key, label: sliderLabel, min, max, unit }) => <label key={key}><span>{sliderLabel}<output>{layout[key]} {unit}</output></span><input type="range" min={key === 'height' ? heightRange[0] : min} max={key === 'height' ? heightRange[1] : max} step="1" value={layout[key]} disabled={disabled} onChange={event => onChange({ ...layout, [key]: Number(event.target.value) })} /></label>)}</div>
     <div className="portal-banner-actions"><button type="button" disabled={disabled} onClick={onSave}>Guardar encuadre</button><button type="button" disabled={disabled} onClick={() => onChange({ ...defaults })}>Restablecer ajustes</button></div>
