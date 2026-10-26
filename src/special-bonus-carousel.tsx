@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { BonusBanner, StorageImage, useContent } from './content';
 import { normalizeBonusBannerLayout } from './bonus-banner-layout';
 import { homeBannerLayoutStyles } from './home-banner';
@@ -72,6 +72,6 @@ export function HomeBonusCarousel({ onClaim }: { onClaim: (id: string) => void }
         <button type="button" disabled={!canClaim} onClick={() => onClaim(special.id)}>{canClaim ? 'Obtener bono' : !statusReady ? 'Consultando bono…' : remaining > 0 ? countdown(remaining) : 'Esperá la acreditación'}</button>
       </div>
     </section> : <BonusBanner />}
-    {total > 1 && <nav className="home-bonus-carousel-nav" aria-label="Banners de bonos"><button type="button" aria-label="Banner anterior" onClick={() => setSlide(value => (value - 1 + total) % total)}><ArrowLeft size={18} strokeWidth={2.4} aria-hidden="true" /></button><span aria-live="polite">{slide + 1} / {total}</span><button type="button" aria-label="Banner siguiente" onClick={() => setSlide(value => (value + 1) % total)}><ArrowRight size={18} strokeWidth={2.4} aria-hidden="true" /></button></nav>}
+    {total > 1 && <nav className="home-bonus-carousel-nav" aria-label="Banners de bonos"><button type="button" aria-label="Banner anterior" onClick={() => setSlide(value => (value - 1 + total) % total)}><ChevronLeft size={30} strokeWidth={2.8} aria-hidden="true" /></button><span aria-live="polite">{slide + 1} / {total}</span><button type="button" aria-label="Banner siguiente" onClick={() => setSlide(value => (value + 1) % total)}><ChevronRight size={30} strokeWidth={2.8} aria-hidden="true" /></button></nav>}
   </div>;
 }
