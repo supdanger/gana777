@@ -1306,11 +1306,15 @@ body:has(.user-app.theme-christmas), body:has(.user-login.theme-christmas) { bac
 .user-app.page-home .special-home-banner .bonus-image { position: absolute; left: calc(50% + var(--home-banner-image-x, 0%)); top: calc(50% + var(--home-banner-image-y, 0%)); width: var(--home-banner-image-width, 100%); height: var(--home-banner-image-height, 100%); max-width: none; object-fit: cover; transform: translate(-50%, -50%); }
 .special-home-placeholder { display: grid; place-content: center; width: 100%; height: 100%; gap: 4px; text-align: center; color: #fff; background: radial-gradient(circle at 30% 20%, #66213d, #160b1c 70%); }
 .special-home-placeholder strong { font-size: clamp(20px, 5vw, 32px); }
-.special-banner-controls { position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 8px; padding: 8px 12px; color: #fff; background: linear-gradient(0deg, #000e, #0009); text-shadow: 0 1px 3px #000; }
-.special-banner-controls strong { font-size: 13px; }
-.special-banner-controls span { font-size: 11px; }
-.special-banner-controls button { border: 1px solid #ffd16b; border-radius: 7px; padding: 6px 9px; color: #111; background: #ffd16b; font-size: 11px; font-weight: 800; }
-.special-banner-controls button:disabled { opacity: .8; color: #fff; background: #273341; border-color: #ffffff77; }
+.special-banner-shade { position: absolute; z-index: 1; inset: 0; background: linear-gradient(90deg, #090c1bef 0%, #090c1bd9 31%, #090c1b65 53%, transparent 73%); pointer-events: none; }
+.special-banner-copy { position: absolute; z-index: 2; top: 50%; left: clamp(51px, 9%, 65px); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; width: min(44%, 260px); max-height: calc(100% - 14px); color: #fff; text-align: left; text-shadow: 0 1px 4px #000; transform: translateY(-50%); pointer-events: none; }
+.special-banner-name { display: -webkit-box; max-width: 100%; overflow: hidden; color: #fff; font-size: clamp(13px, 3.8vw, 19px); font-weight: 800; line-height: 1.1; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.special-banner-minimum { color: #e1eaf4; font-size: clamp(10px, 2.8vw, 13px); font-weight: 650; white-space: nowrap; }
+.special-banner-reward { color: #ffd16b; font-size: clamp(15px, 4.4vw, 24px); font-weight: 900; line-height: 1.1; white-space: nowrap; }
+.special-banner-state { color: #e3edf7; font-size: clamp(10px, 2.6vw, 12px); font-weight: 700; line-height: 1.15; }
+.special-banner-countdown { color: var(--home-accent, #69c9ff); font-size: clamp(19px, 5vw, 32px); font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: -.5px; }
+.special-banner-copy button { min-height: 30px; margin-top: 4px; padding: 5px 10px; border: 1px solid #ffd16b; border-radius: 8px; color: #15110a; background: #ffd16b; font-size: clamp(10px, 2.8vw, 12px); font-weight: 800; white-space: nowrap; pointer-events: auto; }
+.special-banner-copy button:hover { background: #ffe298; border-color: #ffe298; }
 .special-bonus-request-note { margin: 0 0 8px; font-size: 12px; color: #ffd16b; }
 .user-app.page-home .bonus-banner.image-banner .bonus-image,
 .user-app.theme-dark.page-home .dark-bonus-banner .bonus-image,
