@@ -66,7 +66,6 @@ export function HomeBonusCarousel({ onClaim }: { onClaim: (id: string) => void }
   return <div className="home-bonus-carousel">
     {special && layout ? <section className="bonus-banner image-banner special-home-banner" style={homeBannerLayoutStyles(layout) as CSSProperties} aria-label={special.title}>
       {special.image_path ? /\.(mp4|webm)$/i.test(special.image_path) ? <video className="bonus-image" src={supabase?.storage.from('app-assets').getPublicUrl(special.image_path).data.publicUrl} autoPlay muted loop playsInline aria-label={special.title} /> : <StorageImage path={special.image_path} alt={special.title} className="bonus-image" /> : <div className="special-home-placeholder"><strong>{special.title}</strong><span>Desde {money(special.min_amount)} recibís +{money(special.bonus_amount)}</span></div>}
-      <div className="special-banner-shade" aria-hidden="true" />
       <div className="special-banner-copy">
         <span className="special-banner-name">{special.title}</span>
         <span className="special-banner-minimum">Desde {money(special.min_amount)}</span>
