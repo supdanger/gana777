@@ -761,9 +761,10 @@ function App() {
         setApprovedDeposit(null);
         setNotice('Carga acreditada. El aviso quedó guardado para el usuario.');
         if (result.newly_credited) {
-          const { error: pushError } = await db.functions.invoke('send-user-push', { body: { notification_id: result.notification_id } });
+          const { data: pushResult, error: pushError } = await db.functions.invoke('send-user-push', { body: { notification_id: result.notification_id } });
           if (pushError) setNotice('Carga acreditada y aviso visible en la web. No pudimos enviar el push; podés reintentarlo desde esta carga.');
-          else setNotice('Carga acreditada. El usuario recibió el aviso en la web y, si lo activó, en su dispositivo.');
+          else if (pushResult?.no_devices || !pushResult?.sent) setNotice('Carga acreditada y aviso visible en la web. No hay dispositivos conectados para recibir el push.');
+          else setNotice(`Carga acreditada. Push enviado a ${pushResult.sent} dispositivo(s).`);
         }
         setDepositReload(value => value + 1);
       });
@@ -913,8 +914,9 @@ function App() {
             setPendingWithdrawalCount(value => Math.max(0, value - 1));
             setNotice('Retiro completado. El usuario ya puede ver todos los comprobantes.');
           } else setNotice(`Retiro ${part.part_number} de ${withdrawalParts.filter(item => item.request_id === request.id).length} realizado. Faltan transferencias para completar la solicitud.`);
-          const { error: pushError } = await supabase.functions.invoke('send-user-push', { body: { request_id: request.id, part_number: part.part_number } });
+          const { data: pushResult, error: pushError } = await supabase.functions.invoke('send-user-push', { body: { request_id: request.id, part_number: part.part_number } });
           if (pushError) setNotice(`Retiro ${part.part_number} realizado. El aviso está en la cuenta del usuario, pero no pudimos enviar el push.`);
+          else if (pushResult?.no_devices || !pushResult?.sent) setNotice(`Retiro ${part.part_number} realizado. El aviso está en la cuenta del usuario; no hay dispositivos conectados para el push.`);
           return { ok: true };
         } catch (cause) {
           const message = publicError(cause);

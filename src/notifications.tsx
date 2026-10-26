@@ -88,8 +88,6 @@ export function PlayerNotifications({ userId, settingsPage, onOpenChat }: { user
       if (alive && data) setNotifications(data as UserNotification[]);
     }
     void refresh();
-    const onFocus = () => void refresh();
-    window.addEventListener('focus', onFocus);
     const timer = window.setInterval(refresh, 30000);
     const channel = db.channel(`player-notifications-${userId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'user_notifications', filter: `user_id=eq.${userId}` }, payload => {
@@ -106,6 +104,40 @@ export function PlayerNotifications({ userId, settingsPage, onOpenChat }: { user
       .subscribe();
     const canPush = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && window.isSecureContext;
     setSupported(canPush);
+    let connecting = false;
+    async function reconnectPush() {
+      if (!canPush || connecting || devicePreference() !== 'on') return;
+      connecting = true;
+      setBusy(true);
+      try {
+        if (Notification.permission !== 'granted') {
+          setEnabled(false);
+          setError('Los permisos de avisos están desactivados en este dispositivo.');
+          return;
+        }
+        const ready = await readyRegistration();
+        const subscription = await ready.pushManager.getSubscription()
+          ?? await ready.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: applicationServerKey() });
+        if (!alive || generation !== pushSessionGeneration || devicePreference() !== 'on') return;
+        await registerForCurrentUser(subscription);
+        if (!alive) return;
+        activeRegistration.current = ready;
+        setRegistration(ready);
+        setExistingSubscription(subscription);
+        setEnabled(true);
+        setError('');
+      } catch {
+        if (alive && devicePreference() === 'on') {
+          setEnabled(false);
+          setError('No se pudo conectar este dispositivo a los avisos. Tocá el interruptor para reintentar.');
+        }
+      } finally {
+        connecting = false;
+        if (alive) setBusy(false);
+      }
+    }
+    const onFocus = () => { void refresh(); void reconnectPush(); };
+    window.addEventListener('focus', onFocus);
     if (canPush) {
       void (async () => {
         const previous = await navigator.serviceWorker.getRegistration('/');
@@ -121,24 +153,10 @@ export function PlayerNotifications({ userId, settingsPage, onOpenChat }: { user
         setRegistration(previous ?? null);
         setExistingSubscription(existing);
         if (preference !== 'on') return;
-        if (Notification.permission !== 'granted') {
-          setError('Los permisos de avisos están desactivados en este dispositivo.');
-          return;
-        }
-        setBusy(true);
-        const ready = await readyRegistration();
-        const subscription = existing ?? await ready.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: applicationServerKey() });
-        if (!alive || generation !== pushSessionGeneration || devicePreference() !== 'on') return;
-        await registerForCurrentUser(subscription);
-        if (!alive) return;
-        activeRegistration.current = ready;
-        setRegistration(ready);
-        setExistingSubscription(subscription);
-        setEnabled(true);
-        setError('');
+        await reconnectPush();
       })().catch(() => {
         if (alive && devicePreference() === 'on') setError('No se pudieron preparar los avisos. Apagá y volvé a encender el interruptor para reintentar.');
-      }).finally(() => { if (alive) setBusy(false); });
+      });
     }
     return () => { alive = false; window.removeEventListener('focus', onFocus); window.clearInterval(timer); void db.removeChannel(channel); };
   }, [userId]);
@@ -205,10 +223,10 @@ export function PlayerNotifications({ userId, settingsPage, onOpenChat }: { user
   }
 
   const visible = notifications.filter(item => !item.read_at);
-  const showSettings = settingsPage === (wanted ? 'profile' : 'home');
+  const showSettings = settingsPage === (enabled ? 'profile' : 'home');
   if (!visible.length && !showSettings) return null;
   return <section className="player-notifications" aria-label="Notificaciones">
-    {showSettings && <div className="player-notification-settings"><div className="player-notification-setting-copy"><div className="player-notifications-heading"><Bell size={19} /><h2>Avisos en este dispositivo</h2></div><p>{enabled ? 'Activados para la cuenta que uses en esta app.' : foregroundOnly ? 'Podés ver los avisos dentro de Gana777. Los avisos del sistema necesitan conexión.' : wanted ? 'Se volverán a conectar cuando el servicio esté disponible.' : 'Recibí avisos de cargas, retiros y mensajes de soporte.'}</p></div><button type="button" className="player-notification-switch" role="switch" aria-label="Avisos en este dispositivo" aria-checked={wanted} disabled={busy || !supported} onClick={() => void (wanted ? deactivate() : activate())}><span /></button></div>}
+    {showSettings && <div className="player-notification-settings"><div className="player-notification-setting-copy"><div className="player-notifications-heading"><Bell size={19} /><h2>Avisos en este dispositivo</h2></div><p>{enabled ? 'Activados para la cuenta que uses en esta app.' : foregroundOnly ? 'Podés ver los avisos dentro de Gana777. Los avisos del sistema necesitan conexión.' : wanted ? 'Los avisos del sistema están desconectados. Tocá el interruptor para reintentar.' : 'Recibí avisos de cargas, retiros y mensajes de soporte.'}</p></div><button type="button" className="player-notification-switch" role="switch" aria-label="Avisos en este dispositivo" aria-checked={enabled} disabled={busy || !supported} onClick={() => void (enabled ? deactivate() : activate())}><span /></button></div>}
     {showSettings && !supported && <p className="player-notification-error">Este dispositivo no admite avisos push.</p>}
     {showSettings && error && <p className="player-notification-error" role="alert">{error}</p>}
     {visible.map(item => <article className="player-notification" key={item.id}>
