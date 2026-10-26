@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import {
-  ArrowDownToLine, ArrowUpFromLine, Clock3, Gift, History, Landmark,
+  ArrowDownToLine, ArrowUpFromLine, Clock3, Disc, Gift, History, Landmark,
   LayoutDashboard, LogOut, Menu, MessagesSquare, PhoneCall, UserCog, Users, X, PanelsTopLeft, UserRound, Layers3, BellRing, Palette,
 } from 'lucide-react';
 import { Brand, titles, type Page } from './user-views';
@@ -20,6 +20,7 @@ const groups: Array<{ label: string; items: Array<{ page: Page; Icon: typeof Lay
     { page: 'platform', Icon: Layers3 },
     { page: 'shifts', Icon: Clock3 },
     { page: 'referrals', Icon: Gift },
+    { page: 'wheel', Icon: Disc },
     { page: 'history', Icon: History },
   ] },
   { label: 'Configuración', items: [

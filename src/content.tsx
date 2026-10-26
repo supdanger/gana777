@@ -28,6 +28,7 @@ export type AppContent = HomeBannerSettings & {
   show_telegram: boolean;
   show_instagram: boolean;
   allow_player_logout: boolean;
+  wheel_enabled: boolean;
   home_bonus_media_path: string | null;
   home_bonus_halloween_media_path: string | null;
   home_bonus_layouts: Record<string, unknown>;
@@ -46,7 +47,7 @@ const defaults: AppContent = {
   ...defaultHomeBanner,
   id: true, portal_theme: 'base', portal_theme_designs: {}, logo_path: null, portal_header_logo_path: null, portal_header_logo_halloween_path: null, portal_header_logo_layouts: {}, login_image_path: 'brand/panda-login-transparent.png',
   login_image_layout: 'image', whatsapp_url: null, telegram_url: null,
-  instagram_url: null, help_url: null, show_whatsapp: true, show_telegram: true, show_instagram: true, allow_player_logout: false, home_bonus_media_path: null, home_bonus_halloween_media_path: null, home_bonus_layouts: {}, portal_banners: [],
+  instagram_url: null, help_url: null, show_whatsapp: true, show_telegram: true, show_instagram: true, allow_player_logout: false, wheel_enabled: false, home_bonus_media_path: null, home_bonus_halloween_media_path: null, home_bonus_layouts: {}, portal_banners: [],
 };
 const loadBonusPromotionId = '00000000-0000-4000-8000-000000000777';
 const welcome: Promotion = {

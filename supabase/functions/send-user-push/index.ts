@@ -17,7 +17,7 @@ Deno.serve(async request => {
     if (!uuid.test(notificationId ?? requestId ?? messageId ?? '')) throw new HttpError(400, 'Aviso inválido.');
     if ((requestId && !uuid.test(requestId)) || (messageId && !uuid.test(messageId))) throw new HttpError(400, 'Aviso inválido.');
     const service = serverClient();
-    let query = service.from('user_notifications').select('id,user_id,request_id,part_number,message_id,kind,title,body,push_sent_at');
+    let query = service.from('user_notifications').select('id,user_id,request_id,part_number,message_id,wheel_spin_id,kind,title,body,push_sent_at');
     if (notificationId) query = query.eq('id', notificationId);
     else if (messageId) query = query.eq('message_id', messageId).eq('kind', 'chat_message');
     else if (isPart) query = query.eq('request_id', requestId).eq('part_number', partNumber).eq('kind', 'withdrawal_paid');
@@ -26,9 +26,13 @@ Deno.serve(async request => {
     const { data: notification, error: notificationError } = await query.maybeSingle();
     if (notificationError || !notification) throw new HttpError(404, 'No encontramos el aviso.');
     const permission = notification.kind === 'deposit_credited' ? 'deposit'
-      : notification.kind === 'withdrawal_paid' ? 'withdrawal' : 'chat';
+      : notification.kind === 'withdrawal_paid' ? 'withdrawal'
+      : notification.kind === 'wheel_credited' ? 'bonuses' : 'chat';
+    const bonusPermission = notification.kind === 'wheel_credited'
+      ? await db.rpc('has_admin_permission', { permission_name: 'deposit' }) : { data: false, error: null };
     const { data: permitted, error: permissionError } = await db.rpc('has_admin_permission', { permission_name: permission });
-    if (permissionError || !permitted) throw new HttpError(403, 'No tenés permiso para enviar este aviso.');
+    const allowed = !!permitted || !!bonusPermission.data;
+    if (permissionError || bonusPermission.error || !allowed) throw new HttpError(403, 'No tenés permiso para enviar este aviso.');
     if (notification.push_sent_at) return json({ sent: 0, already_sent: true });
 
     if (notification.kind === 'deposit_credited') {
@@ -42,6 +46,11 @@ Deno.serve(async request => {
         .eq('id', notification.request_id).maybeSingle();
       if (error || requestError || !part?.paid_at || withdrawal?.kind !== 'withdrawal'
         || withdrawal.user_id !== notification.user_id) throw new HttpError(409, 'El retiro no está acreditado.');
+    } else if (notification.kind === 'wheel_credited') {
+      const { data: spin, error } = await service.from('wheel_spins').select('id,user_id,status')
+        .eq('id', notification.wheel_spin_id).maybeSingle();
+      if (error || !spin || spin.status !== 'credited' || spin.user_id !== notification.user_id)
+        throw new HttpError(409, 'El premio de la ruleta no está acreditado.');
     } else if (notification.kind === 'chat_message') {
       const { data: message, error } = await service.from('messages').select('id,user_id,sender_id')
         .eq('id', notification.message_id).maybeSingle();
@@ -55,7 +64,8 @@ Deno.serve(async request => {
     if (!subscriptions?.length) return json({ sent: 0, no_devices: true });
     webpush.setVapidDetails('https://gana777.vercel.app', Deno.env.get('VAPID_PUBLIC_KEY') ?? '', Deno.env.get('VAPID_PRIVATE_KEY') ?? '');
     const url = notification.kind === 'chat_message' ? '/?view=chat'
-      : notification.kind === 'withdrawal_paid' ? '/?view=profile' : '/?view=deposit';
+      : notification.kind === 'withdrawal_paid' ? '/?view=profile'
+      : notification.kind === 'wheel_credited' ? '/?view=wheel' : '/?view=deposit';
     const payload = JSON.stringify({ title: notification.title, body: notification.body, url,
       tag: `gana777-${notification.id}` });
     let sent = 0;

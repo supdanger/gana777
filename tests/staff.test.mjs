@@ -24,6 +24,14 @@ test('Recomendados conserva los permisos de Usuarios o Bonos', () => {
   assert.equal(canOpenAdminPage('referrals', noStaffPermissions, true), true);
 });
 
+test('Ruleta la abren Bonos, Cargas o el superadmin', () => {
+  assert.equal(canOpenAdminPage('wheel', noStaffPermissions, false), false);
+  assert.equal(canOpenAdminPage('wheel', { ...noStaffPermissions, deposit: true }, false), true);
+  assert.equal(canOpenAdminPage('wheel', { ...noStaffPermissions, bonuses: true }, false), true);
+  assert.equal(canOpenAdminPage('wheel', { ...noStaffPermissions, users: true }, false), false);
+  assert.equal(canOpenAdminPage('wheel', noStaffPermissions, true), true);
+});
+
 test('solo el superadmin o el permiso Contactos permiten configurar el portal', () => {
   assert.equal(canOpenAdminPage('portal', noStaffPermissions, false), false);
   assert.equal(canOpenAdminPage('portal', { ...noStaffPermissions, users: true, bonuses: true }, false), false);

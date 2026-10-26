@@ -20,6 +20,7 @@ export function canOpenAdminPage(page: Page, permissions: StaffPermissions, supe
   if (page === 'access-requests') return superAdmin || permissions.users;
   if (page === 'platform') return superAdmin || permissions.users;
   if (page === 'referrals') return superAdmin || permissions.users || permissions.bonuses;
+  if (page === 'wheel') return superAdmin || permissions.bonuses || permissions.deposit;
   if (page === 'announcements') return superAdmin;
   if (page === 'telegram') return superAdmin;
   if (page === 'themes') return superAdmin;

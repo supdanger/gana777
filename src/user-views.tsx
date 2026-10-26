@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { ArrowLeft, Camera, ChevronRight, Eye, EyeOff, FileText, Images, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserPlus, UserRound } from 'lucide-react';
+import { ArrowLeft, Camera, ChevronRight, Disc, Eye, EyeOff, FileText, Images, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserPlus, UserRound } from 'lucide-react';
 import { PortalBanners, StorageImage, useContent } from './content';
 import { HomeBonusCarousel } from './special-bonus-carousel';
 import { asBonusRule, bonusEnabled, moneyInputMaxLength, moneyInputPattern, percentText, readMoney } from '../supabase/functions/_shared/bonus-rule';
 import { creditAmounts } from './amounts';
 import { date, money, supabase, type Bank, type BankOperationStatus, type RequestRow, type Message } from './lib';
+import { wheelWaitLabel } from './wheel-sequence';
 import { ContactAnimation } from './contact-animation';
 import { safeHttpsLink } from './security';
 import { Turnstile } from './turnstile';
@@ -22,8 +23,8 @@ import supportAvatarUrl from './assets/support-panda-avatar.png';
 import { PlayerAccessRequest } from './player-access';
 import { ChatImage, useChatImagePreview } from './chat-images';
 
-export type Page = 'home' | 'profile' | 'deposit' | 'withdrawal' | 'referrals' | 'history' | 'users' | 'platform' | 'access-requests' | 'contacts' | 'portal' | 'themes' | 'bonuses' | 'accounts' | 'shifts' | 'chat' | 'cashiers' | 'announcements' | 'telegram';
-export const titles = { home: 'Inicio', profile: 'Mi perfil', deposit: 'Cargas', withdrawal: 'Retiros', referrals: 'Recomendados', history: 'Historial', users: 'Usuarios', platform: 'Platform', 'access-requests': 'Solicitudes', contacts: 'Contactos', portal: 'Portal', themes: 'Temas', bonuses: 'Bonos', accounts: 'Cuentas', shifts: 'Turnos', chat: 'Chat', cashiers: 'Cajeros', announcements: 'Mensajes', telegram: 'Telegram' };
+export type Page = 'home' | 'profile' | 'deposit' | 'withdrawal' | 'referrals' | 'wheel' | 'history' | 'users' | 'platform' | 'access-requests' | 'contacts' | 'portal' | 'themes' | 'bonuses' | 'accounts' | 'shifts' | 'chat' | 'cashiers' | 'announcements' | 'telegram';
+export const titles = { home: 'Inicio', profile: 'Mi perfil', deposit: 'Cargas', withdrawal: 'Retiros', referrals: 'Recomendados', wheel: 'Ruleta', history: 'Historial', users: 'Usuarios', platform: 'Platform', 'access-requests': 'Solicitudes', contacts: 'Contactos', portal: 'Portal', themes: 'Temas', bonuses: 'Bonos', accounts: 'Cuentas', shifts: 'Turnos', chat: 'Chat', cashiers: 'Cajeros', announcements: 'Mensajes', telegram: 'Telegram' };
 export function Brand({ panel = false, homeHeader = false }: { panel?: boolean; homeHeader?: boolean }) {
   const { settings } = useContent();
   const name = panel ? 'GANA777 Panel' : 'GANA777';
@@ -109,7 +110,7 @@ function playerGreeting() {
   const hour = Number(greetingHourFormatter.format(new Date()));
   return hour >= 6 && hour < 12 ? 'Buenos días' : hour >= 12 && hour < 20 ? 'Buenas tardes' : 'Buenas noches';
 }
-export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, username, casinoUrl }: { name: string; navigate: (page: Page) => void; onClaimSpecialBonus: (id: string) => void; whatsappUrl?: string | null; username?: string | null; casinoUrl?: string | null }) {
+export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, username, casinoUrl, demo = false, userId = '' }: { name: string; navigate: (page: Page) => void; onClaimSpecialBonus: (id: string) => void; whatsappUrl?: string | null; username?: string | null; casinoUrl?: string | null; demo?: boolean; userId?: string }) {
   const { settings, contactAnimations } = useContent();
   const bannerUrl = homeBannerLink(settings, casinoUrl);
   const bannerImage = homeBannerImage(settings, settings.portal_theme);
@@ -118,6 +119,9 @@ export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, use
   const shareMessage = referralShareMessage(username ?? null, whatsappUrl ?? null);
   const [referralImage, setReferralImage] = useState<File | null>(null);
   const [greeting, setGreeting] = useState(playerGreeting);
+  const [nextSpinAt, setNextSpinAt] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  const wheelWait = wheelWaitLabel(nextSpinAt, now);
   useEffect(() => {
     if (!shareUrl) return;
     const controller = new AbortController();
@@ -143,6 +147,42 @@ export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, use
     window.addEventListener('focus', refreshGreeting);
     return () => { window.clearInterval(timer); window.removeEventListener('focus', refreshGreeting); };
   }, []);
+  useEffect(() => {
+    if (!nextSpinAt || Date.parse(nextSpinAt) <= Date.now()) return;
+    const timer = window.setInterval(() => {
+      const current = Date.now();
+      setNow(current);
+      if (Date.parse(nextSpinAt) > current) return;
+      window.clearInterval(timer);
+      if (demo || !supabase || !userId) return;
+      void supabase.rpc('wheel_state').then(({ data, error }) => {
+        if (error) return;
+        setNextSpinAt((data as { next_spin_at?: string | null } | null)?.next_spin_at ?? null);
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [nextSpinAt, demo, userId]);
+  useEffect(() => {
+    if (demo || !supabase || !userId || !settings.wheel_enabled) {
+      setNextSpinAt(null);
+      return;
+    }
+    const db = supabase;
+    let alive = true;
+    const load = () => {
+      void db.rpc('wheel_state').then(({ data, error }) => {
+        if (!alive || error) return;
+        setNextSpinAt((data as { next_spin_at?: string | null } | null)?.next_spin_at ?? null);
+        setNow(Date.now());
+      });
+    };
+    load();
+    const channel = db.channel(`home-wheel-${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wheel_spins', filter: `user_id=eq.${userId}` }, load)
+      .subscribe();
+    window.addEventListener('focus', load);
+    return () => { alive = false; window.removeEventListener('focus', load); void db.removeChannel(channel); };
+  }, [demo, userId, settings.wheel_enabled]);
   const contacts = [
     { name: 'WhatsApp', url: safeHttpsLink(whatsappUrl === undefined ? settings.whatsapp_url : whatsappUrl, ['wa.me', 'api.whatsapp.com']), mark: <WhatsAppMark />, className: 'whatsapp', animation: contactAnimations.whatsapp, visible: settings.show_whatsapp },
     { name: 'Recomendar', url: shareUrl, mark: <Send />, className: 'recommend', animation: null, visible: !!shareUrl && settings.show_whatsapp },
@@ -160,7 +200,11 @@ export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, use
         { id: 'deposit', title: 'Cargar', description: 'Hacé tu depósito y subí el comprobante', Icon: Landmark },
         { id: 'withdrawal', title: 'Retiros', description: 'Solicitá tu retiro', Icon: Link2 },
         { id: 'chat', title: 'Chat', description: 'Hablá con soporte', Icon: MessageCircle },
-      ] as const).map(({ id, title, description, Icon }) => <button className="action-card" data-theme-card={id} key={id} onClick={() => navigate(id)}><span className="icon-circle"><Icon /></span><span><strong>{title}</strong><small>{description}</small></span><ChevronRight /></button>)}
+        { id: 'wheel', title: 'Ruleta', description: 'Girás una vez por día', Icon: Disc },
+      ] as const).filter(action => action.id !== 'wheel' || settings.wheel_enabled).map(({ id, title, description, Icon }) => {
+        const detail = id === 'wheel' && wheelWait ? wheelWait : description;
+        return <button className="action-card" data-theme-card={id} key={id} onClick={() => navigate(id)}><span className="icon-circle"><Icon /></span><span><strong>{title}</strong><small className={id === 'wheel' && wheelWait ? 'wheel-home-wait' : undefined} role={id === 'wheel' && wheelWait ? 'timer' : undefined}>{detail}</small></span><ChevronRight /></button>;
+      })}
     </div>
     {contacts.length > 0 && <section className="card contacts"><h2>Contactanos</h2><div className="contact-links">{contacts.map(({ name, url, mark, className, animation }) => {
       const icon = <span className="social-mark"><ContactAnimation path={animation} fallback={mark} /></span>;

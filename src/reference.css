@@ -306,6 +306,7 @@ a.social.instagram:hover { border-color: #ff8ab8; }
 .user-app.page-home .action-card .icon-circle svg { width: 28px; height: 28px; stroke-width: 1.75; }
 .user-app.page-home .action-card strong { display: block; margin: 0 0 6px; color: var(--home-text); font-size: clamp(20px, 5.7vw, 22px); font-weight: 680; letter-spacing: -.3px; line-height: 1.1; }
 .user-app.page-home .action-card small { max-width: none; padding: 0; color: var(--home-muted); font-size: 16px; font-weight: 450; line-height: 1.35; }
+.user-app.page-home .action-card small.wheel-home-wait { font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
 .user-app.page-home .action-card > svg { position: static; width: 22px; height: 22px; flex-shrink: 0; color: #c1d1df; stroke-width: 2; }
 .user-app.page-home .contacts { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .user-app.page-home .contacts h2 { display: block; margin: 0 0 20px; color: var(--home-text); font-size: 22px; font-weight: 720; }

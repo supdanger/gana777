@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Bell, Check } from 'lucide-react';
+import { useContent } from './content';
 import { supabase, date } from './lib';
 
 const vapidPublicKey = 'BNtbZNRD_ooezVlDPvQvUCrYbFJQfabwWQbgJpnqNaML1rZEsakHHR8cLc1l0AF26bRZolu1op6SOjtKBz8pgxs';
 const DEVICE_PREFERENCE_KEY = 'gana777-push-device-enabled';
 let pushSessionGeneration = 0;
-type UserNotification = { id: string; kind: 'deposit_credited' | 'withdrawal_paid' | 'chat_message' | 'announcement'; title: string; body: string; created_at: string; read_at: string | null };
+type UserNotification = { id: string; kind: 'deposit_credited' | 'withdrawal_paid' | 'chat_message' | 'announcement' | 'wheel_credited'; title: string; body: string; created_at: string; read_at: string | null };
 
 function devicePreference() {
   try { return localStorage.getItem(DEVICE_PREFERENCE_KEY); } catch { return null; }
@@ -56,7 +57,8 @@ export async function unlinkDeviceSubscription() {
   }
 }
 
-export function PlayerNotifications({ userId, settingsPage, onOpenChat }: { userId: string; settingsPage: 'home' | 'profile' | null; onOpenChat: () => void }) {
+export function PlayerNotifications({ userId, settingsPage, onOpenChat, onOpenWheel }: { userId: string; settingsPage: 'home' | 'profile' | null; onOpenChat: () => void; onOpenWheel: () => void }) {
+  const { settings } = useContent();
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [supported, setSupported] = useState(false);
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
@@ -97,7 +99,7 @@ export function PlayerNotifications({ userId, settingsPage, onOpenChat }: { user
           && activeRegistration.current && item.id && item.title) {
           void activeRegistration.current.showNotification(item.title, {
             body: item.body ?? '', icon: '/pwa/icon-panda-192.png', tag: `gana777-${item.id}`,
-            data: { url: item.kind === 'chat_message' ? '/?view=chat' : item.kind === 'withdrawal_paid' ? '/?view=profile' : item.kind === 'announcement' ? '/?view=home' : '/?view=deposit' },
+            data: { url: item.kind === 'chat_message' ? '/?view=chat' : item.kind === 'withdrawal_paid' ? '/?view=profile' : item.kind === 'wheel_credited' ? '/?view=wheel' : item.kind === 'announcement' ? '/?view=home' : '/?view=deposit' },
           }).catch(() => undefined);
         }
       })
@@ -231,7 +233,7 @@ export function PlayerNotifications({ userId, settingsPage, onOpenChat }: { user
     {showSettings && error && <p className="player-notification-error" role="alert">{error}</p>}
     {visible.map(item => <article className="player-notification" key={item.id}>
       <Bell size={18} aria-hidden="true" />
-      <div><strong>{item.title}</strong><p>{item.body}</p>{item.kind === 'chat_message' && <button type="button" className="player-notification-open-chat" onClick={() => { void markRead(item.id); onOpenChat(); }}>Abrir chat</button>}<time dateTime={item.created_at} className="sr-only">{date(item.created_at)}</time></div>
+      <div><strong>{item.title}</strong><p>{item.body}</p>{item.kind === 'chat_message' && <button type="button" className="player-notification-open-chat" onClick={() => { void markRead(item.id); onOpenChat(); }}>Abrir chat</button>}{item.kind === 'wheel_credited' && settings.wheel_enabled && <button type="button" className="player-notification-open-chat" onClick={() => { void markRead(item.id); onOpenWheel(); }}>Ver ruleta</button>}<time dateTime={item.created_at} className="sr-only">{date(item.created_at)}</time></div>
       <button type="button" aria-label={`Marcar como leída: ${item.title}`} title="Marcar como leída" onClick={() => void markRead(item.id)}><Check size={17} /></button>
     </article>)}
   </section>;

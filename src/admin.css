@@ -229,9 +229,9 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 
 .contact-settings-card h2 { margin: 0; color: #fff; font-size: 16px; }
 .contact-visibility-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.contact-visibility-grid button, .principal-card > button[role='switch'] { justify-content: flex-start; min-height: 40px; border-color: #3f3540; color: #9b8490; font-size: 11px; }
-.contact-visibility-grid button span, .principal-card > button[role='switch'] span { width: 9px; height: 9px; border-radius: 50%; background: currentColor; box-shadow: 0 0 7px currentColor; }
-.contact-visibility-grid button.enabled, .principal-card > button[role='switch'].enabled { border-color: #0c709b; background: #062a40; color: #69dfff; }
+.contact-visibility-grid button, .principal-card > button[role='switch'], .wheel-admin button[role='switch'] { justify-content: flex-start; min-height: 40px; border-color: #3f3540; color: #9b8490; font-size: 11px; }
+.contact-visibility-grid button span, .principal-card > button[role='switch'] span, .wheel-admin button[role='switch'] span { width: 9px; height: 9px; border-radius: 50%; background: currentColor; box-shadow: 0 0 7px currentColor; }
+.contact-visibility-grid button.enabled, .principal-card > button[role='switch'].enabled, .wheel-admin button[role='switch'].enabled { border-color: #0c709b; background: #062a40; color: #69dfff; }
 .contact-link-form { display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; gap: 9px; }
 .contact-link-form button { min-height: 51px; }
 .principal-create > div:last-of-type { display: grid; grid-template-columns: minmax(130px, .35fr) 1fr; gap: 10px; }
