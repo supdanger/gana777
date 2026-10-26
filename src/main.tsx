@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, type FormEvent } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Session } from '@supabase/supabase-js';
 import { ArrowUpRight, CalendarClock, Check, CheckCircle2, ChevronRight, Clock, Copy, Hash, UserRound, WalletCards, X } from 'lucide-react';
-import { canonicalMoney, percentText } from '../supabase/functions/_shared/bonus-rule';
+import { canonicalMoney, percentText, readMoney } from '../supabase/functions/_shared/bonus-rule';
 import { adminApp, supabase, configError, turnstileSiteKey, REQUEST_COLUMNS, REQUEST_COLUMNS_LEGACY, money, date, statusLabel, type RequestRow, type WithdrawalPart, type Message, type Bank, type BankOperationStatus } from './lib';
 import { DEPOSIT_PAGE_SIZE, depositWindow } from './deposit-page';
 import { bonusCounters, type BonusCounter } from './bonus-counters';
@@ -16,7 +16,7 @@ import { userHistoryWindow } from './user-history';
 import { ApprovedReferralNotice, ReferralBonusHistory, ReferralRewardsAdmin } from './referrals';
 
 function missingBonusAmount(error: { message?: string } | null) {
-  return !!error && /bonus_amount/i.test(error.message ?? '');
+  return !!error && /bonus_amount|requested_special_bonus_id/i.test(error.message ?? '');
 }
 function missingDepositRoute(error: { message?: string } | null) {
   return !!error && /deposit_sac|deposit_phone|deposit_holder/i.test(error.message ?? '');
@@ -106,6 +106,7 @@ function App() {
   const [bankReload, setBankReload] = useState(0);
   const [thread, setThread] = useState('');
   const [selectedDepositId, setSelectedDepositId] = useState<string | null>(null);
+  const [selectedSpecialBonusId, setSelectedSpecialBonusId] = useState('');
   const [depositPage, setDepositPage] = useState(0);
   const [depositRows, setDepositRows] = useState<RequestRow[]>([]);
   const [depositTotal, setDepositTotal] = useState(0);
@@ -123,6 +124,8 @@ function App() {
   const [pendingWithdrawalCount, setPendingWithdrawalCount] = useState(0);
   const [liveBonusCounters, setLiveBonusCounters] = useState<BonusCounter[]>([]);
   const [approvedDeposit, setApprovedDeposit] = useState<RequestRow | null>(null);
+  const [reviewAmount, setReviewAmount] = useState('');
+  const [reviewGrantBonus, setReviewGrantBonus] = useState(true);
   const [copiedCreditField, setCopiedCreditField] = useState<'user' | 'amount' | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<{ url: string; kind: 'image' | 'pdf' } | null>(null);
   const [receiptPreviewLoading, setReceiptPreviewLoading] = useState(false);
@@ -150,7 +153,7 @@ function App() {
     return () => { alive = false; };
   }, [demo, session?.user.id]);
 
-  function navigate(nextPage: Page) { setPage(nextPage); setSelectedDepositId(null); setApprovedDeposit(null); setError(''); setNotice(''); }
+  function navigate(nextPage: Page) { setPage(nextPage); if (nextPage !== 'deposit') setSelectedSpecialBonusId(''); setSelectedDepositId(null); setApprovedDeposit(null); setError(''); setNotice(''); }
   useEffect(() => {
     if (adminApp || !session) return;
     function openNotification(url: string) {
@@ -728,9 +731,14 @@ function App() {
         return;
       }
       await action(async () => {
-        const { data, error } = await db.from('requests').update({ status }).eq('id', parseUuid(selected.id)).eq('status', 'pending').select('id,status').single();
+        const special = !!selected.requested_special_bonus_id;
+        const actual = readMoney(reviewAmount);
+        if (status === 'approved' && special && actual === null) throw new InputError('Ingresá el monto que llegó realmente.');
+        const { data, error } = status === 'approved' && special
+          ? await db.rpc('review_special_deposit', { p_request_id: parseUuid(selected.id), p_actual_amount: actual, p_apply_bonus: reviewGrantBonus })
+          : await db.from('requests').update({ status }).eq('id', parseUuid(selected.id)).eq('status', 'pending').select('id,status').single();
         if (error) throw error;
-        const reviewed = { ...selected, status: data.status as RequestRow['status'] };
+        const reviewed = { ...selected, ...data, status: data.status as RequestRow['status'] };
         setDepositRows(old => old.map(item => item.id === selected.id ? reviewed : item));
         if (selected.status === 'pending') setPendingDepositCount(count => Math.max(0, count - 1));
         if (status === 'approved') { setApprovedDeposit(reviewed); setCopiedCreditField(null); setSelectedDepositId(null); }
@@ -789,7 +797,7 @@ function App() {
         {items.map(request => {
           const name = request.user_name || 'Usuario sin nombre';
           const requestRoute = depositRouteLabel(request, staffContext.superAdmin || demo);
-          return <button className="load-request-button" key={request.id} onClick={event => { depositTrigger.current = event.currentTarget; setSelectedDepositId(request.id); }} aria-haspopup="dialog">
+          return <button className="load-request-button" key={request.id} onClick={event => { depositTrigger.current = event.currentTarget; setSelectedDepositId(request.id); setReviewAmount(canonicalMoney(request.amount)); setReviewGrantBonus(true); }} aria-haspopup="dialog">
               <span className="request-avatar" aria-hidden="true">{name.charAt(0).toLocaleUpperCase('es')}</span>
               <span className="request-summary-user"><strong>{name}</strong><small>{date(request.created_at)}</small>{requestRoute ? <small className="request-route">{requestRoute}</small> : null}</span>
               <span className="request-summary-amount"><strong>{money(request.amount)}</strong><span className={`badge ${request.status}`}>{request.credited_at ? 'Acreditada' : statusLabel[request.status]}</span></span>
@@ -807,7 +815,7 @@ function App() {
             <div className="summary-field"><span><Hash size={16} /> ID USER</span></div>
             <div className="summary-field"><span><CalendarClock size={16} /> Fecha y hora</span><strong>{date(selected.created_at)}</strong></div>
             {route ? <div className="summary-field"><span>Cuenta de destino</span><strong>{route}</strong></div> : null}
-            <div className="summary-review-meta"><span>Estado <span className={`badge ${selected.status}`}>{selected.credited_at ? 'Acreditada' : statusLabel[selected.status]}</span></span>{selectedBonus && <span>Bono solicitado: <strong>{selectedBonus}</strong></span>}</div>
+            <div className="summary-review-meta"><span>Estado <span className={`badge ${selected.status}`}>{selected.credited_at ? 'Acreditada' : statusLabel[selected.status]}</span></span>{selectedBonus && <span>Bono solicitado: <strong>{selectedBonus}</strong></span>}{selected.requested_special_bonus_id && !selected.bonus_id && selected.status === 'approved' && <span>Bono especial solicitado; {selected.credited_at ? 'acreditada' : 'aprobada'} sin bono</span>}</div>
           </div>
           <div className="request-detail">
             <section className="receipt-viewer" aria-label="Comprobante de transferencia">
@@ -819,6 +827,13 @@ function App() {
               </div>
             </section>
           </div>
+          {selected.status === 'pending' && selected.requested_special_bonus_id && <div className="special-deposit-review">
+            <label>Monto realmente recibido<input inputMode="decimal" value={reviewAmount} onChange={event => setReviewAmount(event.target.value)} /></label>
+            <p>Solicitó {money(selected.amount)}. El monto que pongas acá será el que se acredite.</p>
+            <label><input type="radio" name="special-review-bonus" checked={reviewGrantBonus} onChange={() => setReviewGrantBonus(true)} /> Acreditar con bono {selectedBonus}</label>
+            <label><input type="radio" name="special-review-bonus" checked={!reviewGrantBonus} onChange={() => setReviewGrantBonus(false)} /> Acreditar solo el dinero recibido, sin bono</label>
+            {(() => { const actual = readMoney(reviewAmount); const min = Number(selected.special_min_amount) || 0; const max = Number(selected.special_max_amount) || 0; return actual !== null && (actual < min || actual > max) ? <p className="alert error">El monto recibido no cumple el rango de {money(min)} a {money(max)}. Elegí «sin bono».</p> : null; })()}
+          </div>}
           {selected.status === 'pending' && <div className="load-decision-footer"><button className="approve-load" disabled={busy} onClick={() => void reviewSelected('approved')}>Aceptar carga</button><button className="reject-load" disabled={busy} onClick={() => { if (window.confirm('¿Confirmás que querés rechazar esta carga? Esta acción no se puede deshacer.')) void reviewSelected('rejected'); }}>Rechazar</button></div>}
           {selected.status === 'approved' && !selected.credited_at && <div className="load-decision-footer"><button className="approve-load" disabled={busy} onClick={() => { setApprovedDeposit(selected); setSelectedDepositId(null); }}>Ver datos para acreditar</button></div>}
           {selected.credited_at && <div className="load-decision-footer"><button className="approve-load" disabled={busy} onClick={() => void retryCreditPush(selected.id)}>Comprobar o reenviar aviso</button></div>}
@@ -830,7 +845,7 @@ function App() {
           <div className="credit-ready-heading"><CheckCircle2 aria-hidden="true" /><span className="eyebrow">CARGA ACEPTADA</span><h2 id="credit-ready-title">Datos listos para acreditar</h2><p>Copiá estos valores y pegalos en la plataforma.</p></div>
           <div className="credit-copy-field"><span>Nombre de usuario</span><div><strong>{approvedName}</strong><button aria-label="Copiar nombre de usuario" onClick={() => void copyCreditValue(approvedName, 'user')}>{copiedCreditField === 'user' ? <><Check size={17} /> Copiado</> : <><Copy size={17} /> Copiar</>}</button></div></div>
           <div className="credit-breakdown">
-            <div><span>Monto solicitado</span><strong>{money(approvedDeposit.amount)}</strong></div>
+            <div><span>Monto a acreditar</span><strong>{money(approvedDeposit.amount)}</strong></div>
             <div><span>{approvedBonus ? `Bono ${approvedBonus}` : 'Sin bono'}</span><strong>{approvedBonus ? `+${money(credit.bonus)}` : money(0)}</strong></div>
           </div>
           <div className="credit-copy-field credit-total"><span>Total a acreditar</span><div><strong>{money(credit.total)}</strong><button aria-label="Copiar total a acreditar" onClick={() => void copyCreditValue(credit.copyValue, 'amount')}>{copiedCreditField === 'amount' ? <><Check size={17} /> Copiado</> : <><Copy size={17} /> Copiar monto</>}</button></div><small>Se copiará {credit.copyValue}, listo para pegar.</small></div>
@@ -867,9 +882,9 @@ function App() {
       {(adminApp || (page !== 'deposit' && page !== 'withdrawal')) && feedback}
       {!adminApp && page === 'profile' && <UserProfile name={name} busy={busy} logout={() => void logout()} />}
       {!adminApp && !demo && session && <PlayerNotifications key={session.user.id} userId={session.user.id} settingsPage={page === 'home' || page === 'profile' ? page : null} onOpenChat={() => navigate('chat')} />}
-      {page === 'home' && (adminApp ? <><div className="welcome"><h1><span>Resumen del turno</span></h1></div>{!demo && !staffContext.superAdmin && !sacStation ? <p className="shift-note">Elegí el SAC de esta computadora en Cargas para ver sus pendientes.</p> : null}<div className="stats">{(['deposit', 'withdrawal'] as const).map(kind => <section className="card" key={kind}><p>{kind === 'deposit' ? 'Cargas pendientes' : 'Retiros pendientes'}</p><h1>{kind === 'deposit' ? pendingCounts.deposit : pendingCounts.withdrawal}</h1></section>)}</div>{bonusBoard()}<DepositLeaderboard demo={demo} requests={requests} reloadKey={leaderboardReload} /></> : <UserHome name={name} navigate={navigate} whatsappUrl={demo ? undefined : playerWhatsAppUrl} username={demo ? null : playerUsername} casinoUrl={demo ? null : playerCasinoUrl} />)}
+      {page === 'home' && (adminApp ? <><div className="welcome"><h1><span>Resumen del turno</span></h1></div>{!demo && !staffContext.superAdmin && !sacStation ? <p className="shift-note">Elegí el SAC de esta computadora en Cargas para ver sus pendientes.</p> : null}<div className="stats">{(['deposit', 'withdrawal'] as const).map(kind => <section className="card" key={kind}><p>{kind === 'deposit' ? 'Cargas pendientes' : 'Retiros pendientes'}</p><h1>{kind === 'deposit' ? pendingCounts.deposit : pendingCounts.withdrawal}</h1></section>)}</div>{bonusBoard()}<DepositLeaderboard demo={demo} requests={requests} reloadKey={leaderboardReload} /></> : <UserHome name={name} navigate={navigate} onClaimSpecialBonus={id => { setSelectedSpecialBonusId(id); navigate('deposit'); }} whatsappUrl={demo ? undefined : playerWhatsAppUrl} username={demo ? null : playerUsername} casinoUrl={demo ? null : playerCasinoUrl} />)}
       {!adminApp && page === 'profile' && <>{history('deposit')}{history('withdrawal')}<ReferralBonusHistory userId={userId} demo={demo} /></>}
-      {(page === 'deposit' || page === 'withdrawal') && !adminApp && <RequestForm key={page} kind={page} requests={requests.filter(r => r.user_id === userId)} bank={bank} bankOperation={bankOperation} retryAt={page === 'deposit' ? depositRetryAt : 0} busy={busy} demo={demo} feedback={feedback} onSubmit={submitRequest} onCopy={(text, label) => void action(async () => { await navigator.clipboard.writeText(text); setNotice(`${label} copiado.`); })} onOpenWithdrawalHistory={() => { setUserHistoryOpen(old => ({ ...old, withdrawal: true })); setProfileHistoryTarget('withdrawal'); navigate('profile'); }} />}
+      {(page === 'deposit' || page === 'withdrawal') && !adminApp && <RequestForm key={`${page}:${selectedSpecialBonusId}`} kind={page} requests={requests.filter(r => r.user_id === userId)} bank={bank} bankOperation={bankOperation} retryAt={page === 'deposit' ? depositRetryAt : 0} initialSpecialBonusId={page === 'deposit' ? selectedSpecialBonusId : ''} busy={busy} demo={demo} feedback={feedback} onSubmit={submitRequest} onCopy={(text, label) => void action(async () => { await navigator.clipboard.writeText(text); setNotice(`${label} copiado.`); })} onOpenWithdrawalHistory={() => { setUserHistoryOpen(old => ({ ...old, withdrawal: true })); setProfileHistoryTarget('withdrawal'); navigate('profile'); }} />}
       {adminApp && page === 'deposit' && depositList()}
       {adminApp && page === 'withdrawal' && <AdminWithdrawals requests={requests} parts={withdrawalParts} busy={busy} demo={demo} onViewReceipt={part => void viewWithdrawalPart(part)} onPay={async (request, part, file, sourceAccount) => {
         setBusy(true); setError(''); setNotice('');

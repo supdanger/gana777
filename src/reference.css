@@ -1296,6 +1296,20 @@ body:has(.user-app.theme-christmas), body:has(.user-login.theme-christmas) { bac
 .user-app.page-home .bonus-banner.image-banner,
 .user-app.theme-dark.page-home .dark-bonus-banner,
 .user-app.page-home.theme-christmas .christmas-bonus-banner { aspect-ratio: var(--home-banner-ratio, 848 / 365); border-radius: var(--home-banner-radius, 12px); }
+.home-bonus-carousel { position: relative; margin-bottom: 14px; }
+.user-app.page-home .home-bonus-carousel .bonus-banner { margin-bottom: 0; }
+.home-bonus-carousel-nav { display: flex; justify-content: center; align-items: center; gap: 12px; margin: 6px 0 0; color: var(--home-text, #fff); font-size: 12px; }
+.home-bonus-carousel-nav button { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid #ffffff55; border-radius: 50%; color: inherit; background: #0009; }
+.user-app.page-home .special-home-banner { position: relative; background: #180e1d; }
+.user-app.page-home .special-home-banner .bonus-image { position: absolute; left: calc(50% + var(--home-banner-image-x, 0%)); top: calc(50% + var(--home-banner-image-y, 0%)); width: var(--home-banner-image-width, 100%); height: var(--home-banner-image-height, 100%); max-width: none; object-fit: cover; transform: translate(-50%, -50%); }
+.special-home-placeholder { display: grid; place-content: center; width: 100%; height: 100%; gap: 4px; text-align: center; color: #fff; background: radial-gradient(circle at 30% 20%, #66213d, #160b1c 70%); }
+.special-home-placeholder strong { font-size: clamp(20px, 5vw, 32px); }
+.special-banner-controls { position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 8px; padding: 8px 12px; color: #fff; background: linear-gradient(0deg, #000e, #0009); text-shadow: 0 1px 3px #000; }
+.special-banner-controls strong { font-size: 13px; }
+.special-banner-controls span { font-size: 11px; }
+.special-banner-controls button { border: 1px solid #ffd16b; border-radius: 7px; padding: 6px 9px; color: #111; background: #ffd16b; font-size: 11px; font-weight: 800; }
+.special-banner-controls button:disabled { opacity: .8; color: #fff; background: #273341; border-color: #ffffff77; }
+.special-bonus-request-note { margin: 0 0 8px; font-size: 12px; color: #ffd16b; }
 .user-app.page-home .bonus-banner.image-banner .bonus-image,
 .user-app.theme-dark.page-home .dark-bonus-banner .bonus-image,
 .user-app.theme-dark.page-home .dark-bonus-banner video.bonus-image,

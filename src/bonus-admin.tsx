@@ -1,7 +1,13 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, type ChangeEvent } from 'react';
 import { asBonusRule, percentText, type BonusMode } from '../supabase/functions/_shared/bonus-rule';
 import { assertFormFields, InputError, parseBonusRule } from '../supabase/functions/_shared/validation';
 import { money, supabase } from './lib';
+import { StorageImage, useContent } from './content';
+import { BannerLayoutEditor } from './banner-layout-editor';
+import { defaultBonusBannerLayout, normalizeBonusBannerLayout } from './bonus-banner-layout';
+import { bannerImageExtension } from './home-banner';
+import { themeBase } from './portal-theme-design';
+import type { HomeBannerLayout } from './home-banner';
 
 export type BonusOffer = {
   id: string;
@@ -11,14 +17,20 @@ export type BonusOffer = {
   bonus_amount: number;
   min_amount: number;
   max_amount: number;
+  cooldown_hours: number;
+  image_path: string | null;
+  banner_layout: HomeBannerLayout;
   active: boolean;
 };
 
-const offerColumns = 'id,title,bonus_mode,bonus_percent,bonus_amount,min_amount,max_amount,active';
+const offerColumns = 'id,title,bonus_mode,bonus_percent,bonus_amount,min_amount,max_amount,cooldown_hours,image_path,banner_layout,active';
 const previewNotice = 'La vista previa no guarda los bonos. Entrá con la cuenta de administrador para que el usuario pueda elegirlos al cargar.';
 
 function persistError(error: { code?: string; message?: string }): Error {
   const message = error.message ?? '';
+  if (/cooldown_hours|banner_layout|promotions_special_fixed/i.test(message)) {
+    return new InputError('Falta aplicar la migración 057 de bonos especiales en Supabase.');
+  }
   if (/bonus_mode|min_amount|max_amount|bonus_amount|promotions_bonus_rule/i.test(message)) {
     return new InputError('La base todavía no acepta el mínimo, el máximo o el monto fijo. Aplicá la migración 010 y volvé a intentar.');
   }
@@ -29,20 +41,24 @@ function persistError(error: { code?: string; message?: string }): Error {
   return error instanceof Error ? error : new Error(message || 'No se pudo guardar el bono.');
 }
 
-function offerFromRow(row: { id: string; title: string; active: boolean; bonus_mode?: string | null; bonus_percent?: number | null; bonus_amount?: number | null; min_amount?: number | null; max_amount?: number | null }): BonusOffer {
-  return { id: row.id, title: row.title, active: row.active, ...asBonusRule(row) };
+function offerFromRow(row: { id: string; title: string; active: boolean; bonus_mode?: string | null; bonus_percent?: number | null; bonus_amount?: number | null; min_amount?: number | null; max_amount?: number | null; cooldown_hours?: number | null; image_path?: string | null; banner_layout?: unknown }, theme: ReturnType<typeof themeBase>): BonusOffer {
+  return { id: row.id, title: row.title, active: row.active, ...asBonusRule(row), cooldown_hours: Number(row.cooldown_hours) || 0, image_path: row.image_path ?? null, banner_layout: normalizeBonusBannerLayout(row.banner_layout, theme) };
 }
 
 function offerDetail(bonus: BonusOffer) {
   const value = bonus.bonus_mode === 'fixed' ? `+${money(bonus.bonus_amount)}` : `+${percentText(bonus.bonus_percent)}%`;
-  return `${value} · de ${money(bonus.min_amount)} a ${money(bonus.max_amount)} · ${bonus.active ? 'Disponible para cargar' : 'Pausado'}`;
+  return `${value} · de ${money(bonus.min_amount)} a ${money(bonus.max_amount)}${bonus.cooldown_hours ? ` · cada ${bonus.cooldown_hours} h` : ''} · ${bonus.active ? 'Disponible para cargar' : 'Pausado'}`;
 }
 
 export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolean; action: (task: () => Promise<void>) => Promise<void> }) {
+  const { settings, reloadPromotions } = useContent();
+  const theme = themeBase(settings);
   const [bonuses, setBonuses] = useState<BonusOffer[]>([]);
   const [loading, setLoading] = useState(!demo && !!supabase);
   const [loadError, setLoadError] = useState('');
   const [mode, setMode] = useState<BonusMode>('percent');
+  const [timed, setTimed] = useState(false);
+  const [savedLayoutId, setSavedLayoutId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const editing = bonuses.find(item => item.id === editingId) ?? null;
   useEffect(() => {
@@ -53,15 +69,15 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
       if (!alive) return;
       setLoading(false);
       if (error) {
-        setLoadError(/bonus_mode|bonus_amount|min_amount|max_amount/i.test(error.message ?? '')
-          ? 'Falta aplicar la migración de bonos en Supabase. Después vas a poder guardar el mínimo, el máximo y el monto fijo.'
+        setLoadError(/bonus_mode|bonus_amount|min_amount|max_amount|cooldown_hours|banner_layout/i.test(error.message ?? '')
+          ? 'Falta aplicar la migración 057 de bonos especiales en Supabase.'
           : 'No pudimos cargar los bonos.');
         return;
       }
-      setBonuses((data ?? []).map(row => offerFromRow(row)));
+      setBonuses((data ?? []).map(row => offerFromRow(row, theme)));
     });
     return () => { alive = false; };
-  }, [demo]);
+  }, [demo, theme]);
   async function createBonus(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const element = event.currentTarget;
@@ -69,27 +85,32 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
     await action(async () => {
       assertFormFields(form, ['title', 'mode', 'value', 'min_amount', 'max_amount']);
       const rule = parseBonusRule(form);
+      const hours = timed ? Number(form.get('cooldown_hours')) : 0;
+      if (timed && (rule.bonus_mode !== 'fixed' || !Number.isInteger(hours) || hours < 1 || hours > 720)) throw new InputError('El bono especial debe ser de monto fijo y esperar entre 1 y 720 horas.');
       const current = bonuses.find(item => item.id === editingId) ?? null;
       if (demo || !supabase) throw new InputError(previewNotice);
       const payload = {
         title: rule.title, bonus_mode: rule.bonus_mode, bonus_percent: rule.bonus_percent,
-        bonus_amount: rule.bonus_amount, min_amount: rule.min_amount, max_amount: rule.max_amount,
+        bonus_amount: rule.bonus_amount, min_amount: rule.min_amount, max_amount: rule.max_amount, cooldown_hours: hours,
       };
       const query = current
         ? supabase.from('promotions').update(payload).eq('id', current.id).eq('selectable', true)
-        : supabase.from('promotions').insert({ ...payload, description: '', active: true, selectable: true, show_banner: false, sort_order: bonuses.length });
+        : supabase.from('promotions').insert({ ...payload, description: '', active: true, selectable: true, show_banner: false, sort_order: bonuses.length, banner_layout: defaultBonusBannerLayout(theme) });
       const { data, error } = await query.select(offerColumns).single();
       if (error || !data) throw persistError(error ?? { message: 'No se pudo guardar el bono.' });
-      const saved = offerFromRow(data);
+      const saved = offerFromRow(data, theme);
       setBonuses(old => current ? old.map(item => item.id === saved.id ? { ...item, ...saved } : item) : [...old, saved]);
       setEditingId(null);
       setMode('percent');
+      setTimed(false);
       element.reset();
+      reloadPromotions();
     });
   }
   function beginEdit(bonus: BonusOffer) {
     setEditingId(bonus.id);
     setMode(bonus.bonus_mode);
+    setTimed(bonus.cooldown_hours > 0);
     document.getElementById('bonus-title')?.scrollIntoView({ block: 'start' });
   }
   async function removeBonus(bonus: BonusOffer) {
@@ -105,7 +126,8 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
       }
       if (!data?.length) throw new InputError('Ese bono ya no está.');
       setBonuses(old => old.filter(item => item.id !== bonus.id));
-      if (editingId === bonus.id) { setEditingId(null); setMode('percent'); }
+      if (editingId === bonus.id) { setEditingId(null); setMode('percent'); setTimed(false); }
+      reloadPromotions();
     });
   }
   async function toggleBonus(bonus: BonusOffer) {
@@ -115,6 +137,34 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
       const { data, error } = await supabase.from('promotions').update({ active }).eq('id', bonus.id).eq('selectable', true).select('id,active').single();
       if (error || !data) throw persistError(error ?? { message: 'No se pudo guardar el bono.' });
       setBonuses(old => old.map(item => item.id === bonus.id ? { ...item, active: data.active } : item));
+      reloadPromotions();
+    });
+  }
+  async function uploadImage(bonus: BonusOffer, event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    await action(async () => {
+      if (demo || !supabase) throw new InputError(previewNotice);
+      const videoExtension = file.type === 'video/mp4' ? 'mp4' : file.type === 'video/webm' ? 'webm' : null;
+      if (videoExtension && (!file.size || file.size > 20 * 1024 * 1024)) throw new InputError('El video debe pesar hasta 20 MB.');
+      const extension = videoExtension ?? await bannerImageExtension(file);
+      const path = `special-bonuses/${crypto.randomUUID()}.${extension}`;
+      const uploaded = await supabase.storage.from('app-assets').upload(path, file, { contentType: file.type, upsert: false });
+      if (uploaded.error) throw uploaded.error;
+      const { error } = await supabase.from('promotions').update({ image_path: path }).eq('id', bonus.id);
+      if (error) throw persistError(error);
+      setBonuses(old => old.map(item => item.id === bonus.id ? { ...item, image_path: path } : item));
+      reloadPromotions();
+    });
+  }
+  async function saveLayout(bonus: BonusOffer) {
+    await action(async () => {
+      if (demo || !supabase) throw new InputError(previewNotice);
+      const { error } = await supabase.from('promotions').update({ banner_layout: bonus.banner_layout }).eq('id', bonus.id);
+      if (error) throw persistError(error);
+      setSavedLayoutId(bonus.id);
+      reloadPromotions();
     });
   }
   return <section className="bonus-admin" aria-labelledby="bonus-title">
@@ -122,19 +172,21 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
     <form className="bonus-create" key={editing?.id ?? 'new'} onSubmit={createBonus}>
       <p>{demo ? previewNotice : editing ? 'Los cambios valen para las próximas cargas. Las que ya se enviaron conservan el valor anterior.' : 'El usuario ve el bono solo si el monto a cargar está entre el mínimo y el máximo.'}</p>
       <label>Nombre<input name="title" maxLength={80} placeholder="Ejemplo: Recarga" defaultValue={editing?.title ?? ''} required /></label>
+      <label className="bonus-special-toggle"><input type="checkbox" checked={timed} onChange={event => { setTimed(event.target.checked); if (event.target.checked) setMode('fixed'); }} /> Bono especial con tiempo de espera y banner</label>
       <fieldset className="bonus-mode">
         <legend>Tipo de bono</legend>
-        <label className={mode === 'percent' ? 'selected' : ''}><input type="radio" name="mode" value="percent" checked={mode === 'percent'} onChange={() => setMode('percent')} />Porcentaje</label>
+        <label className={mode === 'percent' ? 'selected' : ''}><input type="radio" name="mode" value="percent" checked={mode === 'percent'} disabled={timed} onChange={() => setMode('percent')} />Porcentaje</label>
         <label className={mode === 'fixed' ? 'selected' : ''}><input type="radio" name="mode" value="fixed" checked={mode === 'fixed'} onChange={() => setMode('fixed')} />Monto fijo</label>
       </fieldset>
       <label>{mode === 'percent' ? 'Porcentaje' : 'Monto del bono'}<input name="value" inputMode="decimal" maxLength={18} placeholder={mode === 'percent' ? '10' : '5.000'} defaultValue={editing ? String(editing.bonus_mode === 'fixed' ? editing.bonus_amount : editing.bonus_percent) : ''} required /></label>
+      {timed && <label>Disponible nuevamente después de (horas)<input name="cooldown_hours" type="number" min="1" max="720" step="1" defaultValue={editing?.cooldown_hours || 6} required /></label>}
       <div className="bonus-range">
         <label>Monto mínimo<input name="min_amount" inputMode="decimal" maxLength={18} placeholder="10.000" defaultValue={editing ? String(editing.min_amount) : ''} required /></label>
         <label>Monto máximo<input name="max_amount" inputMode="decimal" maxLength={18} placeholder="50.000" defaultValue={editing ? String(editing.max_amount) : ''} required /></label>
       </div>
       <div className="bonus-form-actions">
         <button type="submit" disabled={busy || loading}>{busy ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear bono'}</button>
-        {editing && <button type="button" disabled={busy} onClick={() => { setEditingId(null); setMode('percent'); }}>Cancelar</button>}
+        {editing && <button type="button" disabled={busy} onClick={() => { setEditingId(null); setMode('percent'); setTimed(false); }}>Cancelar</button>}
       </div>
     </form>
     {loading ? <p className="empty">Cargando bonos…</p> : loadError ? <p className="empty">{loadError}</p> : !bonuses.length ? <p className="empty">Todavía no hay bonos. Los que crees van a aparecer cuando el usuario cargue.</p> : <div className="bonus-offers">
@@ -145,6 +197,13 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
           <button type="button" disabled={busy} onClick={() => void toggleBonus(bonus)}>{bonus.active ? 'Pausar' : 'Activar'}</button>
           <button type="button" disabled={busy} onClick={() => void removeBonus(bonus)}>Eliminar</button>
         </div>
+        {bonus.cooldown_hours > 0 && <div className="special-bonus-image-editor">
+          <label className="portal-extra-add">{bonus.image_path ? 'Cambiar imagen o video' : 'Subir imagen o video'}<input type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" disabled={busy || demo} onChange={event => void uploadImage(bonus, event)} /></label>
+          <BannerLayoutEditor label={bonus.title} layout={bonus.banner_layout} defaults={defaultBonusBannerLayout(theme)} heightRange={[25, 80]} disabled={busy || demo} saved={savedLayoutId === bonus.id} onChange={layout => { setBonuses(old => old.map(item => item.id === bonus.id ? { ...item, banner_layout: normalizeBonusBannerLayout(layout, theme) } : item)); setSavedLayoutId(null); }} onSave={() => void saveLayout(bonus)}>
+            {bonus.image_path ? /\.(mp4|webm)$/i.test(bonus.image_path) ? <video src={supabase?.storage.from('app-assets').getPublicUrl(bonus.image_path).data.publicUrl} autoPlay muted loop playsInline /> : <StorageImage path={bonus.image_path} alt={bonus.title} /> : <span>{bonus.title} · imagen pendiente</span>}
+            <div className="special-banner-controls"><strong>{bonus.title}</strong><span>Desde {money(bonus.min_amount)} · +{money(bonus.bonus_amount)}</span><button type="button">Obtener bono</button></div>
+          </BannerLayoutEditor>
+        </div>}
       </article>)}
     </div>}
   </section>;

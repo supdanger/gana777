@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { ArrowLeft, Camera, ChevronRight, Eye, EyeOff, FileText, Images, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserPlus, UserRound } from 'lucide-react';
-import { BonusBanner, PortalBanners, StorageImage, useContent } from './content';
+import { PortalBanners, StorageImage, useContent } from './content';
+import { HomeBonusCarousel } from './special-bonus-carousel';
 import { asBonusRule, bonusEnabled, moneyInputMaxLength, moneyInputPattern, percentText, readMoney } from '../supabase/functions/_shared/bonus-rule';
 import { creditAmounts } from './amounts';
 import { date, money, supabase, type Bank, type BankOperationStatus, type RequestRow, type Message } from './lib';
@@ -98,8 +99,8 @@ const bonusBanners: Record<number, string> = {
   1000: '/preview-assets/bonus-1000.png',
   2000: '/preview-assets/bonus-2000.png',
 };
-function bonusBanner(promotion: { bonus_mode: string; bonus_amount: number }) {
-  return promotion.bonus_mode === 'fixed' ? bonusBanners[promotion.bonus_amount] ?? '' : '';
+function bonusBanner(promotion: { bonus_mode: string; bonus_amount: number; cooldown_hours?: number }) {
+  return promotion.cooldown_hours ? '' : promotion.bonus_mode === 'fixed' ? bonusBanners[promotion.bonus_amount] ?? '' : '';
 }
 const greetingHourFormatter = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', hourCycle: 'h23',
@@ -108,7 +109,7 @@ function playerGreeting() {
   const hour = Number(greetingHourFormatter.format(new Date()));
   return hour >= 6 && hour < 12 ? 'Buenos días' : hour >= 12 && hour < 20 ? 'Buenas tardes' : 'Buenas noches';
 }
-export function UserHome({ name, navigate, whatsappUrl, username, casinoUrl }: { name: string; navigate: (page: Page) => void; whatsappUrl?: string | null; username?: string | null; casinoUrl?: string | null }) {
+export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, username, casinoUrl }: { name: string; navigate: (page: Page) => void; onClaimSpecialBonus: (id: string) => void; whatsappUrl?: string | null; username?: string | null; casinoUrl?: string | null }) {
   const { settings, contactAnimations } = useContent();
   const bannerUrl = homeBannerLink(settings, casinoUrl);
   const bannerImage = homeBannerImage(settings, settings.portal_theme);
@@ -150,7 +151,7 @@ export function UserHome({ name, navigate, whatsappUrl, username, casinoUrl }: {
   ].filter(contact => contact.visible);
   return <>
     <h1 className="home-welcome">¡{greeting}, <span className="home-welcome-name">{name}!</span></h1>
-    <BonusBanner />
+    <HomeBonusCarousel onClaim={onClaimSpecialBonus} />
     <PortalBanners place="home" />
     <h2 className="section-title">¿Qué querés hacer?</h2>
     <div className="quick-actions">
@@ -194,8 +195,8 @@ function BankPause({ status, now }: { status: BankOperationStatus; now: number }
     </div>
   </section>;
 }
-export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, busy, demo, onSubmit, onCopy, onOpenWithdrawalHistory, feedback }: {
-  kind: 'deposit' | 'withdrawal'; requests: RequestRow[]; bank: Bank | null; bankOperation: BankOperationStatus | null; retryAt?: number; busy: boolean; demo: boolean;
+export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, initialSpecialBonusId = '', busy, demo, onSubmit, onCopy, onOpenWithdrawalHistory, feedback }: {
+  kind: 'deposit' | 'withdrawal'; requests: RequestRow[]; bank: Bank | null; bankOperation: BankOperationStatus | null; retryAt?: number; initialSpecialBonusId?: string; busy: boolean; demo: boolean;
   onSubmit: (event: FormEvent<HTMLFormElement>, receipt?: File | null) => void; onCopy: (text: string, label: string) => void; onOpenWithdrawalHistory: () => void; feedback?: ReactNode;
 }) {
   const { promotions, reloadPromotions, settings } = useContent();
@@ -218,7 +219,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
   const [compressing, setCompressing] = useState(false);
   const [receiptError, setReceiptError] = useState('');
   const [preview, setPreview] = useState('');
-  const [bonus, setBonus] = useState('');
+  const [bonus, setBonus] = useState(initialSpecialBonusId);
   const [rawAmount, setRawAmount] = useState('');
   useEffect(() => { if (kind === 'withdrawal' && pending) setRawAmount(''); }, [kind, pending]);
   const cameraInput = useRef<HTMLInputElement>(null);
@@ -227,7 +228,8 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
   const receiptChangeId = useRef(0);
   useEffect(() => { if (kind === 'deposit') reloadPromotions(); }, [kind, reloadPromotions]);
   const typedAmount = kind === 'deposit' ? readMoney(rawAmount) : null;
-  const offers = promotions.filter(p => p.selectable && (p.bonus_mode === 'fixed' ? p.bonus_amount > 0 : p.bonus_percent > 0));
+  const offers = promotions.filter(p => p.selectable && (p.cooldown_hours === 0 || p.id === initialSpecialBonusId) && (p.bonus_mode === 'fixed' ? p.bonus_amount > 0 : p.bonus_percent > 0));
+  const initialSpecial = offers.find(p => p.id === initialSpecialBonusId);
   const available = typedAmount === null ? [] : offers.filter(p => bonusEnabled(asBonusRule(p), typedAmount));
   const bonusColumns = available.length === 0 ? ' single-option' : available.length === 1 ? ' two-options' : '';
   const selectedOffer = offers.find(offer => offer.id === bonus);
@@ -236,7 +238,8 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
   useEffect(() => {
     if (!bonus) return;
     const amount = readMoney(rawAmount);
-    if (amount === null || !promotions.some(p => p.id === bonus && p.selectable && bonusEnabled(asBonusRule(p), amount))) setBonus('');
+    if (!promotions.some(p => p.id === bonus)) return;
+    if (amount !== null && !promotions.some(p => p.id === bonus && p.selectable && bonusEnabled(asBonusRule(p), amount))) setBonus('');
   }, [promotions, bonus, rawAmount]);
   useEffect(() => {
     if (!file?.type.startsWith('image/')) { setPreview(''); return; }
@@ -289,6 +292,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
       <input type="hidden" name="bank_assignment_id" value={bank?.assignment_id ?? ''} />
       {!bank && bankOperation && bankOperation.mode !== 'online' ? <BankPause status={bankOperation} now={now} /> : bank ? <BankTransferCard bank={bank} onCopy={onCopy} /> : <section className="card bank-loading-card" aria-live="polite"><Landmark /><div><strong>Preparando una cuenta</strong><small>Esperá un momento…</small></div></section>}
       <section className="card deposit-amount">
+        {initialSpecial && <p className="special-bonus-request-note">{bonus === initialSpecial.id ? 'Bono especial seleccionado' : 'Bono especial'}: +{money(initialSpecial.bonus_amount)} desde {money(initialSpecial.min_amount)}. La transferencia debe cumplir ese mínimo.</p>}
         {amount}
         {typedAmount !== null ? <fieldset className="bonus-options">
           <legend>Bonos disponibles</legend>

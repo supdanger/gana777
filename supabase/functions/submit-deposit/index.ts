@@ -49,6 +49,7 @@ Deno.serve(async request => {
       receipt_url: result.secure_url, cloudinary_asset_id: result.asset_id, bonus_id: bonusId, bank_assignment_id: bankAssignmentId,
     }).select('id,user_id,kind,amount,status,created_at,holder,cbu,alias,receipt_path,receipt_url,bonus_id,bonus_percent').single();
     if (error) {
+      if (/bono especial todavía está en espera|bono pendiente de acreditación/i.test(error.message ?? '')) return json({ error: error.message }, 409);
       if ((error.message ?? '').includes('El bono no está habilitado')) return json({ error: 'El bono no está habilitado para ese monto.' }, 400);
       if ((error.message ?? '').includes('asignación de la cuenta venció')) return json({ error: 'La asignación de la cuenta venció. Volvé a iniciar la carga.' }, 400);
       if ((error.message ?? '').includes('cuenta asignada ya no está disponible')) return json({ error: 'La cuenta asignada ya no está disponible.' }, 400);
