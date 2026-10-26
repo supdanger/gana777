@@ -23,51 +23,55 @@ Deno.serve(async request => {
     if (authError || !authorized) throw new HttpError(401, 'No autorizado.');
     const token = Deno.env.get('TELEGRAM_BOT_TOKEN')?.trim();
     if (!token) throw new HttpError(503, 'Configurá TELEGRAM_BOT_TOKEN en Supabase.');
-    const { data, error } = await service.rpc('claim_telegram_alert_batch', { p_limit: 10 });
-    if (error) throw new HttpError(503, 'No pudimos consultar los avisos pendientes.');
-    const alerts = (data ?? []) as TelegramAlert[];
-    if (!alerts.length) return json({ processed: 0, sent: 0 });
     const { data: configured, error: routesError } = await service.from('telegram_routes').select('route,chat_id,enabled');
     if (routesError) throw new HttpError(503, 'No pudimos consultar los grupos de Telegram.');
     const routes = new Map(((configured ?? []) as Route[]).map(route => [route.route, route]));
     let sent = 0;
-    let cursor = 0;
-    async function processAlert() {
-      while (cursor < alerts.length) {
-        const alert = alerts[cursor++];
-        const route = routes.get(alert.route);
-        let status: 'sent' | 'failed' | 'skipped' | 'dead' = 'failed';
-        let errorCode: string | null = null;
-        let messageId: number | null = null;
-        if (!route?.enabled || !route.chat_id) status = 'skipped';
-        else {
-          const prepared = alert.event_type === 'deposit' || alert.event_type === 'withdrawal'
-            ? await prepareOperation(service, alert)
-            : { status: 'send' as const, text: telegramAlertText(alert), file: null, fallbackText: null };
-          if (prepared.status === 'skip') status = 'skipped';
-          else if (prepared.status === 'error') errorCode = prepared.code;
+    let processed = 0;
+    for (let round = 0; round < 3 && processed < 30; round++) {
+      const { data, error } = await service.rpc('claim_telegram_alert_batch', { p_limit: 10 });
+      if (error) throw new HttpError(503, 'No pudimos consultar los avisos pendientes.');
+      const alerts = (data ?? []) as TelegramAlert[];
+      if (!alerts.length) break;
+      processed += alerts.length;
+      let cursor = 0;
+      async function processAlert() {
+        while (cursor < alerts.length) {
+          const alert = alerts[cursor++];
+          const route = routes.get(alert.route);
+          let status: 'sent' | 'failed' | 'skipped' | 'dead' = 'failed';
+          let errorCode: string | null = null;
+          let messageId: number | null = null;
+          if (!route?.enabled || !route.chat_id) status = 'skipped';
           else {
-            let delivery = await deliver(token, route.chat_id, prepared.text, prepared.file);
-            if (!delivery.ok && prepared.file && prepared.fallbackText && alert.attempts >= 10) {
-              delivery = await deliver(token, route.chat_id, prepared.fallbackText, null);
+            const prepared = alert.event_type === 'deposit' || alert.event_type === 'withdrawal'
+              ? await prepareOperation(service, alert)
+              : { status: 'send' as const, text: telegramAlertText(alert), file: null, fallbackText: null };
+            if (prepared.status === 'skip') status = 'skipped';
+            else if (prepared.status === 'error') errorCode = prepared.code;
+            else {
+              let delivery = await deliver(token, route.chat_id, prepared.text, prepared.file);
+              if (!delivery.ok && prepared.file && prepared.fallbackText && alert.attempts >= 10) {
+                delivery = await deliver(token, route.chat_id, prepared.fallbackText, null);
+              }
+              if (delivery.ok) { status = 'sent'; messageId = delivery.messageId; sent++; }
+              else errorCode = delivery.errorCode;
             }
-            if (delivery.ok) { status = 'sent'; messageId = delivery.messageId; sent++; }
-            else errorCode = delivery.errorCode;
           }
+          if (status === 'failed' && alert.attempts >= 10) status = 'dead';
+          const retrySeconds = Math.min(3600, 30 * 2 ** Math.max(0, alert.attempts - 1));
+          const { error: updateError } = await service.from('telegram_alerts').update({
+            status, sent_at: status === 'sent' ? new Date().toISOString() : null,
+            telegram_message_id: messageId, last_error: status === 'failed' || status === 'dead' ? errorCode : null,
+            next_attempt_at: new Date(Date.now() + retrySeconds * 1000).toISOString(),
+            claimed_at: null,
+          }).eq('id', alert.id).eq('status', 'sending').eq('attempts', alert.attempts);
+          if (updateError) console.error('telegram alert update failed', { type: updateError.code ?? 'unknown' });
         }
-        if (status === 'failed' && alert.attempts >= 10) status = 'dead';
-        const retrySeconds = Math.min(3600, 30 * 2 ** Math.max(0, alert.attempts - 1));
-        const { error: updateError } = await service.from('telegram_alerts').update({
-          status, sent_at: status === 'sent' ? new Date().toISOString() : null,
-          telegram_message_id: messageId, last_error: status === 'failed' || status === 'dead' ? errorCode : null,
-          next_attempt_at: new Date(Date.now() + retrySeconds * 1000).toISOString(),
-          claimed_at: null,
-        }).eq('id', alert.id).eq('status', 'sending').eq('attempts', alert.attempts);
-        if (updateError) console.error('telegram alert update failed', { type: updateError.code ?? 'unknown' });
       }
+      await Promise.all(Array.from({ length: Math.min(5, alerts.length) }, processAlert));
     }
-    await Promise.all(Array.from({ length: Math.min(3, alerts.length) }, processAlert));
-    return json({ processed: alerts.length, sent });
+    return json({ processed, sent });
   } catch (error) {
     if (error instanceof HttpError) return json({ error: error.message }, error.status);
     console.error('send-telegram-alerts failed', { type: error instanceof Error ? error.name : 'unknown' });

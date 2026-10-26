@@ -86,7 +86,7 @@ Supabase proporciona automáticamente `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUP
 
 Aplicá `supabase/migrations/058_telegram_internal_alerts.sql` y desplegá `send-telegram-alerts` y `test-telegram-route`. Guardá **solo** `TELEGRAM_BOT_TOKEN` en **Supabase → Edge Functions → Secrets**; los ocho ID de grupo se cargan desde **Panel → Configuración → Telegram**. El bot debe pertenecer a cada grupo. No uses el prefijo `VITE_` para el token.
 
-La migración registra las cargas, retiros pendientes e inicios/finalizaciones de turno en una cola. Un trabajo de Supabase Cron la procesa cada minuto y reintenta fallos temporales. El trabajo usa los secretos `project_url` y `service_role_key` de Supabase Vault, los mismos que los mensajes programados. Si aún no están configurados, crealos siguiendo `docs/MENSAJES-PROGRAMADOS.md`. Las operaciones siguen guardándose aunque Telegram no esté disponible; en el panel se ven los avisos pendientes o que requieren revisión.
+La migración registra las cargas, retiros pendientes e inicios/finalizaciones de turno en una cola. Al guardarse el aviso, la base llama al envío enseguida. El cron de cada minuto solo reintenta los que fallaron. El trabajo usa los secretos `project_url` y `service_role_key` de Supabase Vault, los mismos que los mensajes programados. Si aún no están configurados, crealos siguiendo `docs/MENSAJES-PROGRAMADOS.md`. Las operaciones siguen guardándose aunque Telegram no esté disponible; en el panel se ven los avisos pendientes o que requieren revisión.
 
 Activá los grupos después de guardar sus ID y enviar una prueba. Los eventos generados mientras el grupo estaba desactivado no se envían retroactivamente.
 
