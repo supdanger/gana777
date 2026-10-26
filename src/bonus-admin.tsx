@@ -83,7 +83,9 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
     const element = event.currentTarget;
     const form = new FormData(element);
     await action(async () => {
-      assertFormFields(form, ['title', 'mode', 'value', 'min_amount', 'max_amount']);
+      assertFormFields(form, timed
+        ? ['title', 'mode', 'value', 'min_amount', 'max_amount', 'cooldown_hours']
+        : ['title', 'mode', 'value', 'min_amount', 'max_amount']);
       const rule = parseBonusRule(form);
       const hours = timed ? Number(form.get('cooldown_hours')) : 0;
       if (timed && (rule.bonus_mode !== 'fixed' || !Number.isInteger(hours) || hours < 1 || hours > 720)) throw new InputError('El bono especial debe ser de monto fijo y esperar entre 1 y 720 horas.');
