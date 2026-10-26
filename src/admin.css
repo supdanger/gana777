@@ -1662,3 +1662,24 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .announcement-item-actions { margin-top: 12px; }
 .announcement-item-actions button { display: inline-flex; align-items: center; gap: 5px; }
 @media (max-width: 620px) { .announcement-schedule { grid-template-columns: 1fr; gap: 15px; } .announcement-editor { padding: 15px; } }
+.telegram-admin .page-title { margin-bottom: 20px; }
+.telegram-routes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.telegram-route { display: grid; gap: 14px; padding: 18px; }
+.telegram-route-heading { display: flex; align-items: center; gap: 10px; }
+.telegram-route-heading svg { color: #55bfff; }
+.telegram-route-heading h2 { margin: 0; font-size: 17px; }
+.telegram-route-heading small { color: #a9c5d8; }
+.telegram-route > label:not(.telegram-route-toggle) { display: grid; gap: 7px; font-size: 12px; font-weight: 700; }
+.telegram-route input[type="text"], .telegram-route input:not([type]) { width: 100%; min-width: 0; }
+.telegram-route-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.telegram-route-toggle input { width: 17px; height: 17px; }
+.telegram-route-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.telegram-route-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 7px 10px; }
+.telegram-history { margin-top: 20px; padding: 18px; }
+.telegram-history-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.telegram-history h2 { margin: 0 0 6px; }
+.telegram-history > p { color: #a9c5d8; font-size: 13px; }
+.telegram-history-list { display: grid; gap: 8px; }
+.telegram-history-list > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 9px 0; border-top: 1px solid #39566b; }
+.telegram-history-list span { color: #75caff; font-size: 12px; font-weight: 800; }
+.telegram-history-list small { grid-column: 1 / -1; color: #b5c9d8; }

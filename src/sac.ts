@@ -77,14 +77,6 @@ export function depositRouteLabel(row: { kind: string; deposit_phone?: number | 
   return parts.join(' · ');
 }
 
-export function telegramShiftSentence(verb: 'iniciado' | 'finalizado', result: { delivered?: boolean; reason?: string } | null, invokeFailed: boolean): string {
-  const lead = `Turno ${verb}.`;
-  if (invokeFailed) return `${lead} El aviso queda preparado: desplegá notify-sac-shift y cargá las variables de Telegram.`;
-  if (result?.delivered) return `${lead} El aviso salió por Telegram.`;
-  if (result?.reason === 'missing_config') return `${lead} Telegram queda listo para cuando cargues TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID.`;
-  return `${lead} No pudimos enviar el aviso de Telegram.`;
-}
-
 export type PhoneGroup<T> = { phone: number | null; items: T[] };
 
 export function groupAccountsByPhone<T extends { phone_number: number | null }>(accounts: readonly T[]): PhoneGroup<T>[] {

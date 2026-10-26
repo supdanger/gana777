@@ -28,6 +28,7 @@ const groups: Array<{ label: string; items: Array<{ page: Page; Icon: typeof Lay
     { page: 'themes', Icon: Palette },
     { page: 'bonuses', Icon: Gift },
     { page: 'accounts', Icon: Landmark },
+    { page: 'telegram', Icon: BellRing },
   ] },
   { label: 'Administración', items: [{ page: 'cashiers', Icon: UserCog }] },
 ];

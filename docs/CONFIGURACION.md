@@ -82,16 +82,13 @@ CLOUDINARY_API_SECRET
 
 Supabase proporciona automáticamente `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` al entorno de funciones. Ninguna clave secreta debe tener prefijo `VITE_` ni formar parte de los repositorios. `.env.functions.example` es solo una plantilla, no contiene credenciales.
 
-## Avisos de turno por Telegram
+## Avisos internos por Telegram
 
-Después de aplicar `supabase/migrations/038_sac_stations.sql`, desplegá `notify-sac-shift`. El turno se abre y se cierra aunque Telegram todavía no esté conectado; los avisos generados sin configuración no se envían después. Cuando el grupo y el bot existan, cargá estos secretos en **Supabase → Edge Functions → Secrets**:
+Aplicá `supabase/migrations/058_telegram_internal_alerts.sql` y desplegá `send-telegram-alerts` y `test-telegram-route`. Guardá **solo** `TELEGRAM_BOT_TOKEN` en **Supabase → Edge Functions → Secrets**; los ocho ID de grupo se cargan desde **Panel → Configuración → Telegram**. El bot debe pertenecer a cada grupo. No uses el prefijo `VITE_` para el token.
 
-```text
-TELEGRAM_BOT_TOKEN
-TELEGRAM_CHAT_ID
-```
+La migración registra las cargas, retiros pendientes e inicios/finalizaciones de turno en una cola. Un trabajo de Supabase Cron la procesa cada minuto y reintenta fallos temporales. El trabajo usa los secretos `project_url` y `service_role_key` de Supabase Vault, los mismos que los mensajes programados. Si aún no están configurados, crealos siguiendo `docs/MENSAJES-PROGRAMADOS.md`. Las operaciones siguen guardándose aunque Telegram no esté disponible; en el panel se ven los avisos pendientes o que requieren revisión.
 
-`TELEGRAM_BOT_TOKEN` es el token de @BotFather. `TELEGRAM_CHAT_ID` es el identificador del grupo, incluidos los números negativos. El bot tiene que ser miembro del grupo. El mensaje de inicio sale como `Max inició turno · SAC 1 · Gana777` y el de cierre agrega los teléfonos de ese puesto.
+Activá los grupos después de guardar sus ID y enviar una prueba. Los eventos generados mientras el grupo estaba desactivado no se envían retroactivamente.
 
 Con Supabase CLI instalado y la sesión del proyecto configurada, desplegar desde esta carpeta:
 
@@ -101,7 +98,7 @@ supabase functions deploy receipt-url --project-ref TU_PROJECT_REF
 supabase functions deploy manage-cashiers --project-ref TU_PROJECT_REF
 ```
 
-El archivo `supabase/config.toml` desactiva la verificación JWT del gateway para estas funciones. **Ambos handlers verifican explícitamente el token con `auth.getUser`** antes de acceder a datos o Cloudinary; no aceptan cargas anónimas. `receipt-url` también comprueba el rol de administrador.
+El archivo `supabase/config.toml` desactiva la verificación JWT del gateway para estas funciones. Los handlers de usuario comprueban el token con `auth.getUser`; los trabajos internos validan la clave guardada en Vault.
 
 Los comprobantes usan el tipo `authenticated` de Cloudinary. Su URL guardada no es una URL pública. El panel solicita un enlace de descarga firmado que vence en 60 segundos. Se conserva la lectura temporal de comprobantes antiguos almacenados en el bucket privado `receipts`.
 

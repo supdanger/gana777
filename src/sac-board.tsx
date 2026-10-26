@@ -5,7 +5,7 @@ import { BankTransferCard } from './bank-transfer-card';
 import { date, supabase, type Bank } from './lib';
 import { shiftLabel, type ShiftKey } from './shifts';
 import {
-  demoSacPhones, mergePhoneOptions, parseOperatorName, phonesForShift, phonesFromAccounts, readSacBoard, sacAccountBadge, stationsOrDefaults, telegramShiftSentence,
+  demoSacPhones, mergePhoneOptions, parseOperatorName, phonesForShift, phonesFromAccounts, readSacBoard, sacAccountBadge, stationsOrDefaults,
   type SacPhoneAccount, type SacPhoneOption, type SacStation,
 } from './sac';
 
@@ -177,12 +177,6 @@ export function SacBoard({
 
   function applyDemo(next: SacStation[]) { setStations(stationsOrDefaults(next)); }
 
-  async function notify(eventId: string, verb: 'iniciado' | 'finalizado') {
-    if (!supabase) return telegramShiftSentence(verb, null, true);
-    const { data, error } = await supabase.functions.invoke('notify-sac-shift', { body: { event_id: eventId } });
-    return telegramShiftSentence(verb, error ? null : data as { delivered?: boolean; reason?: string }, !!error);
-  }
-
   function start(number: number, rawName: string) {
     void action(async () => {
       const name = parseOperatorName(rawName);
@@ -196,7 +190,7 @@ export function SacBoard({
       const created = data as { event_id?: string } | null;
       if (error || !created?.event_id) throw error ?? new InputError('No pudimos abrir el turno.');
       await reload();
-      setNotice(await notify(created.event_id, 'iniciado'));
+      setNotice('Turno iniciado. Si el grupo de Telegram está activo, el aviso quedó preparado.');
     });
   }
 
@@ -213,7 +207,7 @@ export function SacBoard({
       const closed = data as { event_id?: string } | null;
       if (error || !closed?.event_id) throw error ?? new InputError('No pudimos finalizar el turno.');
       await reload();
-      setNotice(await notify(closed.event_id, 'finalizado'));
+      setNotice('Turno finalizado. Si el grupo de Telegram está activo, el aviso quedó preparado.');
     });
   }
 

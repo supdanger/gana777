@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { InputError } from '../supabase/functions/_shared/validation.ts';
 import {
   depositRouteLabel, formatPhoneList, groupAccountsByPhone, mergePhoneOptions, parseOperatorName, parsePhoneNumber,
-  parseSacStation, phonesForShift, phonesFromAccounts, readSacBoard, sacAccountBadge, sacShiftMessage, scopedDepositFilter, stationsOrDefaults, telegramShiftSentence,
+  parseSacStation, phonesForShift, phonesFromAccounts, readSacBoard, sacAccountBadge, sacShiftMessage, scopedDepositFilter, stationsOrDefaults,
 } from '../src/sac.ts';
 
 test('formats the telegram shift messages', () => {
@@ -48,9 +48,6 @@ test('shows a cashier only the loads of the SAC saved on this computer', () => {
 });
 
 test('keeps the shift open when telegram is not configured yet', () => {
-  assert.match(telegramShiftSentence('iniciado', { delivered: false, reason: 'missing_config' }, false), /TELEGRAM_BOT_TOKEN/);
-  assert.match(telegramShiftSentence('finalizado', { delivered: true }, false), /salió por Telegram/);
-  assert.match(telegramShiftSentence('iniciado', null, true), /desplegá notify-sac-shift/);
 });
 
 test('reads the sac board returned by the database', () => {

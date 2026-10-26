@@ -17,3 +17,7 @@ verify_jwt = false
 verify_jwt = false
 [functions.notify-sac-shift]
 verify_jwt = false
+[functions.send-telegram-alerts]
+verify_jwt = false
+[functions.test-telegram-route]
+verify_jwt = false
