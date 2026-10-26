@@ -1298,7 +1298,7 @@ body:has(.user-app.theme-christmas), body:has(.user-login.theme-christmas) { bac
 .user-app.page-home.theme-christmas .christmas-bonus-banner { aspect-ratio: var(--home-banner-ratio, 848 / 365); border-radius: var(--home-banner-radius, 12px); }
 .home-bonus-carousel { position: relative; margin-bottom: 14px; }
 .user-app.page-home .home-bonus-carousel .bonus-banner { margin-bottom: 0; }
-.home-bonus-carousel-nav { position: absolute; z-index: 5; top: 50%; left: 4px; right: 4px; display: flex; align-items: center; justify-content: space-between; height: 44px; margin: 0; transform: translateY(-50%); pointer-events: none; }
+.home-bonus-carousel-nav { position: absolute; z-index: 5; top: 50%; left: 4px; right: 4px; display: flex; align-items: center; justify-content: space-between; height: 44px; margin: 0; padding: 0; border: 0; transform: translateY(-50%); pointer-events: none; }
 .home-bonus-carousel-nav button { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; color: var(--home-accent, #087bdf); background: transparent; box-shadow: none; filter: drop-shadow(0 1px 2px #000) drop-shadow(0 0 5px #000); cursor: pointer; pointer-events: auto; transition: transform .18s ease, opacity .18s ease; }
 .home-bonus-carousel-nav button:hover { background: transparent; transform: scale(1.12); }
 .home-bonus-carousel-nav button:focus-visible { outline: 2px solid var(--home-accent, #087bdf); outline-offset: 3px; }
