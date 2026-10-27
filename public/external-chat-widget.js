@@ -43,7 +43,10 @@
     .head{position:relative;display:flex;align-items:center;gap:12px;min-height:82px;padding:15px 16px;background:linear-gradient(125deg,#21102d,#160d20 66%,#100a16);border-bottom:1px solid #392046}
     .support-avatar{display:block;flex:0 0 50px;width:50px;height:50px;border:1px solid #a942d2;border-radius:50%;background:#170e20;object-fit:cover;box-shadow:0 0 0 4px #a52eea18,0 5px 14px #09040e88}
     .identity{min-width:0;flex:1;padding-right:30px}
-    .identity strong{display:block;overflow:hidden;color:#fff;font-size:15px;font-weight:750;letter-spacing:.01em;text-overflow:ellipsis;white-space:nowrap}
+    .identity strong{display:flex;align-items:baseline;gap:5px;overflow:hidden;color:#fff;font-size:13px;font-weight:700;letter-spacing:.01em;white-space:nowrap}
+    .identity-brand{display:inline-flex;align-items:baseline;min-width:0;font-size:15px;font-weight:850;letter-spacing:-.045em}
+    .identity-brand-777{color:#c344f5;text-shadow:0 0 12px #a328d755}
+    .identity-brand-domain{margin-left:1px;color:#d68bfa;font-size:10px;font-weight:800;letter-spacing:-.02em}
     .identity small{display:block;margin-top:4px;color:#c4afd0;font-size:11px;letter-spacing:.02em}
     .close{position:absolute;top:14px;right:13px;display:grid;place-items:center;width:34px;height:34px;border:1px solid transparent;border-radius:10px;background:transparent;color:#c8b3d2;cursor:pointer;transition:background .16s ease,color .16s ease,border-color .16s ease}
     .close:hover{border-color:#563765;background:#281732;color:#fff}
@@ -89,7 +92,7 @@
   <section class="panel" aria-label="Chat de soporte">
     <header class="head">
       <img class="support-avatar" src="https://gana777.vercel.app/support-chat-avatar.webp" alt="Avatar de soporte GANA777" />
-      <div class="identity"><strong>Soporte GANA777</strong><small>Atención al cliente</small></div>
+      <div class="identity"><strong><span>Soporte</span><span class="identity-brand"><span>Gana</span><span class="identity-brand-777">777</span><span class="identity-brand-domain">bet.com</span></span></strong><small>Atención al cliente</small></div>
       <button class="close" type="button" aria-label="Cerrar chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
     </header>
     <div class="log" role="log" aria-live="polite"></div>
