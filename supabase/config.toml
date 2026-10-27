@@ -21,3 +21,5 @@ verify_jwt = false
 verify_jwt = false
 [functions.test-telegram-route]
 verify_jwt = false
+[functions.external-chat]
+verify_jwt = false

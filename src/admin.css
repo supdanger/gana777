@@ -808,6 +808,13 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .admin-chat-heading h1 { margin: 0 0 5px; }
 .admin-chat-heading p { margin: 0; color: var(--panel-muted); font-size: 14px; }
 .admin-chat-heading > span { flex-shrink: 0; padding: 8px 11px; border: 1px solid #21617f; border-radius: 999px; background: #0b3046; color: #8ee6ff; font-size: 12px; font-weight: 700; }
+.external-chat-install { display: grid; gap: 10px; }
+.external-chat-install > div > strong { font-size: 15px; }
+.external-chat-install p { margin: 5px 0 0; color: var(--panel-muted); font-size: 13px; }
+.external-chat-install textarea { width: 100%; resize: vertical; padding: 10px 12px; border: 1px solid var(--panel-border); border-radius: 9px; background: #081723; color: #c7e6f7; font: 12px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; }
+.external-chat-copy { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: fit-content; min-height: 38px; padding: 8px 14px; border: 1px solid #1687c4; border-radius: 9px; background: #0872ae; color: #fff; font-weight: 700; cursor: pointer; }
+.external-chat-copy:disabled { opacity: .5; cursor: not-allowed; }
+.external-chat-install > small { color: var(--panel-muted); font-size: 11px; }
 .admin-chat-layout { display: grid; grid-template-columns: minmax(270px, 345px) minmax(0, 1fr); min-width: 0; height: min(750px, calc(100dvh - 205px)); min-height: 490px; overflow: hidden; border: 1px solid var(--panel-border); border-radius: 14px; background: #0b1e2c; box-shadow: 0 18px 42px #0004; }
 .admin-chat-inbox { display: flex; flex-direction: column; min-width: 0; min-height: 0; border-right: 1px solid var(--panel-border); background: #0e2332; }
 .admin-chat-inbox-header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 18px 16px 9px; }

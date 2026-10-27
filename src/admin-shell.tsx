@@ -1,12 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   ArrowDownToLine, ArrowUpFromLine, Clock3, Disc, Gift, History, Landmark,
-  LayoutDashboard, LogOut, Menu, MessagesSquare, PhoneCall, UserCog, Users, X, PanelsTopLeft, UserRound, Layers3, BellRing, Palette,
+  LayoutDashboard, LogOut, Menu, MessagesSquare, MessageCircle, PhoneCall, UserCog, Users, X, PanelsTopLeft, UserRound, Layers3, BellRing, Palette,
 } from 'lucide-react';
 import { Brand, titles, type Page } from './user-views';
 import { canOpenAdminPage, type StaffPermissions } from './staff';
 
-type PendingCounts = { deposit: number; withdrawal: number; chat: number; access: number };
+type PendingCounts = { deposit: number; withdrawal: number; chat: number; externalChat: number; access: number };
 
 const groups: Array<{ label: string; items: Array<{ page: Page; Icon: typeof LayoutDashboard; count?: keyof PendingCounts }> }> = [
   { label: 'Principal', items: [{ page: 'home', Icon: LayoutDashboard }] },
@@ -14,6 +14,7 @@ const groups: Array<{ label: string; items: Array<{ page: Page; Icon: typeof Lay
     { page: 'deposit', Icon: ArrowDownToLine, count: 'deposit' },
     { page: 'withdrawal', Icon: ArrowUpFromLine, count: 'withdrawal' },
     { page: 'chat', Icon: MessagesSquare, count: 'chat' },
+    { page: 'external-chat', Icon: MessageCircle, count: 'externalChat' },
     { page: 'announcements', Icon: BellRing },
     { page: 'access-requests', Icon: UserRound, count: 'access' },
     { page: 'users', Icon: Users },

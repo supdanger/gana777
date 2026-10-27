@@ -41,6 +41,7 @@ import { PlayerAdmin } from './player-admin';
 import { PortalAdmin } from './portal-admin';
 import { AdminWithdrawals } from './admin-withdrawals';
 import { AdminChat, type ChatInboxRow } from './admin-chat';
+import { AdminExternalChat, type ExternalChatInboxRow } from './admin-external-chat';
 import { DepositLeaderboard } from './deposit-leaderboard';
 import { AdminPlayerAccess } from './admin-player-access';
 import { PlatformAdmin } from './platform-admin';
@@ -102,11 +103,14 @@ function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [chatInbox, setChatInbox] = useState<ChatInboxRow[]>([]);
   const [chatReload, setChatReload] = useState(0);
+  const [externalChatInbox, setExternalChatInbox] = useState<ExternalChatInboxRow[]>([]);
+  const [externalChatReload, setExternalChatReload] = useState(0);
   const [accessRequestCount, setAccessRequestCount] = useState(0);
   const [bank, setBank] = useState<Bank | null>(null);
   const [bankOperation, setBankOperation] = useState<BankOperationStatus | null>(null);
   const [bankReload, setBankReload] = useState(0);
   const [thread, setThread] = useState('');
+  const [externalThread, setExternalThread] = useState('');
   const [selectedDepositId, setSelectedDepositId] = useState<string | null>(null);
   const [selectedSpecialBonusId, setSelectedSpecialBonusId] = useState('');
   const [depositPage, setDepositPage] = useState(0);
@@ -254,7 +258,7 @@ function App() {
     });
     const { data } = supabase.auth.onAuthStateChange((_event, value) => {
       setSession(value);
-      if (!value) { setRequests([]); setWithdrawalParts([]); setPartPreview(null); setMessages([]); setChatInbox([]); setAccessRequestCount(0); setBank(null); setBankOperation(null); setIsAdmin(false); setStaffReady(false); setStaffContext({ superAdmin: false, username: '', displayName: '', avatarPath: null, permissions: noStaffPermissions }); setThread(''); setDepositRows([]); setDepositTotal(0); setDepositPage(0); setPendingDepositCount(0); setPendingWithdrawalCount(0); setLiveBonusCounters([]); setPlayerWhatsAppUrl(null); setPlayerUsername(null); setPlayerCasinoUrl(null); }
+      if (!value) { setRequests([]); setWithdrawalParts([]); setPartPreview(null); setMessages([]); setChatInbox([]); setExternalChatInbox([]); setExternalThread(''); setAccessRequestCount(0); setBank(null); setBankOperation(null); setIsAdmin(false); setStaffReady(false); setStaffContext({ superAdmin: false, username: '', displayName: '', avatarPath: null, permissions: noStaffPermissions }); setThread(''); setDepositRows([]); setDepositTotal(0); setDepositPage(0); setPendingDepositCount(0); setPendingWithdrawalCount(0); setLiveBonusCounters([]); setPlayerWhatsAppUrl(null); setPlayerUsername(null); setPlayerCasinoUrl(null); }
     });
     return () => { alive = false; data.subscription.unsubscribe(); };
   }, []);
@@ -383,6 +387,39 @@ function App() {
       .subscribe();
     return () => { alive = false; window.removeEventListener('focus', onFocus); void db.removeChannel(channel); };
   }, [session?.user.id, chatReload]);
+  useEffect(() => {
+    if (!adminApp || !session || !supabase || demo || (!staffContext.superAdmin && !staffContext.permissions.chat)) {
+      setExternalChatInbox([]);
+      return;
+    }
+    const db = supabase;
+    let alive = true;
+    let requestVersion = 0;
+    async function refreshExternalInbox() {
+      const version = ++requestVersion;
+      const rows: ExternalChatInboxRow[] = [];
+      const pageSize = 500;
+      for (let offset = 0; alive; offset += pageSize) {
+        const { data, error } = await db.from('external_chat_inbox')
+          .select('thread_id,nickname,origin,created_at,last_seen_at,completed_at,completed_by,last_message_id,last_sender_type,last_body,last_message_at')
+          .order('last_message_at', { ascending: false }).order('last_message_id', { ascending: false })
+          .range(offset, offset + pageSize - 1);
+        if (!alive || version !== requestVersion) return;
+        if (error) { setError('No pudimos cargar la bandeja de chat externo. Actualizá el panel e intentá de nuevo.'); return; }
+        rows.push(...((data ?? []) as ExternalChatInboxRow[]));
+        if (!data || data.length < pageSize) break;
+      }
+      if (alive && version === requestVersion) setExternalChatInbox(rows);
+    }
+    void refreshExternalInbox();
+    const onFocus = () => void refreshExternalInbox();
+    window.addEventListener('focus', onFocus);
+    const channel = db.channel(`admin-external-chat-${session.user.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'external_chat_messages' }, () => void refreshExternalInbox())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'external_chat_threads' }, () => void refreshExternalInbox())
+      .subscribe();
+    return () => { alive = false; window.removeEventListener('focus', onFocus); void db.removeChannel(channel); };
+  }, [session?.user.id, externalChatReload, demo, staffContext.superAdmin, staffContext.permissions.chat]);
   useEffect(() => {
     if (!adminApp || !session || !supabase || !staffContext.permissions.users || demo) { setAccessRequestCount(0); return; }
     let alive = true;
@@ -885,6 +922,7 @@ function App() {
     deposit: demo ? pendingRequestCount(requests, 'deposit') : pendingDepositCount,
     withdrawal: adminApp && !demo ? pendingWithdrawalCount : pendingRequestCount(requests, 'withdrawal'),
     chat: pendingChatCount(chatInbox),
+    externalChat: externalChatInbox.filter(row => !row.completed_at && row.last_sender_type === 'visitor').length,
     access: accessRequestCount,
   };
   const canOpenCurrentPage = !adminApp || demo || canOpenAdminPage(page, staffContext.permissions, staffContext.superAdmin);
@@ -960,6 +998,7 @@ function App() {
       {adminApp && page === 'shifts' && <ShiftAdmin demo={demo} busy={busy} action={action} station={sacStation} onStation={chooseSac} />}
       {adminApp && page === 'cashiers' && staffContext.superAdmin && <CashierAdmin demo={demo} busy={busy} action={action} />}
       {page === 'chat' && (adminApp ? <AdminChat inbox={chatInbox} selectedId={thread} demo={demo} onSelect={setThread} onChanged={() => setChatReload(value => value + 1)} /> : <Conversation messages={messages} userId={userId} busy={busy} disabled={demo} onSubmit={sendMessage} />)}
+      {adminApp && page === 'external-chat' && <AdminExternalChat inbox={externalChatInbox} selectedId={externalThread} demo={demo} onSelect={setExternalThread} onChanged={() => setExternalChatReload(value => value + 1)} />}
     </>}
   </>;
   const staffAvatarUrl = staffContext.avatarPath && supabase ? supabase.storage.from('cashier-avatars').getPublicUrl(staffContext.avatarPath).data.publicUrl : null;
