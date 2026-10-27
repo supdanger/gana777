@@ -57,6 +57,7 @@
     .bubble{position:relative;max-width:82%;align-self:flex-start;padding:11px 13px 9px;border:1px solid #37243f;border-radius:16px 16px 16px 5px;background:linear-gradient(145deg,#17131b,#100d13);box-shadow:0 4px 12px #0005;color:#f1eaf5;font-size:13px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;animation:message-in .16s ease-out}
     .bubble.staff{align-self:flex-start;border-color:#4a3157;border-radius:16px 16px 16px 5px;background:linear-gradient(145deg,#1c1721,#120f16);color:#f4edf8}
     .bubble.visitor{align-self:flex-end;border-color:#9f37d2;border-radius:16px 16px 5px 16px;background:linear-gradient(145deg,#7920a5,#4c126f);color:#fff;box-shadow:0 5px 16px #4e126c40}
+    .chat-image{display:block;max-width:100%;max-height:240px;margin-top:3px;border:1px solid #9f37d2;border-radius:10px;object-fit:contain;cursor:zoom-in}
     @keyframes message-in{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
     .bubble time{display:block;margin-top:5px;color:#b7aaba;font-size:10px;line-height:1.2}
     .bubble.staff time{color:#b9aabe}
@@ -64,6 +65,15 @@
     .status{min-height:0;padding:0 15px;color:#f0b5ff;font-size:11px}
     .status:not(:empty){padding-top:7px}
     .composer{display:flex;align-items:flex-end;gap:9px;padding:11px 12px 12px;border-top:1px solid #2c1c35;background:linear-gradient(180deg,#0d0a10,#08060a)}
+    .composer .attach{flex:0 0 42px;width:42px;height:48px;border-color:#57336a;background:#1a1020;color:#e6b8fc}
+    .composer .attach svg{width:20px;height:20px}
+    .composer .attach input{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;clip-path:inset(50%)}
+    .composer .attach:focus-within{outline:2px solid #edc5ff;outline-offset:3px}
+    .image-preview{display:none;align-items:center;gap:10px;padding:9px 12px;border-top:1px solid #2c1c35;background:#0d0a10;color:#cdbbd6;font-size:11px}
+    .image-preview.visible{display:flex}
+    .image-preview img{width:42px;height:42px;border:1px solid #8f35b9;border-radius:8px;object-fit:cover}
+    .image-preview span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .image-preview button{border:0;background:none;color:#f2dfff;font:inherit;cursor:pointer}
     .composer textarea{display:block;min-width:0;min-height:48px;max-height:104px;flex:1;resize:none;padding:13px 14px;border:1px solid #4b3158;border-radius:15px;background:#17101d;color:#fbf7ff;font:inherit;font-size:13px;line-height:1.4;outline:none;transition:border-color .16s ease,box-shadow .16s ease,background .16s ease}
     .composer textarea::placeholder{color:#b0a0ba;opacity:1}
     .composer textarea:focus{border-color:#bc4aef;background:#1c1224;box-shadow:0 0 0 3px #aa35df29}
@@ -83,7 +93,8 @@
     </header>
     <div class="log" role="log" aria-live="polite"></div>
     <div class="status" role="status"></div>
-    <form class="composer"><textarea maxlength="2000" placeholder="Escribí tu mensaje…" aria-label="Escribí tu mensaje" required></textarea><button type="submit" aria-label="Enviar mensaje"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.5 2.5-7 19-4.1-8-8-4.1 19.1-6.9Z"/><path d="M21.5 2.5 10.4 13.6"/></svg></button></form>
+    <div class="image-preview" aria-live="polite"><img alt="Vista previa de la imagen"/><span></span><button type="button" aria-label="Quitar imagen">Quitar</button></div>
+    <form class="composer"><label class="attach" title="Adjuntar imagen"><input type="file" accept="image/jpeg,image/png,image/webp" aria-label="Adjuntar imagen"/><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.4 11.1-8.9 8.8a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg></label><textarea maxlength="2000" placeholder="Escribí tu mensaje…" aria-label="Escribí tu mensaje"></textarea><button class="send" type="submit" aria-label="Enviar mensaje"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.5 2.5-7 19-4.1-8-8-4.1 19.1-6.9Z"/><path d="M21.5 2.5 10.4 13.6"/></svg></button></form>
   </section>`;
   document.body.appendChild(host);
 
@@ -92,13 +103,25 @@
   var log = root.querySelector('.log');
   var form = root.querySelector('.composer');
   var input = root.querySelector('textarea');
-  var send = root.querySelector('.composer button');
+  var send = root.querySelector('.composer .send');
+  var fileInput = root.querySelector('.composer input[type=file]');
+  var preview = root.querySelector('.image-preview');
+  var previewImage = preview.querySelector('img');
+  var previewName = preview.querySelector('span');
+  var selectedImage = null;
+  var previewUrl = null;
   var status = root.querySelector('.status');
   var close = root.querySelector('.close');
 
   function renderMessage(message) {
     var bubble = document.createElement('div'); bubble.className = 'bubble ' + (message.sender_type === 'staff' ? 'staff' : 'visitor');
-    var text = document.createElement('span'); text.textContent = message.body; bubble.appendChild(text);
+    if (message.body && !(message.attachment_path && message.body === 'Imagen adjunta')) { var text = document.createElement('span'); text.textContent = message.body; bubble.appendChild(text); }
+    if (message.attachment_path) {
+      var image = document.createElement('img'); image.className = 'chat-image'; image.alt = 'Imagen adjunta'; image.loading = 'lazy'; image.src = '';
+      image.addEventListener('click', function () { if (image.src) window.open(image.src, '_blank', 'noopener'); });
+      bubble.appendChild(image);
+      call('attachment-url', { message_id: message.id }).then(function (data) { image.src = data.url; }).catch(function () { image.alt = 'No se pudo cargar la imagen adjunta'; });
+    }
     var time = document.createElement('time'); time.textContent = new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit' }).format(new Date(message.created_at)); bubble.appendChild(time);
     return bubble;
   }
@@ -159,6 +182,27 @@
     return sessionReady;
   }
 
+  function clearImage() {
+    selectedImage = null; fileInput.value = ''; preview.classList.remove('visible'); previewImage.removeAttribute('src'); previewName.textContent = '';
+    if (previewUrl) URL.revokeObjectURL(previewUrl); previewUrl = null;
+  }
+  fileInput.addEventListener('change', function () {
+    var file = fileInput.files && fileInput.files[0]; if (!file) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size > 12 * 1024 * 1024) { status.textContent = 'Elegí una imagen JPG, PNG o WebP de hasta 12 MB.'; clearImage(); return; }
+    selectedImage = file; if (previewUrl) URL.revokeObjectURL(previewUrl); previewUrl = URL.createObjectURL(file);
+    previewImage.src = previewUrl; previewName.textContent = file.name; preview.classList.add('visible'); status.textContent = '';
+  });
+  preview.querySelector('button').addEventListener('click', clearImage);
+  async function prepareImage(file) {
+    var bitmap = await createImageBitmap(file); var scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+    var canvas = document.createElement('canvas'); canvas.width = Math.max(1, Math.round(bitmap.width * scale)); canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height); bitmap.close();
+    var blob = await new Promise(function (resolve) { canvas.toBlob(resolve, 'image/webp', .82); });
+    if (!blob || blob.size > 2 * 1024 * 1024) throw new Error('La imagen comprimida supera 2 MB. Elegí una imagen más liviana.');
+    var dataUrl = await new Promise(function (resolve, reject) { var reader = new FileReader(); reader.onload = function () { resolve(reader.result); }; reader.onerror = reject; reader.readAsDataURL(blob); });
+    return { mime_type: blob.type, data: String(dataUrl).split(',')[1] };
+  }
+
   function setOpen(value) {
     isOpen = value; panel.classList.toggle('open', value); launcher.setAttribute('aria-expanded', String(value));
     if (value) { input.focus(); void ensureSession().then(refresh).catch(function (error) { status.textContent = error.message || 'El chat no está disponible en este momento.'; }); }
@@ -167,9 +211,9 @@
   launcher.addEventListener('click', function () { setOpen(!isOpen); });
   close.addEventListener('click', function () { setOpen(false); });
   form.addEventListener('submit', async function (event) {
-    event.preventDefault(); var body = input.value.trim(); if (!body || busy) return;
+    event.preventDefault(); var body = input.value.trim(); if ((!body && !selectedImage) || busy) return;
     busy = true; send.disabled = true; status.textContent = '';
-    try { await ensureSession(); var data = await call('send', { body: body }); input.value = ''; merge(data.messages); }
+    try { await ensureSession(); var attachment = selectedImage ? await prepareImage(selectedImage) : null; var data = await call('send', { body: body, attachment: attachment }); input.value = ''; clearImage(); merge(data.messages); }
     catch (error) { status.textContent = error.message || 'No pudimos enviar el mensaje.'; }
     finally { busy = false; send.disabled = false; input.focus(); }
   });

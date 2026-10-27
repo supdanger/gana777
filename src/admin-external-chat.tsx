@@ -9,7 +9,19 @@ export type ExternalChatInboxRow = {
   completed_at: string | null; completed_by: string | null; last_message_id: string;
   last_sender_type: 'visitor' | 'staff'; last_body: string; last_message_at: string;
 };
-type ExternalMessage = { id: string; thread_id: string; sender_type: 'visitor' | 'staff'; sender_id: string | null; body: string; created_at: string };
+type ExternalMessage = { id: string; thread_id: string; sender_type: 'visitor' | 'staff'; sender_id: string | null; body: string; attachment_path: string | null; created_at: string };
+
+function ExternalChatImage({ path }: { path: string }) {
+  const [url, setUrl] = useState('');
+  useEffect(() => {
+    let active = true;
+    void supabase?.storage.from('external-chat-files').createSignedUrl(path, 3600).then(({ data }) => {
+      if (active) setUrl(data?.signedUrl ?? '');
+    });
+    return () => { active = false; };
+  }, [path]);
+  return url ? <a className="external-chat-image-link" href={url} target="_blank" rel="noreferrer"><img className="external-chat-image" src={url} alt="Imagen adjunta por el visitante" loading="lazy" /></a> : <small className="external-chat-image-loading">Cargando imagen adjunta…</small>;
+}
 
 function shortDate(value: string) {
   const when = new Date(value);
@@ -53,7 +65,7 @@ export function AdminExternalChat({ inbox, selectedId, demo, onSelect, onChanged
     const db = supabase;
     let alive = true;
     setMessages([]); setLoading(true); setError(''); setNotice('');
-    void db.from('external_chat_messages').select('id,thread_id,sender_type,sender_id,body,created_at')
+    void db.from('external_chat_messages').select('id,thread_id,sender_type,sender_id,body,attachment_path,created_at')
       .eq('thread_id', selectedId).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(100)
       .then(({ data, error: loadError }) => {
         if (!alive) return;
@@ -86,7 +98,7 @@ export function AdminExternalChat({ inbox, selectedId, demo, onSelect, onChanged
     const auth = await supabase.auth.getUser();
     if (!auth.data.user) { setSending(false); setError('Tu sesión venció. Volvé a ingresar.'); return; }
     const result = await supabase.from('external_chat_messages').insert({ thread_id: threadId, sender_type: 'staff', sender_id: auth.data.user.id, body })
-      .select('id,thread_id,sender_type,sender_id,body,created_at').single();
+      .select('id,thread_id,sender_type,sender_id,body,attachment_path,created_at').single();
     setSending(false);
     if (activeId.current !== threadId) return;
     if (result.error || !result.data) { setError('No pudimos enviar la respuesta. Intentá nuevamente.'); return; }
@@ -137,7 +149,7 @@ export function AdminExternalChat({ inbox, selectedId, demo, onSelect, onChanged
         {selected ? <>
           <header className="admin-chat-thread-header"><button type="button" className="admin-chat-back" aria-label="Volver a conversaciones" onClick={() => onSelect('')}><ArrowLeft size={19} /></button><span className="admin-chat-avatar">{selected.nickname.slice(0, 1).toUpperCase()}</span><div><strong>{selected.origin === 'https://gana777.vercel.app' ? `PRUEBA · ${selected.nickname}` : selected.nickname}</strong><small>{selected.completed_at ? 'Conversación completada' : selected.origin === 'https://gana777.vercel.app' ? 'Chat desde la página de prueba' : 'Chat de la plataforma externa'}</small></div></header>
           <div className="admin-chat-actions"><button type="button" className={selected.completed_at ? 'admin-chat-reopen' : 'admin-chat-complete'} disabled={demo || updating || sending} onClick={() => void setCompleted(!selected.completed_at)}>{selected.completed_at ? <RotateCcw size={16} /> : <CircleCheck size={16} />}{updating ? 'Guardando…' : selected.completed_at ? 'Reabrir chat' : 'Marcar como completado'}</button></div>
-          <div className="admin-chat-messages" ref={log} role="log" aria-live="polite" aria-relevant="additions text">{loading && <p className="admin-chat-list-empty">Cargando conversación…</p>}{messages.map(message => <div className={`message${message.sender_type === 'staff' ? ' mine' : ''}`} key={message.id}><p>{message.body}</p><small>{message.sender_type === 'staff' ? 'Soporte · ' : ''}{date(message.created_at)}</small></div>)}</div>
+          <div className="admin-chat-messages" ref={log} role="log" aria-live="polite" aria-relevant="additions text">{loading && <p className="admin-chat-list-empty">Cargando conversación…</p>}{messages.map(message => <div className={`message${message.sender_type === 'staff' ? ' mine' : ''}`} key={message.id}>{message.body !== 'Imagen adjunta' && <p>{message.body}</p>}{message.attachment_path && <ExternalChatImage path={message.attachment_path} />}<small>{message.sender_type === 'staff' ? 'Soporte · ' : ''}{date(message.created_at)}</small></div>)}</div>
           {(error || notice) && <p className={`admin-chat-feedback${error ? ' is-error' : ''}`} role={error ? 'alert' : 'status'}>{error || notice}</p>}
           {!selected.completed_at && <form className="admin-chat-composer" onSubmit={event => void send(event)}><label htmlFor="external-chat-message" className="sr-only">Responder a {selected.nickname}</label><textarea id="external-chat-message" name="message" placeholder="Escribí tu respuesta…" maxLength={2000} rows={2} required disabled={sending || demo || updating} /><button type="submit" disabled={sending || demo || updating} aria-label="Enviar respuesta"><Send size={18} /> Enviar</button><small>Enter para enviar · Shift + Enter para nueva línea</small></form>}
         </> : <div className="admin-chat-placeholder"><MessageCircle size={38} /><h2>Elegí una conversación</h2><p>Vas a ver el historial y responder desde acá.</p></div>}

@@ -852,6 +852,9 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .admin-chat-copy svg { width: 15px; height: 15px; }
 .admin-chat-messages { display: flex; flex: 1; flex-direction: column; gap: 15px; min-height: 0; padding: 22px; overflow-y: auto; overscroll-behavior: contain; }
 .admin-chat-messages .message { max-width: min(78%, 580px); }
+.admin-chat-image-link { display: block; max-width: min(100%, 420px); margin: 5px 0 8px; }
+.admin-chat-image { display: block; max-width: 100%; max-height: 360px; border: 1px solid #35576d; border-radius: 10px; object-fit: contain; cursor: zoom-in; }
+.admin-chat-image-loading { display: block; margin: 5px 0 8px; color: #91aec3; }
 .admin-chat-messages .message small { color: #91aec3; }
 .admin-content .admin-chat-older { align-self: center; padding: 7px 12px; border-color: #315a73; color: #a9daf0; font-size: 11px; }
 .admin-chat-feedback { margin: 0; padding: 9px 16px; border-top: 1px solid #23616a; background: #103f45; color: #b1f3eb; font-size: 12px; }

@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { requiredEnv } from '../_shared/cloudinary.ts';
 import { HttpError } from '../_shared/http.ts';
-import { parseMessage } from '../_shared/validation.ts';
+import { parseMessage, parseUuid } from '../_shared/validation.ts';
 
 const allowedOrigins = new Set(['https://gana777bet.com', 'https://www.gana777bet.com', 'https://gana777.vercel.app']);
 const nicknameParts = ['Poker', 'Ruleta', 'Fichas', 'Jackpot', 'Crupier', 'Tragamonedas', 'Blackjack', 'Casino'];
@@ -60,7 +60,7 @@ async function findThread(token: unknown) {
 
 async function readMessages(threadId: string) {
   const { data, error } = await service().from('external_chat_messages')
-    .select('id,sender_type,body,created_at').eq('thread_id', threadId)
+    .select('id,sender_type,body,attachment_path,created_at').eq('thread_id', threadId)
     .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(100);
   if (error) throw new HttpError(503, 'No pudimos cargar los mensajes.');
   return (data ?? []).reverse();
@@ -75,9 +75,9 @@ Deno.serve(async request => {
   if (!origin || !allowedOrigins.has(origin)) return jsonResponse({ error: 'Origen no autorizado.' }, 403, origin ?? 'null');
 
   try {
-    const length = Number(request.headers.get('Content-Length') ?? 0);
-    if (length > 5000) throw new HttpError(413, 'El mensaje es demasiado grande.');
-    const input = await request.json();
+    const raw = await request.text();
+    if (raw.length > 3_000_000) throw new HttpError(413, 'El mensaje o la imagen son demasiado grandes.');
+    const input = JSON.parse(raw);
     if (!input || typeof input !== 'object' || Array.isArray(input)) throw new HttpError(400, 'Solicitud inválida.');
     const action = input?.action;
     const db = service();
@@ -102,13 +102,49 @@ Deno.serve(async request => {
     if (thread.origin !== origin) throw new HttpError(403, 'Origen no autorizado para esta conversación.');
     await db.from('external_chat_threads').update({ last_seen_at: new Date().toISOString() }).eq('id', thread.id);
     if (action === 'send') {
-      const body = parseMessage(input?.body);
-      const { error } = await db.from('external_chat_messages').insert({ thread_id: thread.id, sender_type: 'visitor', sender_id: null, body });
-      if (error) throw new HttpError(error.code === 'P0001' ? 429 : 503, error.code === 'P0001' ? error.message : 'No pudimos enviar el mensaje. Intentá nuevamente.');
+      let attachmentPath: string | null = null;
+      if (input.attachment !== undefined && input.attachment !== null) {
+        const attachment = input.attachment;
+        if (!attachment || typeof attachment !== 'object' || typeof attachment.data !== 'string'
+          || !['image/webp', 'image/jpeg', 'image/png'].includes(attachment.mime_type)
+          || attachment.data.length > 2_800_000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(attachment.data)) {
+          throw new HttpError(400, 'La imagen no es válida o supera el tamaño permitido.');
+        }
+        let binary: string;
+        try { binary = atob(attachment.data); } catch { throw new HttpError(400, 'La imagen no es válida.'); }
+        if (!binary.length || binary.length > 2_097_152) throw new HttpError(413, 'La imagen no puede superar 2 MB.');
+        const bytes = Uint8Array.from(binary, value => value.charCodeAt(0));
+        const isWebp = attachment.mime_type === 'image/webp' && String.fromCharCode(...bytes.slice(0, 4)) === 'RIFF'
+          && String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP';
+        const isPng = attachment.mime_type === 'image/png' && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+        const isJpeg = attachment.mime_type === 'image/jpeg' && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+        if (!isWebp && !isPng && !isJpeg) throw new HttpError(400, 'El archivo no parece ser una imagen válida.');
+        const extension = isWebp ? 'webp' : isPng ? 'png' : 'jpg';
+        attachmentPath = `${thread.id}/${crypto.randomUUID()}.${extension}`;
+        const { error: uploadError } = await db.storage.from('external-chat-files').upload(attachmentPath, bytes, {
+          contentType: attachment.mime_type, cacheControl: '3600', upsert: false,
+        });
+        if (uploadError) throw new HttpError(503, 'No pudimos guardar la imagen. Intentá nuevamente.');
+      }
+      const body = typeof input.body === 'string' && input.body.trim() ? parseMessage(input.body) : attachmentPath ? 'Imagen adjunta' : parseMessage(input.body);
+      const { error } = await db.from('external_chat_messages').insert({ thread_id: thread.id, sender_type: 'visitor', sender_id: null, body, attachment_path: attachmentPath });
+      if (error) {
+        if (attachmentPath) await db.storage.from('external-chat-files').remove([attachmentPath]);
+        throw new HttpError(error.code === 'P0001' ? 429 : 503, error.code === 'P0001' ? error.message : 'No pudimos enviar el mensaje. Intentá nuevamente.');
+      }
       await db.from('external_chat_threads').update({ completed_at: null, completed_by: null, last_seen_at: new Date().toISOString() }).eq('id', thread.id);
       return jsonResponse({ nickname: thread.nickname, messages: await readMessages(thread.id) }, 200, origin);
     }
     if (action === 'read') return jsonResponse({ nickname: thread.nickname, messages: await readMessages(thread.id) }, 200, origin);
+    if (action === 'attachment-url') {
+      const messageId = parseUuid(input?.message_id);
+      const { data: message, error: messageError } = await db.from('external_chat_messages')
+        .select('attachment_path').eq('id', messageId).eq('thread_id', thread.id).maybeSingle();
+      if (messageError || !message?.attachment_path) throw new HttpError(404, 'No encontramos esa imagen.');
+      const { data: signed, error: signedError } = await db.storage.from('external-chat-files').createSignedUrl(message.attachment_path, 3600);
+      if (signedError || !signed?.signedUrl) throw new HttpError(503, 'No pudimos cargar la imagen.');
+      return jsonResponse({ url: signed.signedUrl }, 200, origin);
+    }
     throw new HttpError(400, 'Operación de chat no válida.');
   } catch (error) {
     if (error instanceof HttpError) return jsonResponse({ error: error.message }, error.status, origin);
