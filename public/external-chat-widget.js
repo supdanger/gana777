@@ -31,41 +31,43 @@
   host.style.cssText = 'position:fixed;z-index:2147483000;right:18px;bottom:18px;width:0;height:0;';
   var root = host.attachShadow({ mode: 'open' });
   root.innerHTML = `<style>
-    :host{all:initial;color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#f3f8ff}
+    :host{all:initial;color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#f8f3ff}
     *{box-sizing:border-box}
-    .launcher{position:absolute;right:0;bottom:0;display:grid;place-items:center;width:62px;height:62px;border:1px solid #83dbff;border-radius:50%;background:linear-gradient(145deg,#25b9f1,#0878c7);color:#fff;box-shadow:0 10px 28px #001b3d88,0 0 0 5px #20a6df19;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease}
-    .launcher:hover{transform:translateY(-2px);box-shadow:0 14px 34px #001b3daa,0 0 0 7px #20a6df22}
-    .launcher:focus-visible,.close:focus-visible,.composer button:focus-visible{outline:2px solid #b5edff;outline-offset:3px}
+    .launcher{position:absolute;right:0;bottom:0;display:grid;place-items:center;width:62px;height:62px;border:1px solid #dc8dff;border-radius:50%;background:linear-gradient(145deg,#b43df0,#7412bd);color:#fff;box-shadow:0 10px 28px #19072899,0 0 0 5px #a52eea20;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease}
+    .launcher:hover{transform:translateY(-2px);box-shadow:0 14px 34px #190728bb,0 0 0 7px #a52eea2c}
+    .launcher:focus-visible,.close:focus-visible,.composer button:focus-visible{outline:2px solid #edc5ff;outline-offset:3px}
     .launcher svg{width:27px;height:27px}
-    .panel{position:absolute;right:0;bottom:78px;display:none;flex-direction:column;width:min(390px,calc(100vw - 28px));height:min(560px,calc(100vh - 108px));overflow:hidden;border:1px solid #356986;border-radius:21px;background:#0b1c29;box-shadow:0 22px 70px #0009,0 0 0 1px #c2e8ff12}
+    .panel{position:absolute;right:0;bottom:78px;display:none;flex-direction:column;width:min(390px,calc(100vw - 28px));height:min(560px,calc(100vh - 108px));overflow:hidden;border:1px solid #572b70;border-radius:21px;background:#050407;box-shadow:0 22px 70px #000b,0 0 24px #8d27bb18}
     .panel.open{display:flex;animation:chat-in .2s cubic-bezier(.2,.8,.2,1)}
     @keyframes chat-in{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
-    .head{position:relative;display:flex;align-items:center;gap:12px;min-height:82px;padding:15px 16px;background:linear-gradient(125deg,#123c55,#102b40 66%,#102337);border-bottom:1px solid #244a61}
-    .support-avatar{display:block;flex:0 0 50px;width:50px;height:50px;border:1px solid #4ab4df;border-radius:50%;background:#12344a;object-fit:cover;box-shadow:0 0 0 4px #39b8ed18,0 5px 14px #00152255}
+    .head{position:relative;display:flex;align-items:center;gap:12px;min-height:82px;padding:15px 16px;background:linear-gradient(125deg,#21102d,#160d20 66%,#100a16);border-bottom:1px solid #392046}
+    .support-avatar{display:block;flex:0 0 50px;width:50px;height:50px;border:1px solid #a942d2;border-radius:50%;background:#170e20;object-fit:cover;box-shadow:0 0 0 4px #a52eea18,0 5px 14px #09040e88}
     .identity{min-width:0;flex:1;padding-right:30px}
     .identity strong{display:block;overflow:hidden;color:#fff;font-size:15px;font-weight:750;letter-spacing:.01em;text-overflow:ellipsis;white-space:nowrap}
-    .identity small{display:block;margin-top:4px;color:#aec9dc;font-size:11px;letter-spacing:.02em}
-    .close{position:absolute;top:14px;right:13px;display:grid;place-items:center;width:34px;height:34px;border:1px solid transparent;border-radius:10px;background:transparent;color:#b9d0df;cursor:pointer;transition:background .16s ease,color .16s ease,border-color .16s ease}
-    .close:hover{border-color:#45667a;background:#17364b;color:#fff}
+    .identity small{display:block;margin-top:4px;color:#c4afd0;font-size:11px;letter-spacing:.02em}
+    .close{position:absolute;top:14px;right:13px;display:grid;place-items:center;width:34px;height:34px;border:1px solid transparent;border-radius:10px;background:transparent;color:#c8b3d2;cursor:pointer;transition:background .16s ease,color .16s ease,border-color .16s ease}
+    .close:hover{border-color:#563765;background:#281732;color:#fff}
     .close svg{width:18px;height:18px}
-    .log{display:flex;flex:1;flex-direction:column;gap:12px;overflow:auto;padding:18px 15px 16px;scrollbar-color:#31566b transparent;scrollbar-width:thin}
+    .log{display:flex;flex:1;flex-direction:column;gap:12px;overflow:auto;padding:18px 15px 16px;background:#050407;scrollbar-color:#563267 transparent;scrollbar-width:thin}
     .welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;min-height:180px;padding:26px 22px;text-align:center}
-    .welcome-mark{display:grid;place-items:center;width:48px;height:48px;margin-bottom:14px;border:1px solid #3c718a;border-radius:16px;background:linear-gradient(145deg,#173e54,#112d42);color:#75d5fb}
+    .welcome-mark{display:grid;place-items:center;width:48px;height:48px;margin-bottom:14px;border:1px solid #63357a;border-radius:16px;background:linear-gradient(145deg,#281537,#150d1d);color:#d27bfa}
     .welcome-mark svg{width:23px;height:23px}
-    .welcome strong{color:#f1f8fc;font-size:15px;font-weight:700}
-    .welcome p{max-width:250px;margin:7px 0 0;color:#9eb8c9;font-size:12px;line-height:1.55}
-    .bubble{position:relative;max-width:82%;align-self:flex-start;padding:11px 13px 9px;border:1px solid #294b61;border-radius:16px 16px 16px 5px;background:linear-gradient(145deg,#17374b,#142f42);box-shadow:0 4px 12px #00000012;color:#e7f2f8;font-size:13px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;animation:message-in .16s ease-out}
-    .bubble.staff{align-self:flex-end;border-color:#1886c0;border-radius:16px 16px 5px 16px;background:linear-gradient(145deg,#1689ce,#0875b7);color:#fff}
+    .welcome strong{color:#fbf6ff;font-size:15px;font-weight:700}
+    .welcome p{max-width:250px;margin:7px 0 0;color:#b0a0ba;font-size:12px;line-height:1.55}
+    .bubble{position:relative;max-width:82%;align-self:flex-start;padding:11px 13px 9px;border:1px solid #37243f;border-radius:16px 16px 16px 5px;background:linear-gradient(145deg,#17131b,#100d13);box-shadow:0 4px 12px #0005;color:#f1eaf5;font-size:13px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;animation:message-in .16s ease-out}
+    .bubble.staff{align-self:flex-start;border-color:#4a3157;border-radius:16px 16px 16px 5px;background:linear-gradient(145deg,#1c1721,#120f16);color:#f4edf8}
+    .bubble.visitor{align-self:flex-end;border-color:#9f37d2;border-radius:16px 16px 5px 16px;background:linear-gradient(145deg,#7920a5,#4c126f);color:#fff;box-shadow:0 5px 16px #4e126c40}
     @keyframes message-in{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
-    .bubble time{display:block;margin-top:5px;color:#a8c4d5;font-size:10px;line-height:1.2}
-    .bubble.staff time{color:#d5eeff}
-    .status{min-height:0;padding:0 15px;color:#ffc7b9;font-size:11px}
+    .bubble time{display:block;margin-top:5px;color:#b7aaba;font-size:10px;line-height:1.2}
+    .bubble.staff time{color:#b9aabe}
+    .bubble.visitor time{color:#efcef9}
+    .status{min-height:0;padding:0 15px;color:#f0b5ff;font-size:11px}
     .status:not(:empty){padding-top:7px}
-    .composer{display:flex;align-items:flex-end;gap:9px;padding:11px 12px 12px;border-top:1px solid #203e51;background:linear-gradient(180deg,#0d2231,#0b1d2a)}
-    .composer textarea{display:block;min-width:0;min-height:48px;max-height:104px;flex:1;resize:none;padding:13px 14px;border:1px solid #355c73;border-radius:15px;background:#102b3e;color:#f3f8fc;font:inherit;font-size:13px;line-height:1.4;outline:none;transition:border-color .16s ease,box-shadow .16s ease,background .16s ease}
-    .composer textarea::placeholder{color:#91aabd;opacity:1}
-    .composer textarea:focus{border-color:#42b8e8;background:#112f44;box-shadow:0 0 0 3px #27a8dc20}
-    .composer button{display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;border:1px solid #40b2e8;border-radius:15px;background:linear-gradient(145deg,#1698dd,#0878bd);color:#fff;cursor:pointer;box-shadow:0 5px 14px #001e3344;transition:transform .16s ease,filter .16s ease}
+    .composer{display:flex;align-items:flex-end;gap:9px;padding:11px 12px 12px;border-top:1px solid #2c1c35;background:linear-gradient(180deg,#0d0a10,#08060a)}
+    .composer textarea{display:block;min-width:0;min-height:48px;max-height:104px;flex:1;resize:none;padding:13px 14px;border:1px solid #4b3158;border-radius:15px;background:#17101d;color:#fbf7ff;font:inherit;font-size:13px;line-height:1.4;outline:none;transition:border-color .16s ease,box-shadow .16s ease,background .16s ease}
+    .composer textarea::placeholder{color:#b0a0ba;opacity:1}
+    .composer textarea:focus{border-color:#bc4aef;background:#1c1224;box-shadow:0 0 0 3px #aa35df29}
+    .composer button{display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;border:1px solid #d180f4;border-radius:15px;background:linear-gradient(145deg,#aa32dc,#7413ad);color:#fff;cursor:pointer;box-shadow:0 5px 14px #19072766;transition:transform .16s ease,filter .16s ease}
     .composer button:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.08)}
     .composer button:disabled{opacity:.55;cursor:wait}
     .composer button svg{width:20px;height:20px}
@@ -95,7 +97,7 @@
   var close = root.querySelector('.close');
 
   function renderMessage(message) {
-    var bubble = document.createElement('div'); bubble.className = 'bubble' + (message.sender_type === 'staff' ? ' staff' : '');
+    var bubble = document.createElement('div'); bubble.className = 'bubble ' + (message.sender_type === 'staff' ? 'staff' : 'visitor');
     var text = document.createElement('span'); text.textContent = message.body; bubble.appendChild(text);
     var time = document.createElement('time'); time.textContent = new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit' }).format(new Date(message.created_at)); bubble.appendChild(time);
     return bubble;
