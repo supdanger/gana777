@@ -21,6 +21,6 @@ La clave publishable es pública y está diseñada para usarse en el navegador. 
 3. Publicar el panel para que el equipo pueda copiar el código desde **Chat externo**.
 4. Enviar el bloque copiado a la plataforma para que lo agregue a su HTML.
 
-La función solo acepta conexiones desde `https://gana777bet.com` y `https://www.gana777bet.com`. Si la plataforma usa otro dominio o subdominio, hay que autorizarlo en la función y en la migración antes de integrarla.
+La función acepta conexiones desde `https://gana777bet.com` y `https://www.gana777bet.com`. La vista de prueba está en `https://gana777.vercel.app/chat-widget-preview.html`; sus conversaciones se marcan como **PRUEBA** en el panel. Esa dirección de prueba requiere la migración `063_external_chat_preview_origin.sql`.
 
 Las conversaciones se ven en **Chat externo** dentro del panel. Se pueden responder y marcar como completadas. Los permisos son los mismos que para el chat de jugadores.

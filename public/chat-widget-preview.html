@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Prueba del chat · GANA777</title>
+    <style>
+      :root { color-scheme: dark; font-family: Arial, Helvetica, sans-serif; background: #07111b; color: #f1f7fc; }
+      * { box-sizing: border-box; }
+      body { min-height: 100vh; margin: 0; background: radial-gradient(ellipse at 50% 0%, #12314b, #07111b 55%); }
+      main { width: min(760px, 100%); margin: auto; padding: 42px 22px 90px; }
+      .brand { color: #fff; font-size: 18px; font-weight: 900; letter-spacing: .03em; }
+      .brand span { color: #28b7f3; }
+      h1 { margin: 42px 0 12px; font-size: clamp(28px, 7vw, 42px); }
+      p { color: #a9bfd0; line-height: 1.55; }
+      .note { margin: 26px 0; padding: 15px 17px; border: 1px solid #24607d; border-radius: 12px; background: #0c2231; }
+      label { display: block; margin: 25px 0 8px; font-size: 13px; font-weight: 700; }
+      textarea { display: block; width: 100%; min-height: 120px; padding: 12px; border: 1px solid #315b73; border-radius: 10px; background: #071823; color: #d8efff; font: 12px/1.5 ui-monospace, monospace; resize: vertical; }
+      button { margin-top: 12px; padding: 12px 18px; border: 1px solid #159be1; border-radius: 9px; background: #0876b4; color: white; font-weight: 800; cursor: pointer; }
+      button:disabled { opacity: .5; cursor: wait; }
+      #status { min-height: 22px; color: #9ddbf6; font-size: 13px; }
+      .placeholder { display: grid; place-items: center; min-height: 230px; margin-top: 35px; border: 1px dashed #315067; border-radius: 15px; color: #8ea8ba; text-align: center; }
+      @media (max-width: 500px) { main { padding-top: 28px; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="brand">GANA<span>777</span> · VISTA DE PRUEBA</div>
+      <h1>Probá la burbuja de soporte</h1>
+      <p>Copiá el código desde <strong>Panel → Chat externo</strong>, pegalo abajo y cargá el widget. Abrí la burbuja de la esquina inferior derecha para enviar un mensaje.</p>
+      <div class="note">Los chats que inicies aquí aparecerán en la bandeja del panel marcados como <strong>PRUEBA</strong>. No son conversaciones de jugadores.</div>
+      <label for="snippet">Código de instalación</label>
+      <textarea id="snippet" spellcheck="false" placeholder="Pegá aquí el código copiado desde el panel…"></textarea>
+      <button id="load" type="button">Cargar burbuja de prueba</button>
+      <p id="status" role="status" aria-live="polite"></p>
+      <div class="placeholder" id="placeholder">La burbuja aparecerá en esta página después de cargar el código.</div>
+    </main>
+    <script>
+      const button = document.querySelector('#load');
+      const status = document.querySelector('#status');
+      button.addEventListener('click', () => {
+        const source = document.querySelector('#snippet').value;
+        const parsed = new DOMParser().parseFromString(source, 'text/html');
+        const candidate = parsed.querySelector('script[src]');
+        if (!candidate) { status.textContent = 'Pegá el código de instalación copiado desde el panel.'; return; }
+        const scriptUrl = new URL(candidate.src);
+        const endpoint = candidate.dataset.endpoint || '';
+        const key = candidate.dataset.key || '';
+        let endpointUrl;
+        try { endpointUrl = new URL(endpoint); } catch (_) {}
+        if (scriptUrl.origin !== location.origin || scriptUrl.pathname !== '/external-chat-widget.js'
+          || endpointUrl?.origin !== 'https://oxqktxkeehmnqwvjqmez.supabase.co'
+          || endpointUrl?.pathname !== '/functions/v1/external-chat' || !key) {
+          status.textContent = 'El bloque no coincide con el código de instalación del panel.'; return;
+        }
+        button.disabled = true;
+        status.textContent = 'Cargando la burbuja…';
+        const script = document.createElement('script');
+        script.src = scriptUrl.href;
+        script.async = true;
+        script.dataset.endpoint = endpoint;
+        script.dataset.key = key;
+        script.onload = () => { status.textContent = 'Burbuja cargada. Abrila abajo a la derecha para probarla.'; document.querySelector('#placeholder').hidden = true; };
+        script.onerror = () => { status.textContent = 'No pudimos cargar el widget. Revisá el deploy del portal.'; button.disabled = false; };
+        document.body.appendChild(script);
+      });
+    </script>
+  </body>
+</html>
