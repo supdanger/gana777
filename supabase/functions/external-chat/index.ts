@@ -65,6 +65,13 @@ async function readMessages(threadId: string) {
   if (error) throw new HttpError(503, 'No pudimos cargar los mensajes.');
   return (data ?? []).reverse();
 }
+
+async function isChatEnabled(db: ReturnType<typeof service>) {
+  const { data, error } = await db.from('app_settings').select('external_chat_enabled').eq('id', true).single();
+  if (error || !data) throw new HttpError(503, 'No pudimos consultar la disponibilidad del chat.');
+  return data.external_chat_enabled === true;
+}
+
 Deno.serve(async request => {
   const origin = request.headers.get('Origin');
   if (request.method === 'OPTIONS') {
@@ -81,6 +88,9 @@ Deno.serve(async request => {
     if (!input || typeof input !== 'object' || Array.isArray(input)) throw new HttpError(400, 'Solicitud inválida.');
     const action = input?.action;
     const db = service();
+
+    if (action === 'status') return jsonResponse({ enabled: await isChatEnabled(db) }, 200, origin);
+    if (!await isChatEnabled(db)) throw new HttpError(503, 'El chat de soporte está pausado en este momento.');
 
     if (action === 'start') {
       let thread: { id: string; nickname: string; completed_at: string | null; origin: string } | null = null;

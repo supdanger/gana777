@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { ArrowLeft, CircleCheck, Copy, MessageCircle, RotateCcw, Search, Send, Check } from 'lucide-react';
+import { ArrowLeft, CircleCheck, Copy, MessageCircle, Power, RotateCcw, Search, Send, Check } from 'lucide-react';
 import { date, supabase } from './lib';
 import { parseMessage } from '../supabase/functions/_shared/validation';
 import { InputError } from '../supabase/functions/_shared/validation';
@@ -43,6 +43,9 @@ export function AdminExternalChat({ inbox, selectedId, demo, onSelect, onChanged
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [copied, setCopied] = useState(false);
+  const [widgetEnabled, setWidgetEnabled] = useState<boolean | null>(null);
+  const [widgetSaving, setWidgetSaving] = useState(false);
+  const [widgetFeedback, setWidgetFeedback] = useState('');
   const log = useRef<HTMLDivElement>(null);
   const activeId = useRef(selectedId);
   activeId.current = selectedId;
@@ -59,6 +62,27 @@ export function AdminExternalChat({ inbox, selectedId, demo, onSelect, onChanged
     const needle = search.trim().toLocaleLowerCase();
     return !needle || `${row.nickname} ${row.last_body}`.toLocaleLowerCase().includes(needle);
   });
+
+  useEffect(() => {
+    if (!supabase || demo) { setWidgetEnabled(null); return; }
+    let alive = true;
+    void supabase.from('app_settings').select('external_chat_enabled').eq('id', true).single().then(({ data, error: loadError }) => {
+      if (!alive) return;
+      if (loadError || !data) { setWidgetFeedback('No pudimos cargar el estado del chat.'); return; }
+      setWidgetEnabled(data.external_chat_enabled);
+    });
+    return () => { alive = false; };
+  }, [demo]);
+
+  async function toggleWidget() {
+    if (!supabase || widgetEnabled === null || widgetSaving || demo) return;
+    setWidgetSaving(true); setWidgetFeedback('');
+    const { data, error: saveError } = await supabase.rpc('set_external_chat_enabled', { p_enabled: !widgetEnabled });
+    setWidgetSaving(false);
+    if (saveError || typeof data !== 'boolean') { setWidgetFeedback('No pudimos cambiar el estado del chat. Intentá nuevamente.'); return; }
+    setWidgetEnabled(data);
+    setWidgetFeedback(data ? 'El chat ya está activo en la plataforma.' : 'El chat quedó pausado y se ocultará en la plataforma.');
+  }
 
   useEffect(() => {
     if (!selectedId || demo || !supabase) { setMessages([]); return; }
@@ -129,6 +153,12 @@ export function AdminExternalChat({ inbox, selectedId, demo, onSelect, onChanged
 
   return <section className={`admin-chat${selectedId ? ' has-selection' : ''}`} aria-label="Bandeja de chats externos">
     <div className="admin-chat-heading"><div><h1>Chat externo</h1><p>Atendé las consultas que llegan desde la burbuja de gana777bet.com.</p></div><span>{pending} por responder</span></div>
+    <article className={`card external-chat-control${widgetEnabled ? ' is-active' : ''}`}>
+      <span className="external-chat-control-icon"><MessageCircle size={20} /></span>
+      <div className="external-chat-control-copy"><strong>Burbuja en la plataforma</strong><p>{widgetEnabled === null ? 'Estado no disponible' : widgetEnabled ? 'Activa y visible para los visitantes.' : 'Pausada y oculta para los visitantes.'}</p></div>
+      <button type="button" className={`external-chat-toggle${widgetEnabled ? ' is-active' : ''}`} role="switch" aria-checked={widgetEnabled === true} disabled={demo || widgetEnabled === null || widgetSaving} onClick={() => void toggleWidget()}><span className="external-chat-toggle-knob" /><span>{widgetSaving ? 'Guardando…' : widgetEnabled ? 'Activa' : 'Pausada'}</span><Power size={15} /></button>
+      {widgetFeedback && <small className="external-chat-control-feedback" role="status">{widgetFeedback}</small>}
+    </article>
     <article className="card external-chat-install"><div><strong>Código para integrar la burbuja</strong><p>Copialo y pasáselo al equipo de la plataforma para que lo agregue al HTML de gana777bet.com.</p></div><textarea aria-label="Código de instalación del chat" readOnly value={integrationCode || 'Configurá la URL y la clave pública de Supabase para generar el código.'} rows={3} /><button type="button" className="external-chat-copy" disabled={!integrationCode} onClick={() => void copyCode()}>{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? 'Copiado' : 'Copiar código'}</button><small>La clave incluida es pública para el navegador; no contiene credenciales administrativas.</small></article>
     <div className="admin-chat-layout">
       <aside className="admin-chat-inbox" aria-label="Conversaciones externas">

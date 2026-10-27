@@ -28,7 +28,7 @@
 
   var host = document.createElement('div');
   host.id = 'gana777-external-chat';
-  host.style.cssText = 'position:fixed;z-index:2147483000;right:18px;bottom:18px;width:0;height:0;';
+  host.style.cssText = 'display:none;position:fixed;z-index:2147483000;right:18px;bottom:18px;width:0;height:0;';
   var root = host.attachShadow({ mode: 'open' });
   root.innerHTML = `<style>
     :host{all:initial;color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#f8f3ff}
@@ -221,4 +221,18 @@
     catch (error) { status.textContent = error.message || 'No pudimos enviar el mensaje.'; }
     finally { busy = false; send.disabled = false; input.focus(); }
   });
+
+  async function checkAvailability() {
+    try {
+      var data = await call('status');
+      var enabled = data.enabled === true;
+      if (!enabled && isOpen) setOpen(false);
+      host.style.display = enabled ? 'block' : 'none';
+    } catch (_) {
+      if (isOpen) setOpen(false);
+      host.style.display = 'none';
+    }
+  }
+  void checkAvailability();
+  setInterval(checkAvailability, 15000);
 })();
