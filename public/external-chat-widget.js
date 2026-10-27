@@ -65,8 +65,9 @@
     .status{min-height:0;padding:0 15px;color:#f0b5ff;font-size:11px}
     .status:not(:empty){padding-top:7px}
     .composer{display:flex;align-items:flex-end;gap:9px;padding:11px 12px 12px;border-top:1px solid #2c1c35;background:linear-gradient(180deg,#0d0a10,#08060a)}
-    .composer .attach{flex:0 0 42px;width:42px;height:48px;border-color:#57336a;background:#1a1020;color:#e6b8fc}
-    .composer .attach svg{width:20px;height:20px}
+    .composer .attach{display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;padding:0;border:1px solid #8041a0;border-radius:14px;background:linear-gradient(145deg,#281533,#170e1e);color:#e6b8fc;cursor:pointer;box-shadow:0 4px 12px #19072744;transition:transform .16s ease,border-color .16s ease,background .16s ease}
+    .composer .attach:hover{transform:translateY(-1px);border-color:#cf78f2;background:linear-gradient(145deg,#382047,#21112d)}
+    .composer .attach svg{width:21px;height:21px}
     .composer .attach input{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;clip-path:inset(50%)}
     .composer .attach:focus-within{outline:2px solid #edc5ff;outline-offset:3px}
     .image-preview{display:none;align-items:center;gap:10px;padding:9px 12px;border-top:1px solid #2c1c35;background:#0d0a10;color:#cdbbd6;font-size:11px}
