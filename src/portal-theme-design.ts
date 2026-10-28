@@ -13,6 +13,7 @@ export const cardSlots = [
   { id: 'casino', label: 'Ir al casino' },
   { id: 'deposit', label: 'Cargar' },
   { id: 'withdrawal', label: 'Retiros' },
+  { id: 'bonuses', label: 'Bonos' },
   { id: 'chat', label: 'Chat' },
   { id: 'general', label: 'Otras tarjetas' },
   { id: 'install', label: 'Instalar' },
@@ -42,8 +43,10 @@ export type ThemeDesign = {
   casinoPath?: string | null;
   depositPath?: string | null;
   withdrawalPath?: string | null;
+  bonusesPath?: string | null;
   depositImageLayout?: ThemeCardImageLayout;
   withdrawalImageLayout?: ThemeCardImageLayout;
+  bonusesImageLayout?: ThemeCardImageLayout;
   logoPath?: string | null;
   cards?: Partial<Record<CardSlot, CardStyle>>;
 };
@@ -109,7 +112,7 @@ export function themeSurface(settings: ThemeSettings, publicUrl: (path: string) 
     style[`--theme-${id}-border-width`] = `${card.borderWidth}px`;
     style[`--theme-${id}-radius`] = `${card.radius}px`;
   }
-  for (const id of ['deposit', 'withdrawal'] as const) {
+  for (const id of ['deposit', 'withdrawal', 'bonuses'] as const) {
     const path = design?.[`${id}Path`];
     const url = path ? publicUrl(path) : null;
     if (!url) continue;

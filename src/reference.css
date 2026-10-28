@@ -1413,13 +1413,16 @@ body:has(.user-app.theme-halloween), body:has(.user-login.theme-halloween) { bac
 .user-app.theme-card-deposit-custom .action-card[data-theme-card='deposit'] { background: var(--theme-deposit-background) !important; border: var(--theme-deposit-border-width) solid var(--theme-deposit-border) !important; border-radius: var(--theme-deposit-radius) !important; }
 .user-app.theme-card-withdrawal-custom .action-card[data-theme-card='withdrawal'] { background: var(--theme-withdrawal-background) !important; border: var(--theme-withdrawal-border-width) solid var(--theme-withdrawal-border) !important; border-radius: var(--theme-withdrawal-radius) !important; }
 .user-app.theme-card-deposit-image .action-card[data-theme-card='deposit'],
-.user-app.theme-card-withdrawal-image .action-card[data-theme-card='withdrawal'] { background-position: center; background-size: cover; background-repeat: no-repeat; }
+.user-app.theme-card-withdrawal-image .action-card[data-theme-card='withdrawal'],
+.user-app.theme-card-bonuses-image .action-card[data-theme-card='bonuses'] { background-position: center; background-size: cover; background-repeat: no-repeat; }
 .user-app.theme-card-deposit-image .action-card[data-theme-card='deposit'] .action-card-image,
 .user-app.theme-card-withdrawal-image .action-card[data-theme-card='withdrawal'] .action-card-image { position: absolute; z-index: 0; left: 50%; top: 50%; display: block; width: 100%; height: 100%; max-width: none; object-fit: cover; transform: translate(-50%, -50%); pointer-events: none; }
 .user-app.theme-card-deposit-image .action-card[data-theme-card='deposit'] .action-card-image { left: calc(50% + var(--theme-deposit-image-x, 0%)); top: calc(50% + var(--theme-deposit-image-y, 0%)); width: var(--theme-deposit-image-width, 100%); height: var(--theme-deposit-image-height, 100%); }
 .user-app.theme-card-withdrawal-image .action-card[data-theme-card='withdrawal'] .action-card-image { left: calc(50% + var(--theme-withdrawal-image-x, 0%)); top: calc(50% + var(--theme-withdrawal-image-y, 0%)); width: var(--theme-withdrawal-image-width, 100%); height: var(--theme-withdrawal-image-height, 100%); }
+.user-app.theme-card-bonuses-image .action-card[data-theme-card='bonuses'] .action-card-image { left: calc(50% + var(--theme-bonuses-image-x, 0%)); top: calc(50% + var(--theme-bonuses-image-y, 0%)); width: var(--theme-bonuses-image-width, 100%); height: var(--theme-bonuses-image-height, 100%); }
 .user-app.page-home:has(.home-link-banner):is(.theme-card-deposit-image, .theme-card-withdrawal-image) .action-card:not(.home-link-banner):not([data-theme-card='wheel']):not([data-theme-card='bonuses']),
 .user-app.page-home:not(:has(.home-link-banner)):is(.theme-card-deposit-image, .theme-card-withdrawal-image) .action-card:not([data-theme-card='wheel']):not([data-theme-card='bonuses']) { min-height: 0; aspect-ratio: 12 / 5; padding: 0; }
+.user-app.page-home.theme-card-bonuses-image .action-card[data-theme-card='bonuses'] { min-height: 0; aspect-ratio: 12 / 5; padding: 0; }
 .user-app.page-home .action-card[data-theme-card='bonuses'] { border-color: var(--home-accent, #a73ad2); background: color-mix(in srgb, var(--home-accent, #a73ad2) 12%, #08090d); }
 .user-app.page-home .action-card[data-theme-card='bonuses'] .icon-circle { border-color: var(--home-accent, #a73ad2); color: var(--home-accent, #a73ad2); }
 .user-app.page-home .action-card[data-theme-card='bonuses']:hover { border-color: color-mix(in srgb, var(--home-accent, #a73ad2) 80%, white); }
@@ -1430,7 +1433,7 @@ body:has(.user-app.theme-halloween), body:has(.user-login.theme-halloween) { bac
 .player-bonuses-empty { display: grid; justify-items: center; gap: 9px; padding: 34px 18px; border: 1px solid #573267; border-radius: 14px; background: #100c14; color: #d9c5e5; text-align: center; }
 .player-bonuses-empty strong { color: #fff; }
 .player-bonuses-empty span { color: #b4a4bd; font-size: 13px; }
-.player-bonus-card { position: relative; width: 100%; margin: 0; overflow: hidden; border: 1px solid #71428a; border-radius: var(--home-banner-radius, 12px); background: #100b15; box-shadow: 0 8px 22px #0008; }
+.player-bonus-card { position: relative; width: 100%; margin: 0; overflow: hidden; aspect-ratio: var(--home-banner-ratio, 100 / 43); border: 1px solid #71428a; border-radius: var(--home-banner-radius, 12px); background: #100b15; box-shadow: 0 8px 22px #0008; }
 .player-bonus-media { position: absolute; inset: auto; left: calc(50% + var(--home-banner-image-x, 0%)); top: calc(50% + var(--home-banner-image-y, 0%)); width: var(--home-banner-image-width, 100%); height: var(--home-banner-image-height, 100%); max-width: none; object-fit: cover; object-position: center; transform: translate(-50%, -50%); pointer-events: none; }
 .player-bonus-placeholder { display: grid; place-content: center; width: 100%; height: 100%; gap: 8px; background: radial-gradient(circle at 25% 20%, #6f2a84, #130b19 72%); color: #f4e9ff; text-align: center; }
 .player-bonus-copy { position: absolute; z-index: 1; top: 50%; left: clamp(14px, 5%, 28px); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; width: min(48%, 280px); max-height: calc(100% - 12px); overflow: hidden; color: #fff; text-align: left; text-shadow: 0 1px 4px #000, 0 0 10px #000; transform: translateY(-50%); }

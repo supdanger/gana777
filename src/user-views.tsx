@@ -193,7 +193,7 @@ export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, use
         { id: 'wheel', title: 'Ruleta', description: 'Girás una vez por día', Icon: Disc },
       ] as const).filter(action => action.id !== 'wheel' || settings.wheel_enabled).map(({ id, title, description, Icon }) => {
         const detail = id === 'wheel' && wheelWait ? wheelWait : description;
-        const cardImagePath = id === 'deposit' ? settings.portal_theme_designs?.[settings.portal_theme]?.depositPath : id === 'withdrawal' ? settings.portal_theme_designs?.[settings.portal_theme]?.withdrawalPath : null;
+        const cardImagePath = id === 'deposit' || id === 'withdrawal' || id === 'bonuses' ? settings.portal_theme_designs?.[settings.portal_theme]?.[`${id}Path`] : null;
         return <button className="action-card" data-theme-card={id} key={id} aria-label={title} onClick={() => navigate(id)}>{cardImagePath ? <StorageImage path={cardImagePath} alt="" className="action-card-image" /> : <><span className="icon-circle"><Icon /></span><span><strong>{title}</strong><small className={id === 'wheel' && wheelWait ? 'wheel-home-wait' : undefined} role={id === 'wheel' && wheelWait ? 'timer' : undefined}>{detail}</small></span><ChevronRight /></>}</button>;
       })}
     </div>
