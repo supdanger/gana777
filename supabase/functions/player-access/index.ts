@@ -289,7 +289,7 @@ Deno.serve(async request => {
         .not('player_user_id', 'is', null).neq('id', requestId).limit(1).maybeSingle();
       if (deviceAccountError) throw new HttpError(500, 'No pudimos verificar si este dispositivo ya tiene un usuario.');
       if (existingDeviceAccount) throw new HttpError(409, 'Este dispositivo ya tiene un usuario asociado.');
-      const playerUsername = username(accessRequest.username);
+      const playerUsername = username(typeof payload.username === 'string' ? payload.username : accessRequest.username);
       const playerPassword = password(payload.password);
       const playerCasinoUrl = casinoUrl(payload.casino_url);
       const { data: existing } = await server.from('user_profiles').select('user_id').ilike('username', playerUsername).maybeSingle();
@@ -305,6 +305,12 @@ Deno.serve(async request => {
         if (staff) throw new HttpError(409, 'El código pertenece a una cuenta del panel, no a un jugador. Respondé por el chat para corregirlo antes de aprobar.');
         referrerId = referrer.user_id;
       }
+
+      const { data: renamed, error: renameError } = await server.from('player_access_requests')
+        .update({ username: playerUsername, updated_at: new Date().toISOString() })
+        .eq('id', requestId).eq('status', 'pending').select('id').maybeSingle();
+      if (renameError?.code === '23505') throw new HttpError(409, 'Ese usuario ya está solicitado por otra persona. Elegí otro nombre.');
+      if (renameError || !renamed) throw new HttpError(409, 'No pudimos actualizar el usuario solicitado. Actualizá la bandeja y volvé a intentar.');
 
       const email = `${playerUsername}@players.gana777.internal`;
       const { data: created, error: createError } = await server.auth.admin.createUser({

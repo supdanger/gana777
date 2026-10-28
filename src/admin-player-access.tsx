@@ -22,6 +22,7 @@ export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy:
   const [filter, setFilter] = useState<'setup' | 'all'>('setup');
   const [search, setSearch] = useState('');
   const [threadError, setThreadError] = useState('');
+  const [playerUsername, setPlayerUsername] = useState('');
   const [password, setPassword] = useState('');
   const [casinoUrl, setCasinoUrl] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -64,7 +65,7 @@ export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy:
     return () => window.clearInterval(timer);
   }, [selectedId, demo]);
   useEffect(() => { if (log.current) log.current.scrollTop = log.current.scrollHeight; }, [messages]);
-  useEffect(() => { setPassword(''); setCasinoUrl(''); setShowPassword(false); }, [selectedId]);
+  useEffect(() => { setPlayerUsername(selected?.username ?? ''); setPassword(''); setCasinoUrl(''); setShowPassword(false); }, [selectedId]);
 
   async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!selected) return;
@@ -82,10 +83,12 @@ export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy:
     if (!selected) return;
     const link = safeHttpsLink(casinoUrl.trim());
     if (!link) { setThreadError('Ingresá una URL personal HTTPS válida.'); return; }
-    if (!window.confirm(selected.status === 'approved' ? `¿Actualizar la contraseña y el enlace personal de @${selected.username}?` : `¿Crear el acceso de @${selected.username} con esta contraseña y asignar su enlace personal?`)) return;
+    if (!window.confirm(selected.status === 'approved' ? `¿Actualizar la contraseña y el enlace personal de @${selected.username}?` : `¿Crear el acceso de @${playerUsername.trim().replace(/^@/, '')} y enviar esos datos al solicitante?`)) return;
     await action(async () => {
       if (password.length < 8 || password.length > 72) throw new InputError('La contraseña debe tener entre 8 y 72 caracteres.');
-      await invokeAdminPlayerAccess({ action: selected.status === 'approved' ? 'admin-configure' : 'admin-approve', request_id: selected.id, password, casino_url: link });
+      const finalUsername = playerUsername.trim().replace(/^@/, '').toLowerCase();
+      if (selected.status === 'pending' && !/^[a-z0-9][a-z0-9._-]{2,31}$/.test(finalUsername)) throw new InputError('El usuario debe tener de 3 a 32 caracteres: letras, números, punto, guion o guion bajo.');
+      await invokeAdminPlayerAccess({ action: selected.status === 'approved' ? 'admin-configure' : 'admin-approve', request_id: selected.id, username: finalUsername, password, casino_url: link });
       setPassword(''); setCasinoUrl(''); setShowPassword(false); setThreadError('');
       const result = await invokeAdminPlayerAccess({ action: 'admin-messages', request_id: selected.id });
       setMessages(result.messages as AccessMessage[]); setCasinoUrl(typeof result.casino_url === 'string' ? result.casino_url : ''); await refresh();
@@ -122,7 +125,7 @@ export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy:
             <form className="access-admin-create" onSubmit={event => void saveAccess(event)}>
               <div className="access-admin-create-heading"><div><h3>{selected.status === 'approved' ? 'Configurar acceso existente' : 'Crear acceso'}</h3><p>{selected.status === 'approved' ? 'Asigná el enlace personal y establecé la contraseña definitiva. Los nuevos datos llegarán al chat del portal.' : 'El usuario solicitado ya está cargado. Definí su contraseña y el enlace que abrirá el banner del casino.'}</p></div></div>
               <div className="access-admin-create-fields">
-                <label>Usuario<input value={`@${selected.username}`} readOnly /></label>
+                <label>Usuario para el acceso<input value={playerUsername} onChange={event => setPlayerUsername(event.target.value.toLowerCase())} minLength={3} maxLength={32} pattern="[a-zA-Z0-9._-]+" autoCapitalize="none" autoComplete="username" readOnly={selected.status === 'approved'} required /><small>{selected.status === 'pending' ? 'Podés corregirlo antes de crear la cuenta; este será el usuario que recibirá.' : 'El usuario ya fue creado.'}</small></label>
                 <label>Contraseña definitiva<span className="access-admin-password"><input type={showPassword ? 'text' : 'password'} autoComplete="new-password" minLength={8} maxLength={72} value={password} onChange={event => setPassword(event.target.value)} required /><button type="button" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}>{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}</button></span></label>
                 <label className="access-admin-create-url">URL personal del casino<input type="url" placeholder="https://casino.ejemplo.com/acceso/…" maxLength={2048} value={casinoUrl} onChange={event => setCasinoUrl(event.target.value)} required /><small>Este enlace abrirá el banner «Ir al casino» solamente para este jugador.</small></label>
               </div>
