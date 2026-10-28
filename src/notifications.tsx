@@ -98,7 +98,7 @@ export function PlayerNotifications({ userId, settingsPage, onOpenChat, onOpenWh
         if (foregroundOnlyActive.current && document.visibilityState === 'hidden' && Notification.permission === 'granted'
           && activeRegistration.current && item.id && item.title) {
           void activeRegistration.current.showNotification(item.title, {
-            body: item.body ?? '', icon: '/pwa/icon-panda-192.png', tag: `gana777-${item.id}`,
+            body: item.body ?? '', icon: '/pwa/icon-panda-192.png?v=violet-1', tag: `gana777-${item.id}`,
             data: { url: item.kind === 'chat_message' ? '/?view=chat' : item.kind === 'withdrawal_paid' ? '/?view=profile' : item.kind === 'wheel_credited' ? '/?view=wheel' : item.kind === 'announcement' ? '/?view=home' : '/?view=deposit' },
           }).catch(() => undefined);
         }

@@ -24,8 +24,8 @@ export function portalPwaPlugin(mode) {
     transformIndexHtml() {
       return [
         { tag: 'link', attrs: { rel: 'manifest', href: '/pwa/manifest.webmanifest' }, injectTo: 'head' },
-        { tag: 'link', attrs: { rel: 'icon', type: 'image/png', href: '/pwa/icon-panda-192.png' }, injectTo: 'head' },
-        { tag: 'link', attrs: { rel: 'apple-touch-icon', sizes: '180x180', href: '/pwa/apple-touch-icon-panda.png' }, injectTo: 'head' },
+        { tag: 'link', attrs: { rel: 'icon', type: 'image/png', href: '/pwa/icon-panda-192.png?v=violet-1' }, injectTo: 'head' },
+        { tag: 'link', attrs: { rel: 'apple-touch-icon', sizes: '180x180', href: '/pwa/apple-touch-icon-panda.png?v=violet-1' }, injectTo: 'head' },
         { tag: 'meta', attrs: { name: 'apple-mobile-web-app-capable', content: 'yes' }, injectTo: 'head' },
         { tag: 'meta', attrs: { name: 'mobile-web-app-capable', content: 'yes' }, injectTo: 'head' },
         { tag: 'meta', attrs: { name: 'apple-mobile-web-app-title', content: 'GANA777' }, injectTo: 'head' },

@@ -3,8 +3,8 @@ self.addEventListener('push', event => {
   try { message = event.data?.json() ?? {}; } catch { /* Ignore malformed payloads. */ }
   event.waitUntil(self.registration.showNotification(message.title || 'Gana777', {
     body: message.body || 'Tenés una novedad en tu cuenta.',
-    icon: '/pwa/icon-panda-192.png',
-    badge: '/pwa/icon-panda-192.png',
+    icon: '/pwa/icon-panda-192.png?v=violet-1',
+    badge: '/pwa/icon-panda-192.png?v=violet-1',
     tag: message.tag || `gana777-${message.requestId || 'notice'}`,
     data: { url: message.url || '/' },
   }));
