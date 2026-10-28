@@ -112,6 +112,7 @@ export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, use
   const [nextSpinAt, setNextSpinAt] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const wheelWait = wheelWaitLabel(nextSpinAt, now);
+  const wheelWaitClock = wheelWait?.replace(/^Otro giro en\s+/, '');
   useEffect(() => {
     if (!shareUrl) return;
     const controller = new AbortController();
@@ -193,7 +194,7 @@ export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, use
       ] as const).filter(action => action.id !== 'wheel' || settings.wheel_enabled && wheelEligible).map(({ id, title, description, Icon }) => {
         const detail = id === 'wheel' && wheelWait ? wheelWait : description;
         const cardImagePath = isImageCardSlot(id) ? settings.portal_theme_designs?.[settings.portal_theme]?.[`${id}Path`] : null;
-        return <button className="action-card" data-theme-card={id} key={id} aria-label={title} onClick={() => navigate(id)}>{cardImagePath ? <StorageImage path={cardImagePath} alt="" className="action-card-image" /> : <><span className="icon-circle"><Icon /></span><span><strong>{title}</strong><small className={id === 'wheel' && wheelWait ? 'wheel-home-wait' : undefined} role={id === 'wheel' && wheelWait ? 'timer' : undefined}>{detail}</small></span><ChevronRight /></>}</button>;
+        return <button className="action-card" data-theme-card={id} key={id} aria-label={title} onClick={() => navigate(id)}>{cardImagePath ? <><StorageImage path={cardImagePath} alt="" className="action-card-image" />{id === 'wheel' && wheelWaitClock && <span className="wheel-image-countdown" role="timer">{wheelWaitClock}</span>}</> : <><span className="icon-circle"><Icon /></span><span><strong>{title}</strong><small className={id === 'wheel' && wheelWait ? 'wheel-home-wait' : undefined} role={id === 'wheel' && wheelWait ? 'timer' : undefined}>{detail}</small></span><ChevronRight /></>}</button>;
       })}
     </div>
     {contacts.length > 0 && <section className="card contacts"><h2>Contactanos</h2><div className="contact-links">{contacts.map(({ name, url, mark, className, animation }) => {
