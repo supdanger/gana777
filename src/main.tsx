@@ -1022,7 +1022,7 @@ function App() {
   return <div className={`app user-app page-${page} ${surface.className}`} style={surface.style}>
     <UserHeader page={page} navigate={navigate} name={name} />
     {content}
-    {session && !demo && <Conversation messages={messages} userId={userId} busy={busy} disabled={false} open={chatBubbleOpen} onOpenChange={setChatBubbleOpen} onSubmit={sendMessage} />}
+    {session && !demo && page !== 'bonuses' && <Conversation messages={messages} userId={userId} busy={busy} disabled={false} open={chatBubbleOpen} onOpenChange={setChatBubbleOpen} onSubmit={sendMessage} />}
   </div>;
 }
 createRoot(document.getElementById('root')!).render(<React.StrictMode><ContentProvider><App /></ContentProvider></React.StrictMode>);
