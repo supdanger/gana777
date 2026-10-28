@@ -18,6 +18,14 @@ export function parseBonusRewardLabel(raw: unknown): string {
   }
   return label;
 }
+export function parseBonusRulesText(raw: unknown): string {
+  if (typeof raw !== 'string') throw new InputError('Escribí las condiciones del bono.');
+  const rules = raw.normalize('NFC').trim();
+  if (rules.length > 2000 || forbiddenText.test(rules)) {
+    throw new InputError('Las condiciones pueden tener hasta 2.000 caracteres y no deben incluir caracteres de control.');
+  }
+  return rules;
+}
 export function parseBonusPercent(raw: unknown): number {
   if (typeof raw !== 'string') throw new InputError('Ingresá un porcentaje de bono válido.');
   const value = raw.trim();

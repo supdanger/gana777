@@ -287,6 +287,8 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .bonus-admin, .account-admin, .shift-admin { display: grid; gap: 14px; }
 .bonus-create, .bonus-offer, .account-create, .account-offer { background: #000; border: 1px solid #0068a5; border-radius: 10px; }
 .bonus-create, .account-create { display: grid; gap: 10px; padding: 12px; }
+.bonus-create textarea { width: 100%; min-height: 96px; resize: vertical; padding: 10px 12px; border: 1px solid #304a60; border-radius: 9px; background: #0c1e2b; color: #f4f7fb; font: inherit; font-weight: 500; line-height: 1.45; }
+.bonus-create textarea:focus { border-color: #9b45bd; outline: 2px solid #9b45bd33; }
 .bonus-create p, .account-create p { margin: 0; color: #9cb9e6; font-size: 13px; line-height: 1.45; }
 .bonus-create label, .account-create label { display: grid; gap: 6px; color: #d7e7ff; font-size: 13px; font-weight: 700; }
 .bonus-mode { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; }
@@ -1239,6 +1241,8 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .bonus-button-layout-controls label output { color: #d98fff; font-weight: 800; }
 .bonus-button-layout-controls label input { width: 100%; }
 .bonus-button-layout-controls > button { justify-self: start; grid-column: 1 / -1; }
+.bonus-info-preview { width: 30px; height: 30px; min-height: 30px; }
+@media (max-width: 680px) { .bonus-button-layout-controls { grid-template-columns: 1fr; } }
 .bonus-offer-actions button[aria-label^='Mover'] { min-width: 36px; padding: 7px; }
 .special-deposit-review { display: grid; gap: 9px; padding: 12px 18px; background: #0e1f2a; border-top: 1px solid #31526a; }
 .special-deposit-review label { display: flex; align-items: center; gap: 8px; color: #fff; font-size: 13px; }
