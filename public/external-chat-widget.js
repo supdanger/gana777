@@ -91,7 +91,7 @@
   <button class="launcher" type="button" aria-label="Abrir chat de soporte" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.2 11.2a7.9 7.9 0 0 1-.8 3.6 8.1 8.1 0 0 1-7.3 4.5 8 8 0 0 1-3.6-.8L3 20l1.5-5.2a8 8 0 0 1-.8-3.6 8.1 8.1 0 0 1 4.5-7.3 8 8 0 0 1 3.6-.8h.5a8.1 8.1 0 0 1 7.8 7.6z"/><path d="M8.8 11h.01M12 11h.01M15.2 11h.01" stroke-width="2.5"/></svg></button>
   <section class="panel" aria-label="Chat de soporte">
     <header class="head">
-      <img class="support-avatar" src="https://gana777.vercel.app/support-chat-avatar.webp" alt="Avatar de soporte GANA777" />
+      <img class="support-avatar" src="https://gana777bet.online/support-chat-avatar.webp" alt="Avatar de soporte GANA777" />
       <div class="identity"><strong><span>Soporte</span><span class="identity-brand"><span>Gana</span><span class="identity-brand-777">777</span><span class="identity-brand-domain">bet.com</span></span></strong><small>Atención al cliente</small></div>
       <button class="close" type="button" aria-label="Cerrar chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
     </header>

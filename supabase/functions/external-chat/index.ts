@@ -3,7 +3,7 @@ import { requiredEnv } from '../_shared/cloudinary.ts';
 import { HttpError } from '../_shared/http.ts';
 import { parseMessage, parseUuid } from '../_shared/validation.ts';
 
-const allowedOrigins = new Set(['https://gana777bet.com', 'https://www.gana777bet.com', 'https://gana777.vercel.app']);
+const allowedOrigins = new Set(['https://gana777bet.com', 'https://www.gana777bet.com', 'https://gana777bet.online', 'https://gana777.vercel.app']);
 const nicknameParts = ['Poker', 'Ruleta', 'Fichas', 'Jackpot', 'Crupier', 'Tragamonedas', 'Blackjack', 'Casino'];
 const tokenPattern = /^[A-Za-z0-9_-]{40,64}$/;
 const service = () => createClient(requiredEnv('SUPABASE_URL'), requiredEnv('SUPABASE_SERVICE_ROLE_KEY'), {
