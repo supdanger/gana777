@@ -1,4 +1,13 @@
 /* Visual proportions follow the supplied 907 px wide mobile references. */
+.portal-boot-screen { position: fixed; z-index: 10000; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 17px; padding: 24px; background: radial-gradient(ellipse at 50% 43%, #25102f 0, #100b16 34%, #050608 76%); color: #fff; text-align: center; }
+.portal-boot-brand { color: #fff; font-size: clamp(30px, 8vw, 42px); font-style: italic; font-weight: 900; letter-spacing: -2px; text-shadow: 0 2px 18px #bd35e84a; }
+.portal-boot-brand > span { background: linear-gradient(130deg, #f4b9ff, #ce43fa 52%, #8f16d5); background-clip: text; -webkit-text-fill-color: transparent; }
+.portal-boot-brand > small { display: inline; margin-left: 2px; color: #eee4f3; font-size: .42em; letter-spacing: -.5px; }
+.portal-boot-spinner { width: 30px; height: 30px; border: 3px solid #67307c; border-top-color: #e34cff; border-radius: 50%; animation: portal-boot-spin .8s linear infinite; box-shadow: 0 0 18px #c333ef45; }
+.portal-boot-screen p { max-width: 300px; margin: 0; color: #c2a8ca; font-size: 13px; }
+.portal-boot-screen button { min-height: 42px; border-color: #a332c9; background: #32113f; color: #f4d8ff; font-size: 13px; }
+@keyframes portal-boot-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .portal-boot-spinner { animation-duration: 2.4s; } }
 .user-app, .user-login { --cyan: #05b5ff; --muted: #9db9f0; }
 .user-app { max-width: 500px; padding-top: max(20px, env(safe-area-inset-top)); }
 .user-app p, .user-app small, .user-login p { color: var(--muted); }

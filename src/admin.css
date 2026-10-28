@@ -1492,7 +1492,7 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .access-admin-item time { color: #7892a5; font-size: 9px; white-space: nowrap; }
 .access-status-dot { grid-column: 3; width: 7px; height: 7px; justify-self: end; border-radius: 50%; background: #788a96; }
 .access-status-dot.pending { background: #ff555f; box-shadow: 0 0 9px #ff555f88; }
-.access-admin-thread { display: flex; flex-direction: column; min-width: 0; min-height: 560px; }
+.access-admin-thread { display: flex; flex-direction: column; min-width: 0; min-height: 560px; container-type: inline-size; container-name: access-thread; }
 .access-admin-thread > header { display: flex; align-items: center; gap: 10px; min-height: 62px; margin: 0; padding: 11px 15px; border-bottom: 1px solid var(--panel-border-soft); }
 .access-admin-thread > header > div { display: grid; min-width: 0; gap: 4px; }
 .access-admin-thread > header strong { color: #eff6fa; font-size: 14px; }
@@ -1504,11 +1504,12 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .access-admin-message.from-admin p { border-radius: 12px 12px 3px 12px; background: #07578b; }
 .access-admin-message time { display: block; color: #7f9aab; font-size: 9px; }
 .access-admin-message.from-admin time { text-align: right; }
-.access-admin-create { display: grid; gap: 12px; padding: 14px; border-top: 1px solid var(--panel-border-soft); background: #0a151c; }
-.access-admin-create-heading h3 { margin: 0; color: #f1f7fb; font-size: 14px; }
-.access-admin-create-heading p { margin: 4px 0 0; color: var(--panel-muted); font-size: 11px; line-height: 1.4; }
-.access-admin-create-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
-.access-admin-create-fields label { display: grid; gap: 5px; min-width: 0; color: #bed2de; font-size: 11px; font-weight: 700; }
+.access-admin-create { display: grid; gap: 15px; padding: 16px; border-top: 1px solid var(--panel-border-soft); background: #0a151c; }
+.access-admin-create-heading h3 { margin: 0; color: #f1f7fb; font-size: 15px; }
+.access-admin-create-heading p { max-width: 620px; margin: 5px 0 0; color: var(--panel-muted); font-size: 11px; line-height: 1.5; }
+.access-admin-create-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 13px 12px; }
+.access-admin-create-fields label { display: grid; align-content: start; gap: 6px; min-width: 0; color: #bed2de; font-size: 11px; font-weight: 700; }
+.access-admin-field-title { display: block; min-height: 15px; }
 .access-admin-create-fields input { width: 100%; min-width: 0; min-height: 39px; margin: 0; padding: 8px 10px; font-size: 12px; }
 .access-admin-create-fields input[readonly] { color: #8eb6cc; background: #101f29; }
 .access-admin-create-fields small { color: var(--panel-muted); font-size: 10px; font-weight: 400; line-height: 1.4; }
@@ -1517,7 +1518,7 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .access-admin-password input { padding-right: 42px; }
 .access-admin-password button { display: grid; place-items: center; position: absolute; right: 2px; top: 2px; width: 35px; height: 35px; padding: 0; border: 0; background: transparent; color: #8eb6cc; }
 .access-admin-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 11px 13px 0; border-top: 1px solid var(--panel-border-soft); }
-.access-admin-create .access-admin-actions { padding: 0; border-top: 0; }
+.access-admin-create .access-admin-actions { display: grid; grid-template-columns: minmax(0, 1fr) max-content; gap: 9px; padding: 0; border-top: 0; }
 .access-admin-actions button { min-height: 37px; padding: 7px 10px; border-color: #258f73; background: #0d3a35; color: #95f1cd; font-size: 11px; }
 .access-admin-actions button + button { border-color: #684452; background: #291923; color: #f0bbcc; }
 .access-admin-composer { display: flex; gap: 8px; padding: 11px 13px 13px; }
@@ -1527,6 +1528,11 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .access-admin-empty > svg { color: #68d8ff; }
 .access-admin-empty h2 { margin: 12px 0 5px; font-size: 17px; }
 .access-admin-empty p { max-width: 280px; margin: 0; color: var(--panel-muted); font-size: 12px; }
+@container access-thread (max-width: 520px) {
+  .access-admin-create-fields { grid-template-columns: minmax(0, 1fr); }
+  .access-admin-create-url { grid-column: auto; }
+  .access-admin-create .access-admin-actions { grid-template-columns: minmax(0, 1fr); }
+}
 .platform-admin { display: grid; gap: 16px; min-width: 0; }
 .platform-admin-layout { display: grid; grid-template-columns: minmax(260px, 300px) minmax(0, 1fr); gap: 16px; align-items: start; min-width: 0; }
 .platform-admin-panel { overflow: hidden; border: 1px solid var(--panel-border); border-radius: 14px; background: #090f14; }
@@ -1636,6 +1642,7 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
   .access-admin-thread { min-height: 450px; }
   .access-admin-create-fields { grid-template-columns: minmax(0, 1fr); }
   .access-admin-create-url { grid-column: auto; }
+  .access-admin-create .access-admin-actions { grid-template-columns: minmax(0, 1fr); }
 }
 .account-phone-group { display: grid; gap: 10px; }
 .account-phone-group header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }

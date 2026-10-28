@@ -72,6 +72,13 @@ function playerTextField(target: EventTarget | null) {
   return !!field && field.getAttribute('contenteditable') !== 'false';
 }
 
+function PortalBootScreen({ error, onRetry }: { error: string; onRetry: () => void }) {
+  return <main className="portal-boot-screen" aria-busy={!error}>
+    <div className="portal-boot-brand" aria-label="Gana777bet.com">Gana<span>777</span><small>bet.com</small></div>
+    {error ? <><p role="alert">{error}</p><button type="button" onClick={onRetry}>Reintentar</button></> : <><span className="portal-boot-spinner" aria-hidden="true" /><p role="status">Preparando tu portal…</p></>}
+  </main>;
+}
+
 // En el portal del jugador, mantener pulsado no abre la ficha de la imagen ni el recuadro azul.
 // Los campos siguen pudiendo seleccionarse para escribir y pegar.
 if (!adminApp && typeof document !== 'undefined') {
@@ -86,7 +93,7 @@ if (!adminApp && typeof document !== 'undefined') {
 }
 
 function App() {
-  const { settings } = useContent();
+  const { settings, initialReady, initialError, retryInitialLoad } = useContent();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(!!supabase);
   const [demo, setDemo] = useState(false);
@@ -721,6 +728,7 @@ function App() {
     setHistoryPage(0);
   }
   const feedback = <>{error && <div role="alert" className="alert error">{error}</div>}{notice && <div role="status" className="alert">{notice}</div>}</>;
+  if (!adminApp && (!initialReady || initialError)) return <PortalBootScreen error={initialError} onRetry={retryInitialLoad} />;
   if (loading) return <main className="login"><Brand panel={adminApp} /><p>Cargando tu cuenta…</p></main>;
   if (!session && !demo) return <LoginView admin={adminApp} busy={busy} retryAt={loginRetryAt} siteKey={turnstileSiteKey} configured={!!supabase} feedback={<>{configError && <div role="alert" className="alert error">{configError}</div>}{feedback}</>} onLogin={login} onDemo={startDemo} onHelp={() => setNotice('Si no podés ingresar, comunicate con el soporte que te proporcionó tu cuenta.')} />;
 

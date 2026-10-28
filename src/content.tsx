@@ -82,14 +82,36 @@ function toPromotion(row: {
     active: !!row.active, show_banner: !!row.show_banner, selectable: !!row.selectable, sort_order: row.sort_order ?? 0,
   };
 }
-const ContentContext = createContext({ settings: defaults, promotions: [welcome], contactAnimations: emptyAnimations, reloadPromotions: () => {} });
+const ContentContext = createContext({ settings: defaults, promotions: [welcome], contactAnimations: emptyAnimations, reloadPromotions: () => {}, initialReady: !supabase, initialError: '', retryInitialLoad: () => {} });
 export const useContent = () => useContext(ContentContext);
+function preloadImage(path: string | null | undefined) {
+  if (!path || !supabase) return Promise.resolve();
+  const url = supabase.storage.from('app-assets').getPublicUrl(path).data.publicUrl;
+  return new Promise<void>(resolve => {
+    const image = new Image();
+    const finish = () => { image.onload = null; image.onerror = null; resolve(); };
+    const timeout = window.setTimeout(finish, 6000);
+    image.onload = () => { window.clearTimeout(timeout); finish(); };
+    image.onerror = () => { window.clearTimeout(timeout); finish(); };
+    image.src = url;
+    if (image.complete) { window.clearTimeout(timeout); finish(); }
+  });
+}
 export function ContentProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState(defaults);
   const [promotions, setPromotions] = useState<Promotion[]>([welcome]);
   const [contactAnimations, setContactAnimations] = useState(emptyAnimations);
+  const [initialReady, setInitialReady] = useState(!supabase);
+  const [initialError, setInitialError] = useState('');
+  const initialSettled = useRef(!supabase);
   const reloadRef = useRef<() => void>(() => {});
   const reloadPromotions = useCallback(() => { reloadRef.current(); }, []);
+  const retryInitialLoad = useCallback(() => {
+    initialSettled.current = false;
+    setInitialError('');
+    setInitialReady(false);
+    reloadRef.current();
+  }, []);
   useEffect(() => {
     if (!supabase) return;
     const db = supabase;
@@ -103,10 +125,23 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       if (!alive) return;
       if (!config.error && config.data) {
         const saved = { ...defaults, ...config.data } as AppContent;
+        if (!initialSettled.current) {
+          const design = saved.portal_theme_designs?.[saved.portal_theme];
+          const paths = [...new Set([
+            saved.login_image_path, saved.logo_path, saved.portal_header_logo_path,
+            saved.portal_theme === 'halloween' ? saved.portal_header_logo_halloween_path : null,
+            design?.backgroundPath, design?.logoPath,
+          ].filter((path): path is string => typeof path === 'string' && path.length > 0))];
+          await Promise.all(paths.map(preloadImage));
+          if (!alive) return;
+        }
         // Upgrade the initial screenshot reference without requiring a SQL change.
         setSettings(saved.login_image_path === 'brand/login-reference.png'
           ? { ...saved, login_image_path: defaults.login_image_path, login_image_layout: 'image' }
           : saved);
+        setInitialError('');
+      } else if (!initialSettled.current) {
+        setInitialError('No pudimos cargar la configuración del portal. Revisá tu conexión e intentá de nuevo.');
       }
       if (promos.error && /bonus_mode|bonus_amount|min_amount|max_amount|load_number_from|load_number_to|cooldown_hours|banner_layout|reward_type|reward_label|rules_text/i.test(promos.error.message ?? '')) {
         const legacy = await db.from('promotions').select(legacyPromotionColumns).eq('active', true).order('sort_order');
@@ -120,6 +155,8 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
         }
         setContactAnimations(next);
       }
+      initialSettled.current = true;
+      setInitialReady(true);
     }
     reloadRef.current = () => { void refresh(); };
     void refresh();
@@ -132,7 +169,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       .subscribe();
     return () => { alive = false; window.removeEventListener('focus', onFocus); void db.removeChannel(channel); };
   }, []);
-  return <ContentContext.Provider value={{ settings, promotions, contactAnimations, reloadPromotions }}>{children}</ContentContext.Provider>;
+  return <ContentContext.Provider value={{ settings, promotions, contactAnimations, reloadPromotions, initialReady, initialError, retryInitialLoad }}>{children}</ContentContext.Provider>;
 }
 
 // Local fallbacks keep the core character assets available before Storage responds.
