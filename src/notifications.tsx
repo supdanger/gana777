@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, Check } from 'lucide-react';
+import { Bell, Check, ChevronDown } from 'lucide-react';
 import { useContent } from './content';
 import { supabase, date } from './lib';
 
@@ -68,6 +68,7 @@ export function PlayerNotifications({ userId, settingsPage, onOpenChat, onOpenWh
   const [foregroundOnly, setForegroundOnly] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const activeRegistration = useRef<ServiceWorkerRegistration | null>(null);
   const foregroundOnlyActive = useRef(false);
 
@@ -228,13 +229,15 @@ export function PlayerNotifications({ userId, settingsPage, onOpenChat, onOpenWh
   const showSettings = settingsPage === (enabled ? 'profile' : 'home');
   if (!visible.length && !showSettings) return null;
   return <section className="player-notifications" aria-label="Notificaciones">
-    {showSettings && <div className="player-notification-settings"><div className="player-notification-setting-copy"><div className="player-notifications-heading"><Bell size={19} /><h2>Avisos en este dispositivo</h2></div><p>{enabled ? 'Activados para la cuenta que uses en esta app.' : foregroundOnly ? 'Podés ver los avisos dentro de Gana777. Los avisos del sistema necesitan conexión.' : wanted ? 'Los avisos del sistema están desconectados. Tocá el interruptor para reintentar.' : 'Recibí avisos de cargas, retiros y mensajes de soporte.'}</p></div><button type="button" className="player-notification-switch" role="switch" aria-label="Avisos en este dispositivo" aria-checked={enabled} disabled={busy || !supported} onClick={() => void (enabled ? deactivate() : activate())}><span /></button></div>}
+    {showSettings && <div className="player-notification-settings"><button type="button" className="player-notification-disclosure" aria-expanded={notificationsOpen} aria-controls="player-notification-list" onClick={() => setNotificationsOpen(open => !open)}><span className="player-notifications-heading"><Bell size={19} /><h2>Avisos en este dispositivo</h2>{visible.length > 0 && <span className="player-notification-count">{visible.length}</span>}<ChevronDown className="player-notification-chevron" size={17} /></span><span className="player-notification-description">{enabled ? 'Activados para la cuenta que uses en esta app.' : foregroundOnly ? 'Podés ver los avisos dentro de Gana777. Los avisos del sistema necesitan conexión.' : wanted ? 'Los avisos del sistema están desconectados. Tocá el interruptor para reintentar.' : 'Recibí avisos de cargas, retiros y mensajes de soporte.'}</span></button><button type="button" className="player-notification-switch" role="switch" aria-label="Avisos en este dispositivo" aria-checked={enabled} disabled={busy || !supported} onClick={() => void (enabled ? deactivate() : activate())}><span /></button></div>}
     {showSettings && !supported && <p className="player-notification-error">Este dispositivo no admite avisos push.</p>}
     {showSettings && error && <p className="player-notification-error" role="alert">{error}</p>}
+    <div id="player-notification-list" className="player-notification-list" hidden={showSettings && !notificationsOpen}>
     {visible.map(item => <article className="player-notification" key={item.id}>
       <Bell size={18} aria-hidden="true" />
       <div><strong>{item.title}</strong><p>{item.body}</p>{item.kind === 'chat_message' && <button type="button" className="player-notification-open-chat" onClick={() => { void markRead(item.id); onOpenChat(); }}>Abrir chat</button>}{item.kind === 'wheel_credited' && settings.wheel_enabled && <button type="button" className="player-notification-open-chat" onClick={() => { void markRead(item.id); onOpenWheel(); }}>Ver ruleta</button>}<time dateTime={item.created_at} className="sr-only">{date(item.created_at)}</time></div>
       <button type="button" aria-label={`Marcar como leída: ${item.title}`} title="Marcar como leída" onClick={() => void markRead(item.id)}><Check size={17} /></button>
     </article>)}
+    </div>
   </section>;
 }

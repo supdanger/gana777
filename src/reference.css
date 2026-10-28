@@ -1012,11 +1012,16 @@ body:has(.user-login) { min-height: 100svh; }
 .player-notification time.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .player-notification button { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 1px solid #4a9bc8; border-radius: 8px; background: #0e4264; color: #fff; }
 .player-notification .player-notification-open-chat { display: inline-flex; width: auto; height: auto; min-height: 28px; margin-top: 6px; padding: 3px 8px; font-size: 12px; font-weight: 700; }
-.player-notification-settings { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; }
-.player-notification-setting-copy { min-width: 0; }
-.player-notification-settings .player-notifications-heading { margin-bottom: 2px; }
+.player-notification-settings { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; }
+.player-notification-disclosure { display: grid; flex: 1; min-width: 0; gap: 3px; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.player-notification-settings .player-notifications-heading { gap: 7px; margin: 0; }
 .player-notification-settings .player-notifications-heading h2 { font-size: 16px; }
-.player-notification-settings p { margin: 0; color: #c8dfed; font-size: 12px; line-height: 1.35; }
+.player-notification-description { color: #c8dfed; font-size: 12px; line-height: 1.35; }
+.player-notification-count { display: inline-grid; min-width: 19px; height: 19px; place-items: center; padding: 0 5px; border-radius: 999px; background: #8530b9; color: #fff; font-size: 11px; font-weight: 700; }
+.player-notification-chevron { flex: 0 0 auto; color: #a9c4d4; transition: transform .18s ease; }
+.player-notification-disclosure[aria-expanded="true"] .player-notification-chevron { transform: rotate(180deg); }
+.player-notification-disclosure:focus-visible { outline: 2px solid #bf65e5; outline-offset: 4px; border-radius: 4px; }
+.player-notification-list[hidden] { display: none; }
 .player-notification-settings .player-notification-switch { flex-shrink: 0; justify-content: flex-start; width: 52px; height: 30px; min-height: 30px; padding: 3px; border: 1px solid #54718a; border-radius: 999px; background: #30495b; }
 .player-notification-switch span { width: 22px; height: 22px; border-radius: 50%; background: #eaf5fa; box-shadow: 0 1px 4px #0008; transition: transform .18s ease; }
 .player-notification-settings .player-notification-switch[aria-checked="true"] { border-color: #41a5d8; background: #0875b8; }
