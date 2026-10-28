@@ -40,6 +40,7 @@ export type Promotion = {
   reward_type: 'cash' | 'free_spins'; reward_label: string;
   image_layout: 'reference' | 'image'; bonus_mode: 'percent' | 'fixed'; bonus_percent: number;
   bonus_amount: number; min_amount: number; max_amount: number;
+  load_number_from: number; load_number_to: number | null;
   cooldown_hours: number; banner_layout: unknown;
   active: boolean; show_banner: boolean; selectable: boolean; sort_order: number;
 };
@@ -57,16 +58,17 @@ const welcome: Promotion = {
   description: 'Desde $5.000 recibís $1.000 y desde $10.000 recibís $2.000.',
   image_path: null, image_layout: 'image',
   reward_type: 'cash', reward_label: '', rules_text: '',
-  bonus_mode: 'percent', bonus_percent: 0, bonus_amount: 0, min_amount: 0, max_amount: 0, cooldown_hours: 0, banner_layout: {},
+  bonus_mode: 'percent', bonus_percent: 0, bonus_amount: 0, min_amount: 0, max_amount: 0, load_number_from: 1, load_number_to: null, cooldown_hours: 0, banner_layout: {},
   active: true, show_banner: true, selectable: false, sort_order: 0,
 };
-const promotionColumns = 'id,title,description,image_path,image_layout,reward_type,reward_label,rules_text,bonus_percent,bonus_mode,bonus_amount,min_amount,max_amount,cooldown_hours,banner_layout,active,show_banner,selectable,sort_order';
+const promotionColumns = 'id,title,description,image_path,image_layout,reward_type,reward_label,rules_text,bonus_percent,bonus_mode,bonus_amount,min_amount,max_amount,load_number_from,load_number_to,cooldown_hours,banner_layout,active,show_banner,selectable,sort_order';
 const legacyPromotionColumns = 'id,title,description,image_path,image_layout,bonus_percent,active,show_banner,selectable,sort_order';
 function toPromotion(row: {
   id: string; title: string; description?: string | null; image_path?: string | null; image_layout?: string | null;
   reward_type?: string | null; reward_label?: string | null;
   rules_text?: string | null;
   bonus_mode?: string | null; bonus_percent?: number | null; bonus_amount?: number | null; min_amount?: number | null; max_amount?: number | null;
+  load_number_from?: number | null; load_number_to?: number | null;
   cooldown_hours?: number | null; banner_layout?: unknown;
   active?: boolean | null; show_banner?: boolean | null; selectable?: boolean | null; sort_order?: number | null;
 }): Promotion {
@@ -75,6 +77,7 @@ function toPromotion(row: {
     reward_type: row.reward_type === 'free_spins' ? 'free_spins' : 'cash', reward_label: row.reward_label ?? '',
     rules_text: row.rules_text ?? '',
     image_layout: row.image_layout === 'reference' ? 'reference' : 'image', ...asBonusRule(row),
+    load_number_from: Number(row.load_number_from) || 1, load_number_to: row.load_number_to == null ? null : Number(row.load_number_to),
     cooldown_hours: Number(row.cooldown_hours) || 0, banner_layout: row.banner_layout ?? {},
     active: !!row.active, show_banner: !!row.show_banner, selectable: !!row.selectable, sort_order: row.sort_order ?? 0,
   };
@@ -105,7 +108,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
           ? { ...saved, login_image_path: defaults.login_image_path, login_image_layout: 'image' }
           : saved);
       }
-      if (promos.error && /bonus_mode|bonus_amount|min_amount|max_amount|cooldown_hours|banner_layout|reward_type|reward_label|rules_text/i.test(promos.error.message ?? '')) {
+      if (promos.error && /bonus_mode|bonus_amount|min_amount|max_amount|load_number_from|load_number_to|cooldown_hours|banner_layout|reward_type|reward_label|rules_text/i.test(promos.error.message ?? '')) {
         const legacy = await db.from('promotions').select(legacyPromotionColumns).eq('active', true).order('sort_order');
         if (!alive) return;
         if (!legacy.error) setPromotions((legacy.data ?? []).map(row => toPromotion(row)));

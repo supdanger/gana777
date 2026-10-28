@@ -27,6 +27,8 @@ export function PlayerBonuses({ demo, onClaim }: { demo: boolean; onClaim: (id: 
   const [now, setNow] = useState(Date.now);
   const [clockOffset, setClockOffset] = useState(0);
   const [rulesOffer, setRulesOffer] = useState<Promotion | null>(null);
+  const [nextLoadNumber, setNextLoadNumber] = useState<number | null>(demo || !supabase ? 1 : null);
+  const [loadNumberReady, setLoadNumberReady] = useState(demo || !supabase);
   const offers = promotions.filter(offer => offer.selectable && (offer.reward_type === 'free_spins' ? !!offer.reward_label : offer.bonus_mode === 'fixed' ? offer.bonus_amount > 0 : offer.bonus_percent > 0));
   const timedOffers = offers.filter(offer => offer.cooldown_hours > 0);
 
@@ -34,6 +36,21 @@ export function PlayerBonuses({ demo, onClaim }: { demo: boolean; onClaim: (id: 
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
+  useEffect(() => {
+    if (demo || !supabase) { setNextLoadNumber(1); setLoadNumberReady(true); return; }
+    let alive = true;
+    const db = supabase;
+    async function refreshLoadNumber() {
+      const { data, error } = await db.rpc('player_next_deposit_number');
+      if (!alive) return;
+      const number = Number(data);
+      setNextLoadNumber(error || !Number.isInteger(number) || number < 1 ? null : number);
+      setLoadNumberReady(true);
+    }
+    void refreshLoadNumber();
+    window.addEventListener('focus', refreshLoadNumber);
+    return () => { alive = false; window.removeEventListener('focus', refreshLoadNumber); };
+  }, [demo]);
   useEffect(() => {
     if (demo || !supabase || !timedOffers.length) { setReady(true); return; }
     const db = supabase;
@@ -61,10 +78,15 @@ export function PlayerBonuses({ demo, onClaim }: { demo: boolean; onClaim: (id: 
   return <section className="player-bonuses" aria-label="Bonos disponibles">
     {!offers.length ? <div className="player-bonuses-empty"><Gift size={28} /><strong>No hay bonos disponibles</strong><span>Cuando haya nuevas promociones, aparecerán acá.</span></div> : offers.map(offer => {
       const timed = offer.cooldown_hours > 0;
+      const loadEligible = nextLoadNumber !== null && nextLoadNumber >= offer.load_number_from
+        && (offer.load_number_to === null || nextLoadNumber <= offer.load_number_to);
+      const loadWindowText = offer.load_number_to === null
+        ? offer.load_number_from === 1 ? 'todas las cargas' : `desde la carga ${offer.load_number_from}`
+        : offer.load_number_from === offer.load_number_to ? `solo la carga ${offer.load_number_from}` : `de la carga ${offer.load_number_from} a la ${offer.load_number_to}`;
       const status = availability[offer.id];
       const remaining = status?.next_available_at ? Date.parse(status.next_available_at) - now - clockOffset : 0;
       const statusReady = !timed || (ready && (!supabase || demo || !!status));
-      const canClaim = !timed || (statusReady && !status?.awaiting_credit && remaining <= 0);
+      const canClaim = loadEligible && (!timed || (statusReady && !status?.awaiting_credit && remaining <= 0));
       const layout = specialBonusDisplayLayout(normalizeBonusBannerLayout(offer.banner_layout, themeBase(settings)));
       const video = !!offer.image_path && /\.(mp4|webm)$/i.test(offer.image_path);
       const mediaUrl = offer.image_path && video ? supabase?.storage.from('app-assets').getPublicUrl(offer.image_path).data.publicUrl : null;
@@ -77,8 +99,9 @@ export function PlayerBonuses({ demo, onClaim }: { demo: boolean; onClaim: (id: 
             <span className="player-bonus-range">Desde {money(offer.min_amount)} hasta {money(offer.max_amount)}</span>
             <strong className="player-bonus-reward">{reward(offer)}</strong>
           </>}
-          {timed && (!statusReady ? <span className="player-bonus-state">Consultando disponibilidad…</span> : status?.awaiting_credit ? <span className="player-bonus-state">Carga con bono en proceso</span> : remaining > 0 ? <><span className="player-bonus-state">Disponible nuevamente en</span><strong className="player-bonus-countdown" role="timer">{countdown(remaining)}</strong></> : <button type="button" disabled={!canClaim} onClick={() => onClaim(offer.id)}>Obtener</button>)}
-          {!timed && <button type="button" onClick={() => onClaim(offer.id)}>Obtener</button>}
+          {!loadEligible && <span className="player-bonus-state">{!loadNumberReady ? 'Verificando tu número de carga…' : nextLoadNumber === null ? 'No pudimos verificar tu número de carga. Recargá la página.' : `Este bono aplica en ${loadWindowText}. Tu próxima carga es la n.º ${nextLoadNumber}.`}</span>}
+          {loadEligible && timed && (!statusReady ? <span className="player-bonus-state">Consultando disponibilidad…</span> : status?.awaiting_credit ? <span className="player-bonus-state">Carga con bono en proceso</span> : remaining > 0 ? <><span className="player-bonus-state">Disponible nuevamente en</span><strong className="player-bonus-countdown" role="timer">{countdown(remaining)}</strong></> : <button type="button" disabled={!canClaim} onClick={() => onClaim(offer.id)}>Obtener</button>)}
+          {loadEligible && !timed && <button type="button" disabled={!canClaim} onClick={() => onClaim(offer.id)}>Obtener</button>}
         </div>
         <button type="button" className="player-bonus-info-button" aria-label={`Ver información de ${offer.title}`} title={`Información de ${offer.title}`} onClick={() => setRulesOffer(offer)}><Info size={18} aria-hidden="true" /></button>
       </article>;

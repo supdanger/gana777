@@ -17,7 +17,7 @@ import { ApprovedReferralNotice, ReferralBonusHistory, ReferralRewardsAdmin } fr
 import { UserWheel, WheelAdmin } from './wheel';
 
 function missingBonusAmount(error: { message?: string } | null) {
-  return !!error && /bonus_amount|requested_special_bonus_id|bonus_reward_type|bonus_reward_label/i.test(error.message ?? '');
+  return !!error && /bonus_amount|requested_special_bonus_id|bonus_reward_type|bonus_reward_label|bonus_load_number/i.test(error.message ?? '');
 }
 function missingDepositRoute(error: { message?: string } | null) {
   return !!error && /deposit_sac|deposit_phone|deposit_holder/i.test(error.message ?? '');
@@ -877,7 +877,7 @@ function App() {
             <div className="summary-field"><span><Hash size={16} /> ID USER</span></div>
             <div className="summary-field"><span><CalendarClock size={16} /> Fecha y hora</span><strong>{date(selected.created_at)}</strong></div>
             {route ? <div className="summary-field"><span>Cuenta de destino</span><strong>{route}</strong></div> : null}
-            <div className="summary-review-meta"><span>Estado <span className={`badge ${selected.status}`}>{selected.credited_at ? 'Acreditada' : statusLabel[selected.status]}</span></span>{selectedBonus && <span>Bono solicitado: <strong>{selectedBonus}</strong></span>}{selected.requested_special_bonus_id && !selected.bonus_id && selected.status === 'approved' && <span>Bono especial solicitado; {selected.credited_at ? 'acreditada' : 'aprobada'} sin bono</span>}</div>
+          <div className="summary-review-meta"><span>Estado <span className={`badge ${selected.status}`}>{selected.credited_at ? 'Acreditada' : statusLabel[selected.status]}</span></span>{selectedBonus && <span>Bono solicitado: <strong>{selectedBonus}</strong></span>}{selected.bonus_load_number && <span>Carga n.º <strong>{selected.bonus_load_number}</strong></span>}{selected.requested_special_bonus_id && !selected.bonus_id && selected.status === 'approved' && <span>Bono especial solicitado; {selected.credited_at ? 'acreditada' : 'aprobada'} sin bono</span>}</div>
           </div>
           <div className="request-detail">
             <section className="receipt-viewer" aria-label="Comprobante de transferencia">

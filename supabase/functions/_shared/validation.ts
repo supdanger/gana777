@@ -26,6 +26,12 @@ export function parseBonusRulesText(raw: unknown): string {
   }
   return rules;
 }
+export function parseBonusLoadNumber(raw: unknown, label: string): number {
+  if (typeof raw !== 'string' || !/^\d{1,7}$/.test(raw.trim())) throw new InputError(`Ingresá un número válido para ${label.toLowerCase()}.`);
+  const number = Number(raw);
+  if (!Number.isSafeInteger(number) || number < 1 || number > 1000000) throw new InputError(`${label} debe estar entre 1 y 1.000.000.`);
+  return number;
+}
 export function parseBonusPercent(raw: unknown): number {
   if (typeof raw !== 'string') throw new InputError('Ingresá un porcentaje de bono válido.');
   const value = raw.trim();

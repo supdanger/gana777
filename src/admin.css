@@ -297,6 +297,10 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .bonus-create .bonus-mode label.selected { border-color: #0068a5; }
 .bonus-create .bonus-mode input { width: 16px; height: 16px; min-height: 0; margin: 0; accent-color: #38d6ff; }
 .bonus-range { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.bonus-load-window { display: grid; gap: 8px; padding: 12px; border: 1px solid #304a60; border-radius: 10px; background: #0b1b28; }
+.bonus-load-window > strong { color: #fff; font-size: 13px; }
+.bonus-load-window > small { color: var(--panel-muted); font-size: 12px; }
+.bonus-load-window .bonus-range input:disabled { opacity: .55; }
 .bonus-form-actions, .account-form-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .bonus-form-actions button, .account-form-actions button { flex: 1; }
 .bonus-create button, .account-create button { background: #000; color: #fff; border-color: #0068a5; }

@@ -255,18 +255,38 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
   const [preview, setPreview] = useState('');
   const [bonus, setBonus] = useState(initialBonusId);
   const [rawAmount, setRawAmount] = useState('');
+  const [nextLoadNumber, setNextLoadNumber] = useState<number | null>(demo || !supabase ? 1 : null);
+  const [loadNumberReady, setLoadNumberReady] = useState(demo || !supabase);
   useEffect(() => { if (kind === 'withdrawal' && pending) setRawAmount(''); }, [kind, pending]);
   const cameraInput = useRef<HTMLInputElement>(null);
   const galleryInput = useRef<HTMLInputElement>(null);
   const pdfInput = useRef<HTMLInputElement>(null);
   const receiptChangeId = useRef(0);
   useEffect(() => { if (kind === 'deposit') reloadPromotions(); }, [kind, reloadPromotions]);
+  useEffect(() => {
+    if (kind !== 'deposit') return;
+    if (demo || !supabase) { setNextLoadNumber(1); setLoadNumberReady(true); return; }
+    let alive = true;
+    const db = supabase;
+    async function loadNumber() {
+      setLoadNumberReady(false);
+      const { data, error } = await db.rpc('player_next_deposit_number');
+      if (!alive) return;
+      const number = Number(data);
+      setNextLoadNumber(error || !Number.isInteger(number) || number < 1 ? null : number);
+      setLoadNumberReady(true);
+    }
+    void loadNumber();
+    return () => { alive = false; };
+  }, [kind, demo]);
   const typedAmount = kind === 'deposit' ? readMoney(rawAmount) : null;
   const selectedOffer = promotions.find(offer => offer.id === bonus && offer.selectable);
-  const bonusValid = !!selectedOffer && typedAmount !== null && (selectedOffer.reward_type === 'free_spins'
+  const loadNumberEligible = !!selectedOffer && nextLoadNumber !== null && nextLoadNumber >= selectedOffer.load_number_from
+    && (selectedOffer.load_number_to === null || nextLoadNumber <= selectedOffer.load_number_to);
+  const bonusValid = !!selectedOffer && loadNumberEligible && typedAmount !== null && (selectedOffer.reward_type === 'free_spins'
     ? typedAmount >= selectedOffer.min_amount && typedAmount <= selectedOffer.max_amount
     : bonusEnabled(asBonusRule(selectedOffer), typedAmount));
-  const bonusIdForForm = selectedOffer?.cooldown_hours && selectedOffer.cooldown_hours > 0 && selectedOffer.reward_type === 'cash' ? selectedOffer.id : bonusValid ? selectedOffer?.id ?? '' : '';
+  const bonusIdForForm = loadNumberEligible && selectedOffer?.cooldown_hours && selectedOffer.cooldown_hours > 0 && selectedOffer.reward_type === 'cash' ? selectedOffer.id : bonusValid ? selectedOffer?.id ?? '' : '';
   const bonusCredit = bonusValid && selectedOffer?.reward_type !== 'free_spins' && selectedOffer ? creditAmounts(typedAmount!, selectedOffer.bonus_mode === 'percent' ? selectedOffer.bonus_percent : 0, selectedOffer.bonus_mode === 'fixed' ? selectedOffer.bonus_amount : 0).bonus : 0;
   const bonusCreditLabel = bonusCredit > 0 ? `+ ${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 }).format(bonusCredit)}` : '';
   useEffect(() => { if (bonus && !promotions.some(offer => offer.id === bonus && offer.selectable)) setBonus(''); }, [promotions, bonus]);
@@ -322,9 +342,9 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
       <input type="hidden" name="bonus_id" value={bonusIdForForm} />
       {!bank && bankOperation && bankOperation.mode !== 'online' ? <BankPause status={bankOperation} now={now} /> : bank ? <BankTransferCard bank={bank} onCopy={onCopy} /> : <section className="card bank-loading-card" aria-live="polite"><Landmark /><div><strong>Preparando una cuenta</strong><small>Esperá un momento…</small></div></section>}
       <section className="card deposit-amount">
-        {selectedOffer ? <div className="deposit-selected-bonus"><div><strong>{selectedOffer.title}</strong><small>{selectedOffer.reward_type === 'free_spins' ? selectedOffer.reward_label : selectedOffer.bonus_mode === 'fixed' ? `+${money(selectedOffer.bonus_amount)}` : `+${percentText(selectedOffer.bonus_percent)}%`} · desde {money(selectedOffer.min_amount)} hasta {money(selectedOffer.max_amount)}</small></div><button type="button" onClick={() => setBonus('')}>Quitar</button></div> : <div className="deposit-bonus-empty"><span>¿Querés sumar un bono a tu carga?</span>{onBrowseBonuses && <button type="button" onClick={onBrowseBonuses}><Gift size={17} /> Elegir bono</button>}</div>}
+        {selectedOffer ? <div className="deposit-selected-bonus"><div><strong>{selectedOffer.title}</strong><small>{selectedOffer.reward_type === 'free_spins' ? selectedOffer.reward_label : selectedOffer.bonus_mode === 'fixed' ? `+${money(selectedOffer.bonus_amount)}` : `+${percentText(selectedOffer.bonus_percent)}%`} · desde {money(selectedOffer.min_amount)} hasta {money(selectedOffer.max_amount)} · {selectedOffer.load_number_to === null ? selectedOffer.load_number_from === 1 ? 'todas las cargas' : `desde carga ${selectedOffer.load_number_from}` : selectedOffer.load_number_from === selectedOffer.load_number_to ? `solo carga ${selectedOffer.load_number_from}` : `cargas ${selectedOffer.load_number_from}–${selectedOffer.load_number_to}`}</small></div><button type="button" onClick={() => setBonus('')}>Quitar</button></div> : <div className="deposit-bonus-empty"><span>¿Querés sumar un bono a tu carga?</span>{onBrowseBonuses && <button type="button" onClick={onBrowseBonuses}><Gift size={17} /> Elegir bono</button>}</div>}
         {amount}
-        {selectedOffer && typedAmount !== null && !bonusValid && <p className={`deposit-bonus-note${selectedOffer.cooldown_hours > 0 ? ' is-special' : ''}`}>{selectedOffer.reward_type === 'free_spins' ? 'Este monto está fuera del rango del premio. La carga se enviará sin giros gratis.' : selectedOffer.cooldown_hours > 0 ? 'Este bono especial se enviará para revisión. Si el monto no cumple las condiciones, podrán acreditar la carga sin el bono.' : 'Este monto está fuera del rango del bono. La carga se enviará sin bono.'}</p>}
+        {selectedOffer && !bonusValid && (typedAmount !== null || !loadNumberEligible) && <p className={`deposit-bonus-note${selectedOffer.cooldown_hours > 0 ? ' is-special' : ''}`}>{!loadNumberReady ? 'Verificando tu número de carga…' : nextLoadNumber === null ? 'No pudimos verificar tu número de carga. Recargá la página; la carga se enviará sin bono.' : !loadNumberEligible ? `Este bono no aplica a tu carga n.º ${nextLoadNumber}. La carga se enviará sin bono.` : selectedOffer.reward_type === 'free_spins' ? 'Este monto está fuera del rango del premio. La carga se enviará sin giros gratis.' : selectedOffer.cooldown_hours > 0 ? 'Este bono especial se enviará para revisión. Si el monto no cumple las condiciones, podrán acreditar la carga sin el bono.' : 'Este monto está fuera del rango del bono. La carga se enviará sin bono.'}</p>}
       </section>
       <section className="card receipt-card compact-receipt-card">
         <div className="receipt-compact-heading"><span><FileText /></span><strong>Comprobante</strong></div>
@@ -352,7 +372,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     </>}
     {feedback && <div className="request-feedback">{feedback}</div>}
     {depositRetrySeconds > 0 && <div className="deposit-retry-countdown" role="timer" aria-live="polite"><span>Podés volver a enviar en</span><strong>{depositRetryCountdown}</strong></div>}
-    <button className="primary" disabled={busy || demo || withdrawalBlocked || withdrawalPartCount > 100 || pendingDeposit || compressing || depositRetrySeconds > 0 || (kind === 'deposit' && (!file || !bank))} aria-describedby={pendingDeposit ? 'deposit-pending-message' : undefined}>{compressing ? 'Optimizando…' : busy ? kind === 'deposit' ? 'Enviando solicitud…' : 'Enviando…' : depositRetrySeconds > 0 ? `Esperá ${depositRetryCountdown}` : kind === 'deposit' ? 'Solicitar carga' : 'Solicitar retiro'}</button>
+    <button className="primary" disabled={busy || demo || withdrawalBlocked || withdrawalPartCount > 100 || pendingDeposit || compressing || depositRetrySeconds > 0 || (kind === 'deposit' && (!file || !bank || (!!selectedOffer && !loadNumberReady)))} aria-describedby={pendingDeposit ? 'deposit-pending-message' : undefined}>{compressing ? 'Optimizando…' : busy ? kind === 'deposit' ? 'Enviando solicitud…' : 'Enviando…' : depositRetrySeconds > 0 ? `Esperá ${depositRetryCountdown}` : kind === 'deposit' ? 'Solicitar carga' : 'Solicitar retiro'}</button>
     {pendingDeposit && <p id="deposit-pending-message" className="deposit-pending-message" role="status">Tu carga ya está en proceso. Podrás solicitar otra cuando sea aprobada.</p>}
   </form>;
 }

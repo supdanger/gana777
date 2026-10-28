@@ -22,13 +22,16 @@ Deno.serve(async request => {
     const rawBonusId = form.get('bonus_id');
     const bonusId = rawBonusId === null || rawBonusId === '' ? null : parseUuid(rawBonusId);
     if (bonusId) {
-      const lookup = await db.from('promotions').select('reward_type,reward_label,bonus_mode,bonus_percent,bonus_amount,min_amount,max_amount,cooldown_hours').eq('id', bonusId).eq('active', true).eq('selectable', true).maybeSingle();
-      const missingRule = lookup.error && /reward_type|reward_label|bonus_mode|bonus_amount|min_amount|max_amount|cooldown_hours/i.test(lookup.error.message ?? '');
+      const { data: loadNumberData, error: loadNumberError } = await db.rpc('player_next_deposit_number');
+      const nextLoadNumber = Number(loadNumberData);
+      if (loadNumberError || !Number.isInteger(nextLoadNumber) || nextLoadNumber < 1) return json({ error: 'No pudimos verificar tu número de carga. Intentá nuevamente.' }, 503);
+      const lookup = await db.from('promotions').select('reward_type,reward_label,bonus_mode,bonus_percent,bonus_amount,min_amount,max_amount,load_number_from,load_number_to,cooldown_hours').eq('id', bonusId).eq('active', true).eq('selectable', true).maybeSingle();
+      const missingRule = lookup.error && /reward_type|reward_label|bonus_mode|bonus_amount|min_amount|max_amount|load_number_from|load_number_to|cooldown_hours/i.test(lookup.error.message ?? '');
       if (missingRule) {
         const legacy = await db.from('promotions').select('id').eq('id', bonusId).eq('active', true).eq('selectable', true).gt('bonus_percent', 0).maybeSingle();
         if (!legacy.data) return json({ error: 'El bono seleccionado ya no está disponible.' }, 400);
       } else if (lookup.error) return json({ error: 'No pudimos validar el bono. Intentá nuevamente.' }, 503);
-      else if (!lookup.data || (lookup.data.reward_type === 'free_spins'
+      else if (!lookup.data || nextLoadNumber < Number(lookup.data.load_number_from) || lookup.data.load_number_to !== null && nextLoadNumber > Number(lookup.data.load_number_to) || (lookup.data.reward_type === 'free_spins'
         ? typeof lookup.data.reward_label !== 'string' || lookup.data.reward_label.trim().length < 2 || amount < Number(lookup.data.min_amount) || amount > Number(lookup.data.max_amount)
         : Number(lookup.data.cooldown_hours) > 0
           ? lookup.data.bonus_mode !== 'fixed' || Number(lookup.data.bonus_amount) <= 0

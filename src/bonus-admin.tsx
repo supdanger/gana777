@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent, type ChangeEvent, type CSSProperties } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { asBonusRule, percentText, type BonusMode } from '../supabase/functions/_shared/bonus-rule';
-import { assertFormFields, InputError, parseAmount, parseBonusRewardLabel, parseBonusRule, parseBonusRulesText, parseBonusTitle } from '../supabase/functions/_shared/validation';
+import { assertFormFields, InputError, parseAmount, parseBonusLoadNumber, parseBonusRewardLabel, parseBonusRule, parseBonusRulesText, parseBonusTitle } from '../supabase/functions/_shared/validation';
 import { money, supabase } from './lib';
 import { StorageImage, useContent } from './content';
 import { BannerLayoutEditor } from './banner-layout-editor';
@@ -20,6 +20,8 @@ export type BonusOffer = {
   bonus_amount: number;
   min_amount: number;
   max_amount: number;
+  load_number_from: number;
+  load_number_to: number | null;
   cooldown_hours: number;
   image_path: string | null;
   banner_layout: BonusBannerLayout;
@@ -27,7 +29,7 @@ export type BonusOffer = {
   sort_order: number;
 };
 
-const offerColumns = 'id,title,reward_type,reward_label,rules_text,bonus_mode,bonus_percent,bonus_amount,min_amount,max_amount,cooldown_hours,image_path,banner_layout,active,sort_order';
+const offerColumns = 'id,title,reward_type,reward_label,rules_text,bonus_mode,bonus_percent,bonus_amount,min_amount,max_amount,load_number_from,load_number_to,cooldown_hours,image_path,banner_layout,active,sort_order';
 const previewNotice = 'La vista previa no guarda los bonos. Entrá con la cuenta de administrador para que el usuario pueda elegirlos al cargar.';
 
 function persistError(error: { code?: string; message?: string }): Error {
@@ -36,6 +38,7 @@ function persistError(error: { code?: string; message?: string }): Error {
     return new InputError('Falta aplicar la migración 067 de premios de giros gratis en Supabase.');
   }
   if (/rules_text/i.test(message)) return new InputError('Falta aplicar la migración 068 de información de bonos en Supabase.');
+  if (/load_number_from|load_number_to|promotions_load_number_window/i.test(message)) return new InputError('Falta aplicar la migración 069 de disponibilidad por número de carga en Supabase.');
   if (/cooldown_hours|banner_layout|promotions_special_fixed/i.test(message)) {
     return new InputError('Falta aplicar la migración 057 de bonos especiales en Supabase.');
   }
@@ -49,13 +52,14 @@ function persistError(error: { code?: string; message?: string }): Error {
   return error instanceof Error ? error : new Error(message || 'No se pudo guardar el bono.');
 }
 
-function offerFromRow(row: { id: string; title: string; reward_type?: string | null; reward_label?: string | null; rules_text?: string | null; active: boolean; bonus_mode?: string | null; bonus_percent?: number | null; bonus_amount?: number | null; min_amount?: number | null; max_amount?: number | null; cooldown_hours?: number | null; image_path?: string | null; banner_layout?: unknown; sort_order?: number | null }, theme: ReturnType<typeof themeBase>): BonusOffer {
-  return { id: row.id, title: row.title, reward_type: row.reward_type === 'free_spins' ? 'free_spins' : 'cash', reward_label: row.reward_label ?? '', rules_text: row.rules_text ?? '', active: row.active, ...asBonusRule(row), cooldown_hours: Number(row.cooldown_hours) || 0, image_path: row.image_path ?? null, banner_layout: normalizeBonusBannerLayout(row.banner_layout, theme), sort_order: Number(row.sort_order) || 0 };
+function offerFromRow(row: { id: string; title: string; reward_type?: string | null; reward_label?: string | null; rules_text?: string | null; active: boolean; bonus_mode?: string | null; bonus_percent?: number | null; bonus_amount?: number | null; min_amount?: number | null; max_amount?: number | null; load_number_from?: number | null; load_number_to?: number | null; cooldown_hours?: number | null; image_path?: string | null; banner_layout?: unknown; sort_order?: number | null }, theme: ReturnType<typeof themeBase>): BonusOffer {
+  return { id: row.id, title: row.title, reward_type: row.reward_type === 'free_spins' ? 'free_spins' : 'cash', reward_label: row.reward_label ?? '', rules_text: row.rules_text ?? '', active: row.active, ...asBonusRule(row), load_number_from: Number(row.load_number_from) || 1, load_number_to: row.load_number_to == null ? null : Number(row.load_number_to), cooldown_hours: Number(row.cooldown_hours) || 0, image_path: row.image_path ?? null, banner_layout: normalizeBonusBannerLayout(row.banner_layout, theme), sort_order: Number(row.sort_order) || 0 };
 }
 
 function offerDetail(bonus: BonusOffer) {
   const value = bonus.reward_type === 'free_spins' ? bonus.reward_label : bonus.bonus_mode === 'fixed' ? `+${money(bonus.bonus_amount)}` : `+${percentText(bonus.bonus_percent)}%`;
-  return `${value} · de ${money(bonus.min_amount)} a ${money(bonus.max_amount)}${bonus.cooldown_hours ? ` · cada ${bonus.cooldown_hours} h` : ''} · ${bonus.active ? 'Disponible para cargar' : 'Pausado'}`;
+  const loads = bonus.load_number_to === null ? bonus.load_number_from === 1 ? 'todas las cargas' : `desde carga ${bonus.load_number_from}` : bonus.load_number_from === bonus.load_number_to ? `solo carga ${bonus.load_number_from}` : `cargas ${bonus.load_number_from}–${bonus.load_number_to}`;
+  return `${value} · de ${money(bonus.min_amount)} a ${money(bonus.max_amount)} · ${loads}${bonus.cooldown_hours ? ` · cada ${bonus.cooldown_hours} h` : ''} · ${bonus.active ? 'Disponible para cargar' : 'Pausado'}`;
 }
 
 export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolean; action: (task: () => Promise<void>) => Promise<void> }) {
@@ -67,6 +71,9 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
   const [mode, setMode] = useState<BonusMode>('percent');
   const [rewardType, setRewardType] = useState<'cash' | 'free_spins'>('cash');
   const [rewardValue, setRewardValue] = useState('');
+  const [loadNumberFrom, setLoadNumberFrom] = useState('1');
+  const [loadNumberTo, setLoadNumberTo] = useState('');
+  const [allLoads, setAllLoads] = useState(true);
   const [timed, setTimed] = useState(false);
   const [savedLayoutId, setSavedLayoutId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -79,7 +86,9 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
       if (!alive) return;
       setLoading(false);
       if (error) {
-        setLoadError(/rules_text/i.test(error.message ?? '')
+        setLoadError(/load_number_from|load_number_to/i.test(error.message ?? '')
+          ? 'Falta aplicar la migración 069 de disponibilidad por número de carga en Supabase.'
+          : /rules_text/i.test(error.message ?? '')
           ? 'Falta aplicar la migración 068 de información de bonos en Supabase.'
           : /reward_type|reward_label/i.test(error.message ?? '')
           ? 'Falta aplicar la migración 067 de premios de giros gratis en Supabase.'
@@ -98,8 +107,8 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
     const form = new FormData(element);
     await action(async () => {
       assertFormFields(form, timed
-        ? ['title', 'reward_type', 'mode', 'value', 'rules_text', 'min_amount', 'max_amount', 'cooldown_hours']
-        : ['title', 'reward_type', 'mode', 'value', 'rules_text', 'min_amount', 'max_amount']);
+        ? ['title', 'reward_type', 'mode', 'value', 'rules_text', 'min_amount', 'max_amount', 'load_number_from', 'load_number_to', 'all_loads', 'cooldown_hours']
+        : ['title', 'reward_type', 'mode', 'value', 'rules_text', 'min_amount', 'max_amount', 'load_number_from', 'load_number_to', 'all_loads']);
       const selectedRewardType = form.get('reward_type') === 'free_spins' ? 'free_spins' : 'cash';
       const rule = selectedRewardType === 'free_spins'
         ? { title: parseBonusTitle(form.get('title')), bonus_mode: 'fixed' as const, bonus_percent: 0, bonus_amount: 0, min_amount: parseAmount(form.get('min_amount')), max_amount: parseAmount(form.get('max_amount')) }
@@ -107,6 +116,9 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
       if (rule.max_amount < rule.min_amount) throw new InputError('El monto máximo tiene que ser igual o mayor que el mínimo.');
       const rewardLabel = selectedRewardType === 'free_spins' ? parseBonusRewardLabel(form.get('value')) : '';
       const rulesText = parseBonusRulesText(form.get('rules_text'));
+      const loadFrom = parseBonusLoadNumber(form.get('load_number_from'), 'Carga inicial');
+      const loadTo = form.get('all_loads') === 'true' ? null : parseBonusLoadNumber(form.get('load_number_to'), 'Carga final');
+      if (loadTo !== null && loadTo < loadFrom) throw new InputError('La carga final debe ser igual o mayor que la carga inicial.');
       const hours = timed ? Number(form.get('cooldown_hours')) : 0;
       if (timed && (selectedRewardType === 'cash' && rule.bonus_mode !== 'fixed' || !Number.isInteger(hours) || hours < 1 || hours > 720)) throw new InputError('El bono especial debe ser de monto fijo o giros gratis, y esperar entre 1 y 720 horas.');
       const current = bonuses.find(item => item.id === editingId) ?? null;
@@ -114,7 +126,8 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
       const payload = {
         reward_type: selectedRewardType, reward_label: rewardLabel, rules_text: rulesText,
         title: rule.title, bonus_mode: rule.bonus_mode, bonus_percent: rule.bonus_percent,
-        bonus_amount: rule.bonus_amount, min_amount: rule.min_amount, max_amount: rule.max_amount, cooldown_hours: hours,
+        bonus_amount: rule.bonus_amount, min_amount: rule.min_amount, max_amount: rule.max_amount,
+        load_number_from: loadFrom, load_number_to: loadTo, cooldown_hours: hours,
       };
       const query = current
         ? supabase.from('promotions').update(payload).eq('id', current.id).eq('selectable', true)
@@ -127,6 +140,7 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
       setMode('percent');
       setRewardType('cash');
       setRewardValue('');
+      setLoadNumberFrom('1'); setLoadNumberTo(''); setAllLoads(true);
       setTimed(false);
       element.reset();
       reloadPromotions();
@@ -137,6 +151,7 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
     setMode(bonus.bonus_mode);
     setRewardType(bonus.reward_type);
     setRewardValue(bonus.reward_type === 'free_spins' ? bonus.reward_label : String(bonus.bonus_mode === 'fixed' ? bonus.bonus_amount : bonus.bonus_percent));
+    setLoadNumberFrom(String(bonus.load_number_from)); setLoadNumberTo(bonus.load_number_to === null ? '' : String(bonus.load_number_to)); setAllLoads(bonus.load_number_to === null);
     setTimed(bonus.cooldown_hours > 0);
     document.getElementById('bonus-title')?.scrollIntoView({ block: 'start' });
   }
@@ -153,7 +168,7 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
       }
       if (!data?.length) throw new InputError('Ese bono ya no está.');
       setBonuses(old => old.filter(item => item.id !== bonus.id));
-      if (editingId === bonus.id) { setEditingId(null); setMode('percent'); setRewardType('cash'); setTimed(false); }
+      if (editingId === bonus.id) { setEditingId(null); setMode('percent'); setRewardType('cash'); setTimed(false); setLoadNumberFrom('1'); setLoadNumberTo(''); setAllLoads(true); }
       reloadPromotions();
     });
   }
@@ -237,9 +252,18 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
         <label>Monto mínimo<input name="min_amount" inputMode="decimal" maxLength={18} placeholder="10.000" defaultValue={editing ? String(editing.min_amount) : ''} required /></label>
         <label>Monto máximo<input name="max_amount" inputMode="decimal" maxLength={18} placeholder="50.000" defaultValue={editing ? String(editing.max_amount) : ''} required /></label>
       </div>
+      <div className="bonus-load-window">
+        <strong>¿En qué cargas se puede usar?</strong>
+        <small>Se cuentan las cargas aprobadas. Solo la primera: desde 1 hasta 1. Todas: desde 1 y sin límite.</small>
+        <div className="bonus-range">
+          <label>Desde la carga n.º<input name="load_number_from" type="number" min="1" max="1000000" step="1" value={loadNumberFrom} onChange={event => setLoadNumberFrom(event.target.value)} required /></label>
+          <label>Hasta la carga n.º<input name="load_number_to" type="number" min={loadNumberFrom || 1} max="1000000" step="1" value={loadNumberTo} onChange={event => setLoadNumberTo(event.target.value)} disabled={allLoads} required={!allLoads} /></label>
+        </div>
+        <label className="bonus-special-toggle"><input name="all_loads" type="checkbox" value="true" checked={allLoads} onChange={event => setAllLoads(event.target.checked)} />Sin límite: desde la carga inicial en adelante</label>
+      </div>
       <div className="bonus-form-actions">
         <button type="submit" disabled={busy || loading}>{busy ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear bono'}</button>
-        {editing && <button type="button" disabled={busy} onClick={() => { setEditingId(null); setMode('percent'); setRewardType('cash'); setRewardValue(''); setTimed(false); }}>Cancelar</button>}
+        {editing && <button type="button" disabled={busy} onClick={() => { setEditingId(null); setMode('percent'); setRewardType('cash'); setRewardValue(''); setTimed(false); setLoadNumberFrom('1'); setLoadNumberTo(''); setAllLoads(true); }}>Cancelar</button>}
       </div>
     </form>
     {loading ? <p className="empty">Cargando bonos…</p> : loadError ? <p className="empty">{loadError}</p> : !bonuses.length ? <p className="empty">Todavía no hay bonos. Los que crees aparecerán en el apartado Bonos del portal.</p> : <div className="bonus-offers">
