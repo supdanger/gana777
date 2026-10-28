@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { ArrowLeft, Camera, ChevronRight, Disc, Eye, EyeOff, FileText, Images, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserPlus, UserRound, X } from 'lucide-react';
 import { PortalBanners, StorageImage, useContent } from './content';
 import { HomeBonusCarousel } from './special-bonus-carousel';
@@ -109,7 +109,7 @@ function playerGreeting() {
   const hour = Number(greetingHourFormatter.format(new Date()));
   return hour >= 6 && hour < 12 ? 'Buenos días' : hour >= 12 && hour < 20 ? 'Buenas tardes' : 'Buenas noches';
 }
-export function UserHome({ name, navigate, onOpenChat, onClaimSpecialBonus, whatsappUrl, username, casinoUrl, demo = false, userId = '' }: { name: string; navigate: (page: Page) => void; onOpenChat: () => void; onClaimSpecialBonus: (id: string) => void; whatsappUrl?: string | null; username?: string | null; casinoUrl?: string | null; demo?: boolean; userId?: string }) {
+export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, username, casinoUrl, demo = false, userId = '' }: { name: string; navigate: (page: Page) => void; onClaimSpecialBonus: (id: string) => void; whatsappUrl?: string | null; username?: string | null; casinoUrl?: string | null; demo?: boolean; userId?: string }) {
   const { settings, contactAnimations } = useContent();
   const bannerUrl = homeBannerLink(settings, casinoUrl);
   const bannerImage = homeBannerImage(settings, settings.portal_theme);
@@ -198,11 +198,10 @@ export function UserHome({ name, navigate, onOpenChat, onClaimSpecialBonus, what
       {([
         { id: 'deposit', title: 'Cargar', description: 'Hacé tu depósito y subí el comprobante', Icon: Landmark },
         { id: 'withdrawal', title: 'Retiros', description: 'Solicitá tu retiro', Icon: Link2 },
-        { id: 'chat', title: 'Chat', description: 'Hablá con soporte', Icon: MessageCircle },
         { id: 'wheel', title: 'Ruleta', description: 'Girás una vez por día', Icon: Disc },
       ] as const).filter(action => action.id !== 'wheel' || settings.wheel_enabled).map(({ id, title, description, Icon }) => {
         const detail = id === 'wheel' && wheelWait ? wheelWait : description;
-        return <button className="action-card" data-theme-card={id} key={id} onClick={() => id === 'chat' ? onOpenChat() : navigate(id)}><span className="icon-circle"><Icon /></span><span><strong>{title}</strong><small className={id === 'wheel' && wheelWait ? 'wheel-home-wait' : undefined} role={id === 'wheel' && wheelWait ? 'timer' : undefined}>{detail}</small></span><ChevronRight /></button>;
+        return <button className="action-card" data-theme-card={id} key={id} onClick={() => navigate(id)}><span className="icon-circle"><Icon /></span><span><strong>{title}</strong><small className={id === 'wheel' && wheelWait ? 'wheel-home-wait' : undefined} role={id === 'wheel' && wheelWait ? 'timer' : undefined}>{detail}</small></span><ChevronRight /></button>;
       })}
     </div>
     {contacts.length > 0 && <section className="card contacts"><h2>Contactanos</h2><div className="contact-links">{contacts.map(({ name, url, mark, className, animation }) => {
@@ -388,6 +387,23 @@ export function Conversation({ messages, userId, busy, disabled, open, onOpenCha
   const imageInput = useRef<HTMLInputElement>(null);
   const launcher = useRef<HTMLButtonElement>(null);
   const messageInput = useRef<HTMLInputElement>(null);
+  const widget = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const alignToPortal = () => {
+      const portal = widget.current?.closest('.user-app');
+      if (!portal || !widget.current) return;
+      const bounds = portal.getBoundingClientRect();
+      const gap = Math.min(18, Math.max(12, bounds.width * .04));
+      widget.current.style.right = `${Math.max(12, window.innerWidth - bounds.right + gap)}px`;
+    };
+    alignToPortal();
+    const portal = widget.current?.closest('.user-app');
+    const observer = portal && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(alignToPortal) : null;
+    if (portal && observer) observer.observe(portal);
+    window.addEventListener('resize', alignToPortal);
+    window.addEventListener('orientationchange', alignToPortal);
+    return () => { observer?.disconnect(); window.removeEventListener('resize', alignToPortal); window.removeEventListener('orientationchange', alignToPortal); };
+  }, []);
   useEffect(() => { if (open && log.current && nearBottom.current) log.current.scrollTop = log.current.scrollHeight; }, [messages, open]);
   useEffect(() => { if (open) messageInput.current?.focus(); }, [open]);
   useEffect(() => {
@@ -396,7 +412,7 @@ export function Conversation({ messages, userId, busy, disabled, open, onOpenCha
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [open, onOpenChange]);
-  return <div className={`player-chat-widget${open ? ' is-open' : ''}`}>
+  return <div ref={widget} className={`player-chat-widget${open ? ' is-open' : ''}`}>
     <section className="player-chat-panel" role="dialog" aria-label="Chat de soporte Gana777bet.com" hidden={!open}>
       <header className="player-chat-head">
         <img className="player-chat-avatar" src="https://gana777bet.online/support-chat-avatar.webp" alt="" />
