@@ -1485,4 +1485,11 @@ html.player-portal :is(img, video) {
   .player-chat-widget { right: max(12px, env(safe-area-inset-right)); bottom: max(36px, calc(env(safe-area-inset-bottom) + 20px)); }
   .player-chat-panel { right: -2px; bottom: 76px; width: calc(100vw - 24px); height: min(600px, calc(100dvh - 96px)); border-radius: 19px; }
 }
+@media (max-width: 700px) {
+  .player-chat-widget.is-open { inset: 0 !important; right: 0 !important; bottom: 0 !important; width: 100vw; height: 100vh; height: 100dvh; }
+  .player-chat-widget.is-open .player-chat-launcher { display: none; }
+  .player-chat-widget.is-open .player-chat-panel { position: fixed; inset: 0; width: 100vw; max-width: none; height: 100vh; height: 100dvh; max-height: none; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+  .player-chat-widget.is-open .player-chat-head { padding-top: calc(13px + env(safe-area-inset-top)); padding-left: max(15px, env(safe-area-inset-left)); padding-right: max(15px, env(safe-area-inset-right)); }
+  .player-chat-widget.is-open .player-chat-panel .chat-composer { padding-bottom: max(10px, env(safe-area-inset-bottom)); padding-left: max(10px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
+}
 @media (prefers-reduced-motion: reduce) { .player-chat-launcher { transition: none; } }

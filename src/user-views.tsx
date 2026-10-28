@@ -408,6 +408,17 @@ export function Conversation({ messages, userId, busy, disabled, open, onOpenCha
   useEffect(() => { if (open) messageInput.current?.focus(); }, [open]);
   useEffect(() => {
     if (!open) return;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+    };
+  }, [open]);
+  useEffect(() => {
+    if (!open) return;
     const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') { onOpenChange(false); launcher.current?.focus(); } };
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
