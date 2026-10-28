@@ -867,6 +867,9 @@ body:has(.user-app.page-deposit) { min-height: 100svh; }
 /* Inicio compacto: perfil en el encabezado y espaciado según la altura útil. */
 body:has(.user-app.page-home) { min-height: 100svh; }
 .user-app.page-home {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -1023,6 +1026,7 @@ body:has(.user-login) { min-height: 100svh; }
 
 /* Installation stays compact and is never shown in the admin panel. */
 .portal-install { margin: 6px 0; text-align: center; }
+.user-app.page-home .portal-install { margin: auto 0 0; padding-top: clamp(18px, 3svh, 32px); padding-bottom: max(8px, env(safe-area-inset-bottom)); }
 .portal-install .portal-install-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; width: auto; margin: 0; padding: 5px 10px; border: 1px solid #34718c; border-radius: 8px; background: #142b3a; color: #bceaff; font-size: 13px; font-weight: 600; line-height: 1.2; }
 .user-login .portal-install .portal-install-button { background: #000; }
 .portal-install .portal-install-button:focus-visible { outline: 2px solid #45dfff; outline-offset: 2px; }
