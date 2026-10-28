@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent, type ChangeEvent } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { asBonusRule, percentText, type BonusMode } from '../supabase/functions/_shared/bonus-rule';
 import { assertFormFields, InputError, parseBonusRule } from '../supabase/functions/_shared/validation';
 import { money, supabase } from './lib';
@@ -21,9 +22,10 @@ export type BonusOffer = {
   image_path: string | null;
   banner_layout: HomeBannerLayout;
   active: boolean;
+  sort_order: number;
 };
 
-const offerColumns = 'id,title,bonus_mode,bonus_percent,bonus_amount,min_amount,max_amount,cooldown_hours,image_path,banner_layout,active';
+const offerColumns = 'id,title,bonus_mode,bonus_percent,bonus_amount,min_amount,max_amount,cooldown_hours,image_path,banner_layout,active,sort_order';
 const previewNotice = 'La vista previa no guarda los bonos. Entrá con la cuenta de administrador para que el usuario pueda elegirlos al cargar.';
 
 function persistError(error: { code?: string; message?: string }): Error {
@@ -41,8 +43,8 @@ function persistError(error: { code?: string; message?: string }): Error {
   return error instanceof Error ? error : new Error(message || 'No se pudo guardar el bono.');
 }
 
-function offerFromRow(row: { id: string; title: string; active: boolean; bonus_mode?: string | null; bonus_percent?: number | null; bonus_amount?: number | null; min_amount?: number | null; max_amount?: number | null; cooldown_hours?: number | null; image_path?: string | null; banner_layout?: unknown }, theme: ReturnType<typeof themeBase>): BonusOffer {
-  return { id: row.id, title: row.title, active: row.active, ...asBonusRule(row), cooldown_hours: Number(row.cooldown_hours) || 0, image_path: row.image_path ?? null, banner_layout: normalizeBonusBannerLayout(row.banner_layout, theme) };
+function offerFromRow(row: { id: string; title: string; active: boolean; bonus_mode?: string | null; bonus_percent?: number | null; bonus_amount?: number | null; min_amount?: number | null; max_amount?: number | null; cooldown_hours?: number | null; image_path?: string | null; banner_layout?: unknown; sort_order?: number | null }, theme: ReturnType<typeof themeBase>): BonusOffer {
+  return { id: row.id, title: row.title, active: row.active, ...asBonusRule(row), cooldown_hours: Number(row.cooldown_hours) || 0, image_path: row.image_path ?? null, banner_layout: normalizeBonusBannerLayout(row.banner_layout, theme), sort_order: Number(row.sort_order) || 0 };
 }
 
 function offerDetail(bonus: BonusOffer) {
@@ -142,6 +144,21 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
       reloadPromotions();
     });
   }
+  async function moveBonus(index: number, direction: -1 | 1) {
+    const target = index + direction;
+    if (target < 0 || target >= bonuses.length) return;
+    await action(async () => {
+      if (demo || !supabase) throw new InputError(previewNotice);
+      const reordered = [...bonuses];
+      [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
+      const ordered = reordered.map((bonus, sort_order) => ({ ...bonus, sort_order }));
+      const results = await Promise.all(ordered.map(bonus => supabase!.from('promotions').update({ sort_order: bonus.sort_order }).eq('id', bonus.id).eq('selectable', true)));
+      const failed = results.find(result => result.error);
+      if (failed?.error) throw persistError(failed.error);
+      setBonuses(ordered);
+      reloadPromotions();
+    });
+  }
   async function uploadImage(bonus: BonusOffer, event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -151,7 +168,7 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
       const videoExtension = file.type === 'video/mp4' ? 'mp4' : file.type === 'video/webm' ? 'webm' : null;
       if (videoExtension && (!file.size || file.size > 20 * 1024 * 1024)) throw new InputError('El video debe pesar hasta 20 MB.');
       const extension = videoExtension ?? await bannerImageExtension(file);
-      const path = `special-bonuses/${crypto.randomUUID()}.${extension}`;
+      const path = `home-bonus/${crypto.randomUUID()}.${extension}`;
       const uploaded = await supabase.storage.from('app-assets').upload(path, file, { contentType: file.type, upsert: false });
       if (uploaded.error) throw uploaded.error;
       const { error } = await supabase.from('promotions').update({ image_path: path }).eq('id', bonus.id);
@@ -172,7 +189,7 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
   return <section className="bonus-admin" aria-labelledby="bonus-title">
     <h1 id="bonus-title">Bonos</h1>
     <form className="bonus-create" key={editing?.id ?? 'new'} onSubmit={createBonus}>
-      <p>{demo ? previewNotice : editing ? 'Los cambios valen para las próximas cargas. Las que ya se enviaron conservan el valor anterior.' : 'El usuario ve el bono solo si el monto a cargar está entre el mínimo y el máximo.'}</p>
+      <p>{demo ? previewNotice : editing ? 'Los cambios valen para las próximas cargas. Las que ya se enviaron conservan el valor anterior.' : 'Cada bono se mostrará en el apartado Bonos con su propio banner y botón Obtener.'}</p>
       <label>Nombre<input name="title" maxLength={80} placeholder="Ejemplo: Recarga" defaultValue={editing?.title ?? ''} required /></label>
       <label className="bonus-special-toggle"><input type="checkbox" checked={timed} onChange={event => { setTimed(event.target.checked); if (event.target.checked) setMode('fixed'); }} /> Bono especial con tiempo de espera y banner</label>
       <fieldset className="bonus-mode">
@@ -191,21 +208,24 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
         {editing && <button type="button" disabled={busy} onClick={() => { setEditingId(null); setMode('percent'); setTimed(false); }}>Cancelar</button>}
       </div>
     </form>
-    {loading ? <p className="empty">Cargando bonos…</p> : loadError ? <p className="empty">{loadError}</p> : !bonuses.length ? <p className="empty">Todavía no hay bonos. Los que crees van a aparecer cuando el usuario cargue.</p> : <div className="bonus-offers">
-      {bonuses.map(bonus => <article className={`bonus-offer${bonus.active ? '' : ' inactive'}${editing?.id === bonus.id ? ' editing' : ''}`} key={bonus.id}>
+    {loading ? <p className="empty">Cargando bonos…</p> : loadError ? <p className="empty">{loadError}</p> : !bonuses.length ? <p className="empty">Todavía no hay bonos. Los que crees aparecerán en el apartado Bonos del portal.</p> : <div className="bonus-offers">
+      {bonuses.map((bonus, index) => <article className={`bonus-offer${bonus.active ? '' : ' inactive'}${editing?.id === bonus.id ? ' editing' : ''}`} key={bonus.id}>
         <div><strong>{bonus.title}</strong><small>{offerDetail(bonus)}</small></div>
         <div className="bonus-offer-actions">
+          <button type="button" aria-label={`Mover ${bonus.title} hacia arriba`} title="Mover arriba" disabled={busy || demo || index === 0} onClick={() => void moveBonus(index, -1)}><ChevronUp size={16} /></button>
+          <button type="button" aria-label={`Mover ${bonus.title} hacia abajo`} title="Mover abajo" disabled={busy || demo || index === bonuses.length - 1} onClick={() => void moveBonus(index, 1)}><ChevronDown size={16} /></button>
           <button type="button" disabled={busy} onClick={() => beginEdit(bonus)}>Editar</button>
           <button type="button" disabled={busy} onClick={() => void toggleBonus(bonus)}>{bonus.active ? 'Pausar' : 'Activar'}</button>
           <button type="button" disabled={busy} onClick={() => void removeBonus(bonus)}>Eliminar</button>
         </div>
-        {bonus.cooldown_hours > 0 && <div className="special-bonus-image-editor">
-          <label className="portal-extra-add">{bonus.image_path ? 'Cambiar imagen o video' : 'Subir imagen o video'}<input type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" disabled={busy || demo} onChange={event => void uploadImage(bonus, event)} /></label>
+        <div className="special-bonus-image-editor">
+          <label className="portal-extra-add">{bonus.image_path ? 'Cambiar banner (imagen o video)' : 'Subir banner (imagen o video)'}<input type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" disabled={busy || demo} onChange={event => void uploadImage(bonus, event)} /></label>
+          <small className="bonus-banner-guidance">Imagen JPG, PNG o WebP hasta 5 MB; video MP4 o WebM hasta 20 MB. Ajustá tamaño y posición en la vista previa.</small>
           <BannerLayoutEditor label={bonus.title} layout={bonus.banner_layout} previewLayout={specialBonusDisplayLayout(bonus.banner_layout)} defaults={defaultBonusBannerLayout(theme)} heightRange={[25, 80]} disabled={busy || demo} saved={savedLayoutId === bonus.id} onChange={layout => { setBonuses(old => old.map(item => item.id === bonus.id ? { ...item, banner_layout: normalizeBonusBannerLayout(layout, theme) } : item)); setSavedLayoutId(null); }} onSave={() => void saveLayout(bonus)}>
             {bonus.image_path ? /\.(mp4|webm)$/i.test(bonus.image_path) ? <video src={supabase?.storage.from('app-assets').getPublicUrl(bonus.image_path).data.publicUrl} autoPlay muted loop playsInline /> : <StorageImage path={bonus.image_path} alt={bonus.title} /> : <span>{bonus.title} · imagen pendiente</span>}
-            <div className="special-banner-copy"><span className="special-banner-name">{bonus.title}</span><span className="special-banner-minimum">Desde {money(bonus.min_amount)}</span><strong className="special-banner-reward">+{money(bonus.bonus_amount)}</strong><button type="button">Obtener bono</button></div>
+            <div className="special-banner-copy"><span className="special-banner-name">{bonus.title}</span><span className="special-banner-minimum">Desde {money(bonus.min_amount)}</span><strong className="special-banner-reward">{bonus.bonus_mode === 'fixed' ? `+${money(bonus.bonus_amount)}` : `+${percentText(bonus.bonus_percent)}%`}</strong><button type="button">Obtener</button></div>
           </BannerLayoutEditor>
-        </div>}
+        </div>
       </article>)}
     </div>}
   </section>;

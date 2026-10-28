@@ -22,13 +22,15 @@ Deno.serve(async request => {
     const rawBonusId = form.get('bonus_id');
     const bonusId = rawBonusId === null || rawBonusId === '' ? null : parseUuid(rawBonusId);
     if (bonusId) {
-      const lookup = await db.from('promotions').select('bonus_mode,bonus_percent,bonus_amount,min_amount,max_amount').eq('id', bonusId).eq('active', true).eq('selectable', true).maybeSingle();
-      const missingRule = lookup.error && /bonus_mode|bonus_amount|min_amount|max_amount/i.test(lookup.error.message ?? '');
+      const lookup = await db.from('promotions').select('bonus_mode,bonus_percent,bonus_amount,min_amount,max_amount,cooldown_hours').eq('id', bonusId).eq('active', true).eq('selectable', true).maybeSingle();
+      const missingRule = lookup.error && /bonus_mode|bonus_amount|min_amount|max_amount|cooldown_hours/i.test(lookup.error.message ?? '');
       if (missingRule) {
         const legacy = await db.from('promotions').select('id').eq('id', bonusId).eq('active', true).eq('selectable', true).gt('bonus_percent', 0).maybeSingle();
         if (!legacy.data) return json({ error: 'El bono seleccionado ya no está disponible.' }, 400);
       } else if (lookup.error) return json({ error: 'No pudimos validar el bono. Intentá nuevamente.' }, 503);
-      else if (!lookup.data || !bonusEnabled(asBonusRule(lookup.data), amount)) return json({ error: 'El bono no está habilitado para ese monto.' }, 400);
+      else if (!lookup.data || (Number(lookup.data.cooldown_hours) > 0
+        ? lookup.data.bonus_mode !== 'fixed' || Number(lookup.data.bonus_amount) <= 0
+        : !bonusEnabled(asBonusRule(lookup.data), amount))) return json({ error: 'El bono no está habilitado para ese monto.' }, 400);
     }
     const { data: retryAfterData, error: limitError } = await db.rpc('reserve_receipt_upload');
     if (limitError) return json({ error: 'No pudimos procesar el envío.' }, 503);

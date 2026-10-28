@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { ArrowLeft, Camera, ChevronRight, Disc, Eye, EyeOff, FileText, Images, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserPlus, UserRound, X } from 'lucide-react';
+import { ArrowLeft, Camera, ChevronRight, Disc, Eye, EyeOff, FileText, Gift, Images, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserPlus, UserRound, X } from 'lucide-react';
 import { PortalBanners, StorageImage, useContent } from './content';
-import { HomeBonusCarousel } from './special-bonus-carousel';
 import { asBonusRule, bonusEnabled, moneyInputMaxLength, moneyInputPattern, percentText, readMoney } from '../supabase/functions/_shared/bonus-rule';
 import { creditAmounts } from './amounts';
 import { date, money, supabase, type Bank, type BankOperationStatus, type RequestRow, type Message } from './lib';
@@ -92,16 +91,6 @@ function TelegramMark() {
 function InstagramMark() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 7.2A4.8 4.8 0 1 0 16.8 12 4.8 4.8 0 0 0 12 7.2Zm0 7.9A3.1 3.1 0 1 1 15.1 12 3.1 3.1 0 0 1 12 15.1Zm6.2-9.1a1.12 1.12 0 1 1-1.12-1.12A1.12 1.12 0 0 1 18.2 6Zm2.1 1.9a5.9 5.9 0 0 0-1.61-4.18A5.9 5.9 0 0 0 14.5 2.1c-1.63-.09-6.51-.09-8.14 0a5.9 5.9 0 0 0-4.18 1.62A5.9 5.9 0 0 0 .56 7.9c-.09 1.63-.09 6.51 0 8.14a5.9 5.9 0 0 0 1.62 4.18 5.9 5.9 0 0 0 4.18 1.62c1.63.09 6.51.09 8.14 0a5.9 5.9 0 0 0 4.18-1.62 5.9 5.9 0 0 0 1.62-4.18c.09-1.63.09-6.5 0-8.14Zm-2 9.95a3.36 3.36 0 0 1-1.9 1.9c-1.31.52-4.43.4-5.88.4s-4.58.12-5.89-.4a3.36 3.36 0 0 1-1.9-1.9c-.52-1.31-.4-4.43-.4-5.88s-.12-4.58.4-5.89a3.36 3.36 0 0 1 1.9-1.9c1.31-.52 4.43-.4 5.89-.4s4.57-.12 5.88.4a3.36 3.36 0 0 1 1.9 1.9c.52 1.31.4 4.43.4 5.89s.12 4.57-.4 5.88Z" /></svg>;
 }
-function CasinoChip() {
-  return <span className="casino-chip" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" /><circle cx="16" cy="16" r="7" /><path d="M16 3v6M16 23v6M3 16h6M23 16h6M6.8 6.8l4.3 4.3M20.9 20.9l4.3 4.3M25.2 6.8l-4.3 4.3M11.1 20.9l-4.3 4.3" /></svg></span>;
-}
-const bonusBanners: Record<number, string> = {
-  1000: '/preview-assets/bonus-1000.png',
-  2000: '/preview-assets/bonus-2000.png',
-};
-function bonusBanner(promotion: { bonus_mode: string; bonus_amount: number; cooldown_hours?: number }) {
-  return promotion.cooldown_hours ? '' : promotion.bonus_mode === 'fixed' ? bonusBanners[promotion.bonus_amount] ?? '' : '';
-}
 const greetingHourFormatter = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', hourCycle: 'h23',
 });
@@ -109,7 +98,7 @@ function playerGreeting() {
   const hour = Number(greetingHourFormatter.format(new Date()));
   return hour >= 6 && hour < 12 ? 'Buenos días' : hour >= 12 && hour < 20 ? 'Buenas tardes' : 'Buenas noches';
 }
-export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, username, casinoUrl, demo = false, userId = '' }: { name: string; navigate: (page: Page) => void; onClaimSpecialBonus: (id: string) => void; whatsappUrl?: string | null; username?: string | null; casinoUrl?: string | null; demo?: boolean; userId?: string }) {
+export function UserHome({ name, navigate, whatsappUrl, username, casinoUrl, demo = false, userId = '' }: { name: string; navigate: (page: Page) => void; whatsappUrl?: string | null; username?: string | null; casinoUrl?: string | null; demo?: boolean; userId?: string }) {
   const { settings, contactAnimations } = useContent();
   const bannerUrl = homeBannerLink(settings, casinoUrl);
   const bannerImage = homeBannerImage(settings, settings.portal_theme);
@@ -191,7 +180,6 @@ export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, use
   ].filter(contact => contact.visible);
   return <>
     <h1 className="home-welcome">¡{greeting}, <span className="home-welcome-name">{name}!</span></h1>
-    <HomeBonusCarousel onClaim={onClaimSpecialBonus} />
     <PortalBanners place="home" />
     <h2 className="section-title">¿Qué querés hacer?</h2>
     <div className="quick-actions">
@@ -199,6 +187,7 @@ export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, use
       {([
         { id: 'deposit', title: 'Cargar', description: 'Hacé tu depósito y subí el comprobante', Icon: Landmark },
         { id: 'withdrawal', title: 'Retiros', description: 'Solicitá tu retiro', Icon: Link2 },
+        { id: 'bonuses', title: 'Bonos', description: 'Elegí tu bono antes de cargar', Icon: Gift },
         { id: 'wheel', title: 'Ruleta', description: 'Girás una vez por día', Icon: Disc },
       ] as const).filter(action => action.id !== 'wheel' || settings.wheel_enabled).map(({ id, title, description, Icon }) => {
         const detail = id === 'wheel' && wheelWait ? wheelWait : description;
@@ -239,9 +228,9 @@ function BankPause({ status, now }: { status: BankOperationStatus; now: number }
     </div>
   </section>;
 }
-export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, initialSpecialBonusId = '', busy, demo, onSubmit, onCopy, onOpenWithdrawalHistory, feedback }: {
-  kind: 'deposit' | 'withdrawal'; requests: RequestRow[]; bank: Bank | null; bankOperation: BankOperationStatus | null; retryAt?: number; initialSpecialBonusId?: string; busy: boolean; demo: boolean;
-  onSubmit: (event: FormEvent<HTMLFormElement>, receipt?: File | null) => void; onCopy: (text: string, label: string) => void; onOpenWithdrawalHistory: () => void; feedback?: ReactNode;
+export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, initialBonusId = '', busy, demo, onSubmit, onCopy, onOpenWithdrawalHistory, onBrowseBonuses, feedback }: {
+  kind: 'deposit' | 'withdrawal'; requests: RequestRow[]; bank: Bank | null; bankOperation: BankOperationStatus | null; retryAt?: number; initialBonusId?: string; busy: boolean; demo: boolean;
+  onSubmit: (event: FormEvent<HTMLFormElement>, receipt?: File | null) => void; onCopy: (text: string, label: string) => void; onOpenWithdrawalHistory: () => void; onBrowseBonuses?: () => void; feedback?: ReactNode;
 }) {
   const { promotions, reloadPromotions, settings } = useContent();
   const [now, setNow] = useState(Date.now);
@@ -263,7 +252,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
   const [compressing, setCompressing] = useState(false);
   const [receiptError, setReceiptError] = useState('');
   const [preview, setPreview] = useState('');
-  const [bonus, setBonus] = useState(initialSpecialBonusId);
+  const [bonus, setBonus] = useState(initialBonusId);
   const [rawAmount, setRawAmount] = useState('');
   useEffect(() => { if (kind === 'withdrawal' && pending) setRawAmount(''); }, [kind, pending]);
   const cameraInput = useRef<HTMLInputElement>(null);
@@ -272,19 +261,12 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
   const receiptChangeId = useRef(0);
   useEffect(() => { if (kind === 'deposit') reloadPromotions(); }, [kind, reloadPromotions]);
   const typedAmount = kind === 'deposit' ? readMoney(rawAmount) : null;
-  const offers = promotions.filter(p => p.selectable && (p.cooldown_hours === 0 || p.id === initialSpecialBonusId) && (p.bonus_mode === 'fixed' ? p.bonus_amount > 0 : p.bonus_percent > 0));
-  const initialSpecial = offers.find(p => p.id === initialSpecialBonusId);
-  const available = typedAmount === null ? [] : offers.filter(p => bonusEnabled(asBonusRule(p), typedAmount));
-  const bonusColumns = available.length === 0 ? ' single-option' : available.length === 1 ? ' two-options' : '';
-  const selectedOffer = offers.find(offer => offer.id === bonus);
-  const bonusCredit = selectedOffer && typedAmount !== null ? creditAmounts(typedAmount, selectedOffer.bonus_mode === 'percent' ? selectedOffer.bonus_percent : 0, selectedOffer.bonus_mode === 'fixed' ? selectedOffer.bonus_amount : 0).bonus : 0;
+  const selectedOffer = promotions.find(offer => offer.id === bonus && offer.selectable);
+  const bonusValid = !!selectedOffer && typedAmount !== null && bonusEnabled(asBonusRule(selectedOffer), typedAmount);
+  const bonusIdForForm = selectedOffer?.cooldown_hours && selectedOffer.cooldown_hours > 0 ? selectedOffer.id : bonusValid ? selectedOffer?.id ?? '' : '';
+  const bonusCredit = bonusValid && selectedOffer ? creditAmounts(typedAmount!, selectedOffer.bonus_mode === 'percent' ? selectedOffer.bonus_percent : 0, selectedOffer.bonus_mode === 'fixed' ? selectedOffer.bonus_amount : 0).bonus : 0;
   const bonusCreditLabel = bonusCredit > 0 ? `+ ${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 }).format(bonusCredit)}` : '';
-  useEffect(() => {
-    if (!bonus) return;
-    const amount = readMoney(rawAmount);
-    if (!promotions.some(p => p.id === bonus)) return;
-    if (amount !== null && !promotions.some(p => p.id === bonus && p.selectable && bonusEnabled(asBonusRule(p), amount))) setBonus('');
-  }, [promotions, bonus, rawAmount]);
+  useEffect(() => { if (bonus && !promotions.some(offer => offer.id === bonus && offer.selectable)) setBonus(''); }, [promotions, bonus]);
   useEffect(() => {
     if (!file?.type.startsWith('image/')) { setPreview(''); return; }
     const url = URL.createObjectURL(file); setPreview(url);
@@ -334,22 +316,12 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
   return <form className="request-form" onSubmit={event => onSubmit(event, kind === 'deposit' ? file : null)}>
     {kind === 'deposit' ? <>
       <input type="hidden" name="bank_assignment_id" value={bank?.assignment_id ?? ''} />
+      <input type="hidden" name="bonus_id" value={bonusIdForForm} />
       {!bank && bankOperation && bankOperation.mode !== 'online' ? <BankPause status={bankOperation} now={now} /> : bank ? <BankTransferCard bank={bank} onCopy={onCopy} /> : <section className="card bank-loading-card" aria-live="polite"><Landmark /><div><strong>Preparando una cuenta</strong><small>Esperá un momento…</small></div></section>}
       <section className="card deposit-amount">
-        {initialSpecial && <p className="special-bonus-request-note">{bonus === initialSpecial.id ? 'Bono especial seleccionado' : 'Bono especial'}: +{money(initialSpecial.bonus_amount)} desde {money(initialSpecial.min_amount)}. La transferencia debe cumplir ese mínimo.</p>}
+        {selectedOffer ? <div className="deposit-selected-bonus"><div><strong>{selectedOffer.title}</strong><small>{selectedOffer.bonus_mode === 'fixed' ? `+${money(selectedOffer.bonus_amount)}` : `+${percentText(selectedOffer.bonus_percent)}%`} · desde {money(selectedOffer.min_amount)} hasta {money(selectedOffer.max_amount)}</small></div><button type="button" onClick={() => setBonus('')}>Quitar</button></div> : <div className="deposit-bonus-empty"><span>¿Querés sumar un bono a tu carga?</span>{onBrowseBonuses && <button type="button" onClick={onBrowseBonuses}><Gift size={17} /> Elegir bono</button>}</div>}
         {amount}
-        {typedAmount !== null ? <fieldset className="bonus-options">
-          <legend>Bonos disponibles</legend>
-          <div className={`bonus-choices${bonusColumns}`}>
-            <label className={`bonus-choice-art bonus-none-art${bonus === '' ? ' selected' : ''}`}><input type="radio" name="bonus_id" value="" checked={bonus === ''} onChange={() => setBonus('')} /><span className="bonus-none-frame"><img src="/preview-assets/bonus-none.png" alt="Sin bono" /></span></label>
-            {available.map(p => {
-              const reward = p.bonus_mode === 'fixed' ? `+${money(p.bonus_amount)}` : `+${percentText(p.bonus_percent)}%`;
-              const banner = bonusBanner(p);
-              return <label className={`${bonus === p.id ? 'selected' : ''}${banner ? ' bonus-choice-art bonus-reward-art' : ''}`} data-bonus-amount={p.bonus_amount} key={p.id}><input type="radio" name="bonus_id" value={p.id} checked={bonus === p.id} onChange={() => setBonus(p.id)} />{banner ? <span className="bonus-reward-frame"><img src={banner} alt={`Bono ${reward}`} /></span> : <><CasinoChip /><span className="bonus-choice-copy"><small>{p.title}</small><strong>{reward}</strong></span></>}<span className="bonus-selected-mark" aria-hidden="true" /></label>;
-            })}
-          </div>
-          {offers.length > 0 && !available.length && <p className="bonus-range-note">Ningún bono está habilitado para este monto.</p>}
-        </fieldset> : <input type="hidden" name="bonus_id" value="" />}
+        {selectedOffer && typedAmount !== null && !bonusValid && <p className={`deposit-bonus-note${selectedOffer.cooldown_hours > 0 ? ' is-special' : ''}`}>{selectedOffer.cooldown_hours > 0 ? 'Este bono especial se enviará para revisión. Si el monto no cumple las condiciones, podrán acreditar la carga sin el bono.' : 'Este monto está fuera del rango del bono. La carga se enviará sin bono.'}</p>}
       </section>
       <section className="card receipt-card compact-receipt-card">
         <div className="receipt-compact-heading"><span><FileText /></span><strong>Comprobante</strong></div>

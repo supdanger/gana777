@@ -50,6 +50,7 @@ import { AccessSessionError, invokeAdminPlayerAccess } from './admin-player-acce
 import { removeChatImage, uploadChatImage } from './chat-images';
 import { playerSignInEmail } from './players';
 import { PlayerNotifications, unlinkDeviceSubscription } from './notifications';
+import { PlayerBonuses } from './player-bonuses';
 import { ScheduledAnnouncementsAdmin } from './scheduled-announcements-admin';
 import { TelegramAdmin } from './telegram-admin';
 import { ThemesAdmin } from './themes-admin';
@@ -114,7 +115,7 @@ function App() {
   const [thread, setThread] = useState('');
   const [externalThread, setExternalThread] = useState('');
   const [selectedDepositId, setSelectedDepositId] = useState<string | null>(null);
-  const [selectedSpecialBonusId, setSelectedSpecialBonusId] = useState('');
+  const [selectedBonusId, setSelectedBonusId] = useState('');
   const [depositPage, setDepositPage] = useState(0);
   const [depositRows, setDepositRows] = useState<RequestRow[]>([]);
   const [depositTotal, setDepositTotal] = useState(0);
@@ -163,7 +164,7 @@ function App() {
 
   function navigate(nextPage: Page) {
     if (!adminApp && nextPage === 'chat') { setPage('home'); setChatBubbleOpen(true); return; }
-    setPage(nextPage); if (nextPage !== 'deposit') setSelectedSpecialBonusId(''); setSelectedDepositId(null); setApprovedDeposit(null); setError(''); setNotice('');
+    setPage(nextPage); if (nextPage !== 'deposit') setSelectedBonusId(''); setSelectedDepositId(null); setApprovedDeposit(null); setError(''); setNotice('');
   }
   useEffect(() => {
     if (adminApp || !session) return;
@@ -943,9 +944,10 @@ function App() {
       {(adminApp || (page !== 'deposit' && page !== 'withdrawal')) && feedback}
       {!adminApp && page === 'profile' && <UserProfile name={name} busy={busy} logout={() => void logout()} />}
       {!adminApp && !demo && session && <PlayerNotifications key={session.user.id} userId={session.user.id} settingsPage={page === 'home' || page === 'profile' ? page : null} onOpenChat={() => navigate('chat')} onOpenWheel={() => navigate('wheel')} />}
-      {page === 'home' && (adminApp ? <><div className="welcome"><h1><span>Resumen del turno</span></h1></div>{!demo && !staffContext.superAdmin && !sacStation ? <p className="shift-note">Elegí el SAC de esta computadora en Cargas para ver sus pendientes.</p> : null}<div className="stats">{(['deposit', 'withdrawal'] as const).map(kind => <section className="card" key={kind}><p>{kind === 'deposit' ? 'Cargas pendientes' : 'Retiros pendientes'}</p><h1>{kind === 'deposit' ? pendingCounts.deposit : pendingCounts.withdrawal}</h1></section>)}</div>{bonusBoard()}<DepositLeaderboard demo={demo} requests={requests} reloadKey={leaderboardReload} /></> : <UserHome name={name} navigate={navigate} onClaimSpecialBonus={id => { setSelectedSpecialBonusId(id); navigate('deposit'); }} whatsappUrl={demo ? undefined : playerWhatsAppUrl} username={demo ? null : playerUsername} casinoUrl={demo ? null : playerCasinoUrl} demo={demo} userId={demo ? '' : userId} />)}
+      {page === 'home' && (adminApp ? <><div className="welcome"><h1><span>Resumen del turno</span></h1></div>{!demo && !staffContext.superAdmin && !sacStation ? <p className="shift-note">Elegí el SAC de esta computadora en Cargas para ver sus pendientes.</p> : null}<div className="stats">{(['deposit', 'withdrawal'] as const).map(kind => <section className="card" key={kind}><p>{kind === 'deposit' ? 'Cargas pendientes' : 'Retiros pendientes'}</p><h1>{kind === 'deposit' ? pendingCounts.deposit : pendingCounts.withdrawal}</h1></section>)}</div>{bonusBoard()}<DepositLeaderboard demo={demo} requests={requests} reloadKey={leaderboardReload} /></> : <UserHome name={name} navigate={navigate} whatsappUrl={demo ? undefined : playerWhatsAppUrl} username={demo ? null : playerUsername} casinoUrl={demo ? null : playerCasinoUrl} demo={demo} userId={demo ? '' : userId} />)}
+      {!adminApp && page === 'bonuses' && <PlayerBonuses demo={demo} onClaim={id => { setSelectedBonusId(id); navigate('deposit'); }} />}
       {!adminApp && page === 'profile' && <>{history('deposit')}{history('withdrawal')}<ReferralBonusHistory userId={userId} demo={demo} /></>}
-      {(page === 'deposit' || page === 'withdrawal') && !adminApp && <RequestForm key={`${page}:${selectedSpecialBonusId}`} kind={page} requests={requests.filter(r => r.user_id === userId)} bank={bank} bankOperation={bankOperation} retryAt={page === 'deposit' ? depositRetryAt : 0} initialSpecialBonusId={page === 'deposit' ? selectedSpecialBonusId : ''} busy={busy} demo={demo} feedback={feedback} onSubmit={submitRequest} onCopy={(text, label) => void action(async () => { await navigator.clipboard.writeText(text); setNotice(`${label} copiado.`); })} onOpenWithdrawalHistory={() => { setUserHistoryOpen(old => ({ ...old, withdrawal: true })); setProfileHistoryTarget('withdrawal'); navigate('profile'); }} />}
+      {(page === 'deposit' || page === 'withdrawal') && !adminApp && <RequestForm key={`${page}:${selectedBonusId}`} kind={page} requests={requests.filter(r => r.user_id === userId)} bank={bank} bankOperation={bankOperation} retryAt={page === 'deposit' ? depositRetryAt : 0} initialBonusId={page === 'deposit' ? selectedBonusId : ''} busy={busy} demo={demo} feedback={feedback} onSubmit={submitRequest} onCopy={(text, label) => void action(async () => { await navigator.clipboard.writeText(text); setNotice(`${label} copiado.`); })} onBrowseBonuses={() => navigate('bonuses')} onOpenWithdrawalHistory={() => { setUserHistoryOpen(old => ({ ...old, withdrawal: true })); setProfileHistoryTarget('withdrawal'); navigate('profile'); }} />}
       {adminApp && page === 'deposit' && depositList()}
       {adminApp && page === 'withdrawal' && <AdminWithdrawals requests={requests} parts={withdrawalParts} busy={busy} demo={demo} onViewReceipt={part => void viewWithdrawalPart(part)} onPay={async (request, part, file, sourceAccount) => {
         setBusy(true); setError(''); setNotice('');

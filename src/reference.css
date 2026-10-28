@@ -1051,12 +1051,12 @@ body:has(.user-login) { min-height: 100svh; }
 .user-app.page-home:has(.home-link-banner) .action-card small { font-size: 14px; }
 .user-app.page-home .action-card.home-link-banner { grid-column: 1 / -1; }
 .user-app.page-home .action-card[data-theme-card="wheel"] { grid-column: 1 / -1; }
-.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]) { min-height: 84px; gap: 8px; padding: 8px 9px; }
-.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]) .icon-circle { width: 36px; height: 36px; }
-.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]) .icon-circle svg { width: 21px; height: 21px; }
-.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]) strong { font-size: 17px; }
-.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]) small { font-size: 12px; line-height: 1.25; }
-.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]) > svg { width: 15px; height: 15px; }
+.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]):not([data-theme-card="bonuses"]) { min-height: 84px; gap: 8px; padding: 8px 9px; }
+.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]):not([data-theme-card="bonuses"]) .icon-circle { width: 36px; height: 36px; }
+.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]):not([data-theme-card="bonuses"]) .icon-circle svg { width: 21px; height: 21px; }
+.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]):not([data-theme-card="bonuses"]) strong { font-size: 17px; }
+.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]):not([data-theme-card="bonuses"]) small { font-size: 12px; line-height: 1.25; }
+.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]):not([data-theme-card="bonuses"]) > svg { width: 15px; height: 15px; }
 .player-access-open { display: flex; align-items: center; gap: 13px; width: 100%; min-height: 70px; margin: 12px 0 0; padding: 11px 15px; border: 1px solid #315c74; border-radius: 13px; background: #000; color: #eaf8ff; text-align: left; }
 .player-access-open:hover { border-color: #32b7ef; background: #000; }
 .player-access-icon { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 auto; border: 1px solid #227fa7; border-radius: 11px; background: #0a3044; color: #66d8ff; }
@@ -1418,8 +1418,39 @@ body:has(.user-app.theme-halloween), body:has(.user-login.theme-halloween) { bac
 .user-app.theme-card-withdrawal-image .action-card[data-theme-card='withdrawal'] .action-card-image { position: absolute; z-index: 0; left: 50%; top: 50%; display: block; width: 100%; height: 100%; max-width: none; object-fit: cover; transform: translate(-50%, -50%); pointer-events: none; }
 .user-app.theme-card-deposit-image .action-card[data-theme-card='deposit'] .action-card-image { left: calc(50% + var(--theme-deposit-image-x, 0%)); top: calc(50% + var(--theme-deposit-image-y, 0%)); width: var(--theme-deposit-image-width, 100%); height: var(--theme-deposit-image-height, 100%); }
 .user-app.theme-card-withdrawal-image .action-card[data-theme-card='withdrawal'] .action-card-image { left: calc(50% + var(--theme-withdrawal-image-x, 0%)); top: calc(50% + var(--theme-withdrawal-image-y, 0%)); width: var(--theme-withdrawal-image-width, 100%); height: var(--theme-withdrawal-image-height, 100%); }
-.user-app.page-home:has(.home-link-banner):is(.theme-card-deposit-image, .theme-card-withdrawal-image) .action-card:not(.home-link-banner):not([data-theme-card='wheel']),
-.user-app.page-home:not(:has(.home-link-banner)):is(.theme-card-deposit-image, .theme-card-withdrawal-image) .action-card:not([data-theme-card='wheel']) { min-height: 0; aspect-ratio: 12 / 5; padding: 0; }
+.user-app.page-home:has(.home-link-banner):is(.theme-card-deposit-image, .theme-card-withdrawal-image) .action-card:not(.home-link-banner):not([data-theme-card='wheel']):not([data-theme-card='bonuses']),
+.user-app.page-home:not(:has(.home-link-banner)):is(.theme-card-deposit-image, .theme-card-withdrawal-image) .action-card:not([data-theme-card='wheel']):not([data-theme-card='bonuses']) { min-height: 0; aspect-ratio: 12 / 5; padding: 0; }
+.user-app.page-home .action-card[data-theme-card='bonuses'] { border-color: var(--home-accent, #a73ad2); background: color-mix(in srgb, var(--home-accent, #a73ad2) 12%, #08090d); }
+.user-app.page-home .action-card[data-theme-card='bonuses'] .icon-circle { border-color: var(--home-accent, #a73ad2); color: var(--home-accent, #a73ad2); }
+.user-app.page-home .action-card[data-theme-card='bonuses']:hover { border-color: color-mix(in srgb, var(--home-accent, #a73ad2) 80%, white); }
+.user-app.page-home.theme-halloween .action-card[data-theme-card='bonuses'] { border-color: #9b2fbb; background: #100b15ed; }
+.user-app.page-home.theme-halloween .action-card[data-theme-card='bonuses'] .icon-circle { border-color: #b934e5; color: #c443ec; }
+.player-bonuses { display: grid; gap: 14px; }
+.player-bonuses-intro { margin: 0 0 2px; color: var(--home-muted, #b7c3d2); font-size: 14px; line-height: 1.45; }
+.player-bonuses-empty { display: grid; justify-items: center; gap: 9px; padding: 34px 18px; border: 1px solid #573267; border-radius: 14px; background: #100c14; color: #d9c5e5; text-align: center; }
+.player-bonuses-empty strong { color: #fff; }
+.player-bonuses-empty span { color: #b4a4bd; font-size: 13px; }
+.player-bonus-card { position: relative; width: 100%; margin: 0; overflow: hidden; border: 1px solid #71428a; border-radius: var(--home-banner-radius, 12px); background: #100b15; box-shadow: 0 8px 22px #0008; }
+.player-bonus-media { position: absolute; inset: auto; left: calc(50% + var(--home-banner-image-x, 0%)); top: calc(50% + var(--home-banner-image-y, 0%)); width: var(--home-banner-image-width, 100%); height: var(--home-banner-image-height, 100%); max-width: none; object-fit: cover; object-position: center; transform: translate(-50%, -50%); pointer-events: none; }
+.player-bonus-placeholder { display: grid; place-content: center; width: 100%; height: 100%; gap: 8px; background: radial-gradient(circle at 25% 20%, #6f2a84, #130b19 72%); color: #f4e9ff; text-align: center; }
+.player-bonus-copy { position: absolute; z-index: 1; top: 50%; left: clamp(14px, 5%, 28px); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; width: min(48%, 280px); max-height: calc(100% - 12px); overflow: hidden; color: #fff; text-align: left; text-shadow: 0 1px 4px #000, 0 0 10px #000; transform: translateY(-50%); }
+.player-bonus-title { max-width: 100%; overflow: hidden; font-size: clamp(15px, 4vw, 22px); font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }
+.player-bonus-range, .player-bonus-state { color: #fff; font-size: clamp(10px, 2.8vw, 13px); font-weight: 700; line-height: 1.2; }
+.player-bonus-reward, .player-bonus-countdown { color: #ffd16b; font-size: clamp(21px, 6vw, 34px); font-weight: 950; letter-spacing: -.5px; line-height: 1; }
+.player-bonus-copy button { min-height: 34px; margin-top: 4px; padding: 6px 13px; border: 1px solid #ffd16b; border-radius: 9px; background: #ffd16b; color: #17110a; font-size: 12px; font-weight: 850; text-shadow: none; }
+.player-bonus-copy button:hover:not(:disabled) { background: #ffe298; border-color: #ffe298; }
+.player-bonus-copy button:disabled { opacity: .55; cursor: wait; }
+.user-app.page-bonuses .player-bonuses { margin-bottom: 12px; }
+.deposit-selected-bonus, .deposit-bonus-empty { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 12px; padding: 10px 12px; border: 1px solid #573267; border-radius: 10px; background: #17101d; }
+.deposit-selected-bonus > div { min-width: 0; }
+.deposit-selected-bonus strong, .deposit-selected-bonus small { display: block; }
+.deposit-selected-bonus strong { color: #fff; }
+.deposit-selected-bonus small { margin-top: 3px; color: #c3b1cd; font-size: 11px; }
+.deposit-selected-bonus button, .deposit-bonus-empty button { flex: 0 0 auto; min-height: 34px; padding: 6px 10px; border: 1px solid #9141b2; border-radius: 8px; background: #291433; color: #f0caff; font-size: 12px; font-weight: 750; }
+.deposit-bonus-empty { color: #d7c9df; font-size: 13px; }
+.deposit-bonus-empty button { display: inline-flex; align-items: center; gap: 6px; }
+.deposit-bonus-note { margin: 10px 0 0; padding: 9px 11px; border-left: 3px solid #e9a83e; border-radius: 0 8px 8px 0; background: #352811; color: #f8d68e !important; font-size: 12px; line-height: 1.4; }
+.deposit-bonus-note.is-special { border-color: #a942d2; background: #24112f; color: #e7c9f5 !important; }
 .user-app.theme-card-chat-custom .action-card[data-theme-card='chat'] { background: var(--theme-chat-background) !important; border: var(--theme-chat-border-width) solid var(--theme-chat-border) !important; border-radius: var(--theme-chat-radius) !important; }
 .user-app.theme-card-general-custom .card:not(.player-notifications):not(.bonus-banner),
 .user-login.theme-card-general-custom .card { background: var(--theme-general-background) !important; border: var(--theme-general-border-width) solid var(--theme-general-border) !important; border-radius: var(--theme-general-radius) !important; }
