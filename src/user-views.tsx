@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { ArrowLeft, Camera, ChevronRight, Disc, Eye, EyeOff, FileText, Gift, Images, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserPlus, UserRound, X } from 'lucide-react';
 import { PortalBanners, StorageImage, useContent } from './content';
+import { HomeBonusCarousel } from './special-bonus-carousel';
 import { asBonusRule, bonusEnabled, moneyInputMaxLength, moneyInputPattern, percentText, readMoney } from '../supabase/functions/_shared/bonus-rule';
 import { creditAmounts } from './amounts';
 import { date, money, supabase, type Bank, type BankOperationStatus, type RequestRow, type Message } from './lib';
@@ -98,7 +99,7 @@ function playerGreeting() {
   const hour = Number(greetingHourFormatter.format(new Date()));
   return hour >= 6 && hour < 12 ? 'Buenos días' : hour >= 12 && hour < 20 ? 'Buenas tardes' : 'Buenas noches';
 }
-export function UserHome({ name, navigate, whatsappUrl, username, casinoUrl, demo = false, userId = '' }: { name: string; navigate: (page: Page) => void; whatsappUrl?: string | null; username?: string | null; casinoUrl?: string | null; demo?: boolean; userId?: string }) {
+export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, username, casinoUrl, demo = false, userId = '' }: { name: string; navigate: (page: Page) => void; onClaimSpecialBonus: (id: string) => void; whatsappUrl?: string | null; username?: string | null; casinoUrl?: string | null; demo?: boolean; userId?: string }) {
   const { settings, contactAnimations } = useContent();
   const bannerUrl = homeBannerLink(settings, casinoUrl);
   const bannerImage = homeBannerImage(settings, settings.portal_theme);
@@ -180,6 +181,7 @@ export function UserHome({ name, navigate, whatsappUrl, username, casinoUrl, dem
   ].filter(contact => contact.visible);
   return <>
     <h1 className="home-welcome">¡{greeting}, <span className="home-welcome-name">{name}!</span></h1>
+    <HomeBonusCarousel onClaim={onClaimSpecialBonus} />
     <PortalBanners place="home" />
     <h2 className="section-title">¿Qué querés hacer?</h2>
     <div className="quick-actions">
