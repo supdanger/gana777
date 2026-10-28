@@ -85,7 +85,7 @@
     .composer button:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.08)}
     .composer button:disabled{opacity:.55;cursor:wait}
     .composer button svg{width:20px;height:20px}
-    @media(max-width:480px){:host{right:12px!important;bottom:12px!important}.panel{right:-2px;width:calc(100vw - 24px);height:min(580px,calc(100vh - 96px));border-radius:19px}}
+    @media(max-width:480px){:host{right:12px!important;bottom:72px!important}.panel{right:-2px;width:calc(100vw - 24px);height:min(580px,calc(100vh - 156px));height:min(580px,calc(100dvh - 156px));border-radius:19px}}
     @media(prefers-reduced-motion:reduce){.panel.open,.bubble{animation:none}.launcher,.close,.composer textarea,.composer button{transition:none}}
   </style>
   <button class="launcher" type="button" aria-label="Abrir chat de soporte" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.2 11.2a7.9 7.9 0 0 1-.8 3.6 8.1 8.1 0 0 1-7.3 4.5 8 8 0 0 1-3.6-.8L3 20l1.5-5.2a8 8 0 0 1-.8-3.6 8.1 8.1 0 0 1 4.5-7.3 8 8 0 0 1 3.6-.8h.5a8.1 8.1 0 0 1 7.8 7.6z"/><path d="M8.8 11h.01M12 11h.01M15.2 11h.01" stroke-width="2.5"/></svg></button>
