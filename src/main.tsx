@@ -98,6 +98,7 @@ function App() {
   const [loading, setLoading] = useState(!!supabase);
   const [demo, setDemo] = useState(false);
   const [page, setPage] = useState<Page>('home');
+  const [exitConfirmationOpen, setExitConfirmationOpen] = useState(false);
   const [wheelEligible, setWheelEligible] = useState(false);
   const [wheelEligibilityReady, setWheelEligibilityReady] = useState(false);
   const [error, setError] = useState('');
@@ -158,9 +159,14 @@ function App() {
   const [playerUsername, setPlayerUsername] = useState<string | null>(null);
   const [playerCasinoUrl, setPlayerCasinoUrl] = useState<string | null>(null);
   const loginInFlight = useRef(false);
+  const playerHistoryReady = useRef(false);
+  const playerHistoryClosing = useRef(false);
+  const playerPageRef = useRef<Page>('home');
+  const playerPopHandler = useRef<((event: PopStateEvent) => void) | null>(null);
   const depositTrigger = useRef<HTMLButtonElement | null>(null);
   const bankAssignmentId = useRef<string | null>(null);
   const userId = session?.user.id ?? 'demo';
+  useEffect(() => { playerPageRef.current = page; }, [page]);
   useEffect(() => {
     if (adminApp || demo || !session || !supabase) return;
     const client = supabase;
@@ -173,9 +179,52 @@ function App() {
   }, [demo, session?.user.id]);
 
   function navigate(nextPage: Page) {
-    if (!adminApp && nextPage === 'chat') { setPage('home'); setChatBubbleOpen(true); return; }
+    if (!adminApp && nextPage === 'chat') {
+      if ((session || demo) && window.history.state?.gana777Player) window.history.pushState({ gana777Player: true, page: 'home', chatOverlay: true }, '', window.location.href);
+      playerPageRef.current = 'home'; setPage('home'); setChatBubbleOpen(true); return;
+    }
+    if (!adminApp && (session || demo) && window.history.state?.gana777Player) {
+      window.history.pushState({ gana777Player: true, page: nextPage }, '', window.location.href);
+    }
     if (nextPage !== 'home') setChatBubbleOpen(false);
+    playerPageRef.current = nextPage;
     setPage(nextPage); if (nextPage !== 'deposit') setSelectedBonusId(''); setSelectedDepositId(null); setApprovedDeposit(null); setError(''); setNotice('');
+  }
+  useEffect(() => {
+    if (adminApp || (!session && !demo)) return;
+    if (!playerHistoryReady.current) {
+      window.history.replaceState({ gana777Player: true, page: 'home', root: true }, '', window.location.href);
+      window.history.pushState({ gana777Player: true, page: 'home', guard: true }, '', window.location.href);
+      playerHistoryReady.current = true;
+    }
+    playerHistoryClosing.current = false;
+    const handlePopState = (event: PopStateEvent) => {
+      if (playerHistoryClosing.current) return;
+      const state = event.state as { gana777Player?: boolean; page?: Page; root?: boolean; guard?: boolean } | null;
+      if (state?.gana777Player && state.root) {
+        setExitConfirmationOpen(true);
+        window.history.pushState({ gana777Player: true, page: 'home', guard: true }, '', window.location.href);
+        return;
+      }
+      const previousPage = state?.gana777Player && state.page ? state.page : 'home';
+      playerPageRef.current = previousPage;
+      setPage(previousPage);
+      setChatBubbleOpen(false);
+      setSelectedBonusId(''); setSelectedDepositId(null); setApprovedDeposit(null); setError(''); setNotice('');
+    };
+    playerPopHandler.current = handlePopState;
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      if (playerPopHandler.current === handlePopState) playerPopHandler.current = null;
+    };
+  }, [demo, session?.user.id]);
+  function confirmClosePortal() {
+    playerHistoryClosing.current = true;
+    setExitConfirmationOpen(false);
+    if (playerPopHandler.current) window.removeEventListener('popstate', playerPopHandler.current);
+    window.close();
+    window.history.go(-2);
   }
   useEffect(() => {
     if (adminApp || !session) return;
@@ -186,18 +235,18 @@ function App() {
       if (view === 'chat') {
         navigate('home');
         setChatBubbleOpen(true);
-        window.history.replaceState(null, '', window.location.pathname);
+        window.history.replaceState(window.history.state, '', window.location.pathname);
         return;
       }
       if (view === 'wheel' && (!settings.wheel_enabled || wheelEligibilityReady && !wheelEligible)) {
         navigate('home');
-        window.history.replaceState(null, '', window.location.pathname);
+        window.history.replaceState(window.history.state, '', window.location.pathname);
         return;
       }
       if (view === 'deposit' || view === 'profile' || view === 'home' || view === 'wheel') {
         if (view === 'profile') setUserHistoryOpen(old => ({ ...old, withdrawal: true }));
         navigate(view);
-        window.history.replaceState(null, '', window.location.pathname);
+        window.history.replaceState(window.history.state, '', window.location.pathname);
       }
     }
     openNotification(window.location.href);
@@ -1061,6 +1110,13 @@ function App() {
     <UserHeader page={page} navigate={navigate} name={name} />
     {content}
     {session && !demo && page === 'home' && <Conversation messages={messages} userId={userId} busy={busy} disabled={false} open={chatBubbleOpen} onOpenChange={setChatBubbleOpen} onSubmit={sendMessage} />}
+    {exitConfirmationOpen && <div className="player-exit-backdrop" role="presentation" onClick={event => { if (event.target === event.currentTarget) setExitConfirmationOpen(false); }}>
+      <section className="player-exit-dialog" role="dialog" aria-modal="true" aria-labelledby="player-exit-title">
+        <h2 id="player-exit-title">¿Querés cerrar la app?</h2>
+        <p>Podés seguir usando Gana777 o cerrar ahora.</p>
+        <div className="player-exit-actions"><button type="button" autoFocus onClick={() => setExitConfirmationOpen(false)}>Seguir usando</button><button type="button" onClick={confirmClosePortal}>Cerrar</button></div>
+      </section>
+    </div>}
   </div>;
 }
 createRoot(document.getElementById('root')!).render(<React.StrictMode><ContentProvider><App /></ContentProvider></React.StrictMode>);

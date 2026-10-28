@@ -1456,6 +1456,14 @@ body:has(.user-app.theme-halloween), body:has(.user-login.theme-halloween) { bac
 .user-app.page-home .action-card[data-theme-card='bonuses'] { border-color: var(--home-accent, #a73ad2); background: color-mix(in srgb, var(--home-accent, #a73ad2) 12%, #08090d); }
 .user-app.page-home .action-card[data-theme-card='bonuses'] .icon-circle { border-color: var(--home-accent, #a73ad2); color: var(--home-accent, #a73ad2); }
 .user-app.page-home .action-card[data-theme-card='bonuses']:hover { border-color: color-mix(in srgb, var(--home-accent, #a73ad2) 80%, white); }
+.player-exit-backdrop { position: fixed; z-index: 11000; inset: 0; display: grid; place-items: center; padding: 20px; background: #05030bcc; backdrop-filter: blur(5px); }
+.player-exit-dialog { width: min(360px, 100%); padding: 22px; border: 1px solid #a83bdd; border-radius: 18px; background: linear-gradient(145deg, #24112d, #100d16 72%); color: #f8f1fc; box-shadow: 0 20px 70px #000c, 0 0 26px #a32bc233; }
+.player-exit-dialog h2 { margin: 0 0 8px; font-size: 20px; line-height: 1.25; }
+.player-exit-dialog p { margin: 0; color: #c8b7d2; font-size: 14px; line-height: 1.45; }
+.player-exit-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+.player-exit-actions button { min-height: 44px; padding: 9px 12px; border: 1px solid #79309a; border-radius: 11px; background: #180f20; color: #eadcf1; font-size: 14px; font-weight: 750; }
+.player-exit-actions button:first-child { border-color: #a73bd5; background: linear-gradient(110deg, #a72bd4, #60128c); color: #fff; }
+.player-exit-actions button:focus-visible { outline: 2px solid #f0b8ff; outline-offset: 3px; }
 .user-app.page-home.theme-halloween .action-card[data-theme-card='bonuses'] { border-color: #9b2fbb; background: #100b15ed; }
 .user-app.page-home.theme-halloween .action-card[data-theme-card='bonuses'] .icon-circle { border-color: #b934e5; color: #c443ec; }
 .player-bonuses { display: grid; gap: 14px; }
