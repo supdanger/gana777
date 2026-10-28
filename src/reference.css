@@ -689,6 +689,9 @@ a.social.instagram:hover { border-color: #ff8ab8; }
 .user-app.page-deposit .deposit-amount .amount-input > span,
 .user-app.page-deposit .deposit-amount .amount-input input { font-size: 29px; }
 .user-app.page-deposit .deposit-amount .amount-input input { min-width: 0; min-height: 54px; flex: 1 1 auto; }
+.user-app.page-deposit .amount-minimum-note, .user-app.page-deposit .amount-minimum-error { display: block; margin-top: 6px; font-size: 12px; line-height: 1.4; }
+.user-app.page-deposit .amount-minimum-note { color: var(--portal-muted, #a9bfce); }
+.user-app.page-deposit .amount-minimum-error { color: #ff9caa; font-weight: 700; }
 .user-app.page-deposit .deposit-amount .amount-bonus { flex: 0 0 auto; margin-left: 8px; padding-right: 12px; color: #7af6ff; font-size: 18px; font-weight: 800; letter-spacing: -.02em; white-space: nowrap; }
 .user-app.page-deposit .deposit-amount .bonus-options { margin-top: 12px; }
 .user-app.page-deposit .deposit-amount .bonus-options legend { padding-bottom: 7px; }

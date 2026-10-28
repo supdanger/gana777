@@ -14,6 +14,7 @@ Deno.serve(async request => {
     const form = await request.formData();
     assertFormFields(form, ['amount', 'bonus_id', 'bank_assignment_id', 'receipt']);
     const amount = parseAmount(form.get('amount'));
+    if (amount < 1000) return json({ error: 'El monto mínimo para cargar es de $1.000.' }, 400);
     const file = await validateReceipt(form.get('receipt'));
     const bankAssignmentId = parseUuid(form.get('bank_assignment_id'));
     const { data: pendingDeposit, error: pendingError } = await db.from('requests').select('id').eq('user_id', user.id).eq('kind', 'deposit').eq('status', 'pending').limit(1).maybeSingle();
