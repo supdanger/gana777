@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Gift } from 'lucide-react';
-import { normalizeBonusBannerLayout, specialBonusDisplayLayout } from './bonus-banner-layout';
+import { bonusButtonLayoutStyles, normalizeBonusBannerLayout, specialBonusDisplayLayout } from './bonus-banner-layout';
 import { useContent, StorageImage, type Promotion } from './content';
 import { money, supabase } from './lib';
 import { homeBannerLayoutStyles } from './home-banner';
@@ -66,7 +66,7 @@ export function PlayerBonuses({ demo, onClaim }: { demo: boolean; onClaim: (id: 
       const layout = specialBonusDisplayLayout(normalizeBonusBannerLayout(offer.banner_layout, themeBase(settings)));
       const video = !!offer.image_path && /\.(mp4|webm)$/i.test(offer.image_path);
       const mediaUrl = offer.image_path && video ? supabase?.storage.from('app-assets').getPublicUrl(offer.image_path).data.publicUrl : null;
-      return <article className={`player-bonus-card${timed ? ' is-timed' : ''}`} style={homeBannerLayoutStyles(layout) as CSSProperties} key={offer.id} aria-label={offer.title}>
+      return <article className={`player-bonus-card${timed ? ' is-timed' : ''}`} style={{ ...homeBannerLayoutStyles(layout), ...bonusButtonLayoutStyles(normalizeBonusBannerLayout(offer.banner_layout, themeBase(settings))) } as CSSProperties} key={offer.id} aria-label={offer.title}>
         {offer.image_path ? video ? <video className="player-bonus-media" src={mediaUrl ?? undefined} autoPlay muted loop playsInline preload="metadata" aria-label={offer.title} /> : <StorageImage path={offer.image_path} alt={offer.title} className="player-bonus-media" /> : <div className="player-bonus-placeholder" aria-hidden="true" />}
         <div className="player-bonus-copy">
           {!offer.image_path && <>

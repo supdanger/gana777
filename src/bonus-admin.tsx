@@ -1,14 +1,13 @@
-import { useEffect, useState, type FormEvent, type ChangeEvent } from 'react';
+import { useEffect, useState, type FormEvent, type ChangeEvent, type CSSProperties } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { asBonusRule, percentText, type BonusMode } from '../supabase/functions/_shared/bonus-rule';
 import { assertFormFields, InputError, parseBonusRule } from '../supabase/functions/_shared/validation';
 import { money, supabase } from './lib';
 import { StorageImage, useContent } from './content';
 import { BannerLayoutEditor } from './banner-layout-editor';
-import { defaultBonusBannerLayout, normalizeBonusBannerLayout, specialBonusDisplayLayout } from './bonus-banner-layout';
+import { bonusButtonLayoutStyles, defaultBonusBannerLayout, normalizeBonusBannerLayout, specialBonusDisplayLayout, type BonusBannerLayout } from './bonus-banner-layout';
 import { bannerImageExtension } from './home-banner';
 import { themeBase } from './portal-theme-design';
-import type { HomeBannerLayout } from './home-banner';
 
 export type BonusOffer = {
   id: string;
@@ -20,7 +19,7 @@ export type BonusOffer = {
   max_amount: number;
   cooldown_hours: number;
   image_path: string | null;
-  banner_layout: HomeBannerLayout;
+  banner_layout: BonusBannerLayout;
   active: boolean;
   sort_order: number;
 };
@@ -186,6 +185,10 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
       reloadPromotions();
     });
   }
+  function updateButtonLayout(bonus: BonusOffer, key: 'buttonX' | 'buttonY' | 'buttonScale', value: number) {
+    setBonuses(old => old.map(item => item.id === bonus.id ? { ...item, banner_layout: { ...item.banner_layout, [key]: value } } : item));
+    setSavedLayoutId(null);
+  }
   return <section className="bonus-admin" aria-labelledby="bonus-title">
     <h1 id="bonus-title">Bonos</h1>
     <form className="bonus-create" key={editing?.id ?? 'new'} onSubmit={createBonus}>
@@ -221,10 +224,17 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
         <div className="special-bonus-image-editor">
           <label className="portal-extra-add">{bonus.image_path ? 'Cambiar banner (imagen o video)' : 'Subir banner (imagen o video)'}<input type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" disabled={busy || demo} onChange={event => void uploadImage(bonus, event)} /></label>
           <small className="bonus-banner-guidance">Imagen JPG, PNG o WebP hasta 5 MB; tamaño recomendado: 720 × 400 px (relación 9:5). Video MP4 o WebM hasta 20 MB. Ajustá el encuadre en la vista previa.</small>
-          <BannerLayoutEditor label={bonus.title} layout={bonus.banner_layout} previewLayout={{ ...specialBonusDisplayLayout(bonus.banner_layout), height: 55.6 }} defaults={defaultBonusBannerLayout(theme)} heightRange={[55.6, 55.6]} hideHeight disabled={busy || demo} saved={savedLayoutId === bonus.id} onChange={layout => { setBonuses(old => old.map(item => item.id === bonus.id ? { ...item, banner_layout: normalizeBonusBannerLayout(layout, theme) } : item)); setSavedLayoutId(null); }} onSave={() => void saveLayout(bonus)}>
+          <BannerLayoutEditor label={bonus.title} layout={bonus.banner_layout} previewLayout={{ ...specialBonusDisplayLayout(bonus.banner_layout), height: 55.6 }} extraStyle={bonusButtonLayoutStyles(bonus.banner_layout) as CSSProperties} defaults={defaultBonusBannerLayout(theme)} heightRange={[55.6, 55.6]} hideHeight disabled={busy || demo} saved={savedLayoutId === bonus.id} onChange={layout => { setBonuses(old => old.map(item => item.id === bonus.id ? { ...item, banner_layout: normalizeBonusBannerLayout(layout, theme) } : item)); setSavedLayoutId(null); }} onSave={() => void saveLayout(bonus)}>
             {bonus.image_path ? /\.(mp4|webm)$/i.test(bonus.image_path) ? <video src={supabase?.storage.from('app-assets').getPublicUrl(bonus.image_path).data.publicUrl} autoPlay muted loop playsInline /> : <StorageImage path={bonus.image_path} alt={bonus.title} /> : <span>{bonus.title} · imagen pendiente</span>}
             <div className="special-banner-copy">{!bonus.image_path && <><span className="special-banner-name">{bonus.title}</span><span className="special-banner-minimum">Desde {money(bonus.min_amount)}</span><strong className="special-banner-reward">{bonus.bonus_mode === 'fixed' ? `+${money(bonus.bonus_amount)}` : `+${percentText(bonus.bonus_percent)}%`}</strong></>}<button type="button">Obtener</button></div>
           </BannerLayoutEditor>
+          <div className="bonus-button-layout-controls">
+            <h4>Ubicación y tamaño del botón Obtener</h4>
+            <label>Posición horizontal <output>{bonus.banner_layout.buttonX}%</output><input type="range" min="-45" max="45" step="1" value={bonus.banner_layout.buttonX} disabled={busy || demo} onChange={event => updateButtonLayout(bonus, 'buttonX', Number(event.target.value))} /></label>
+            <label>Posición vertical (+ arriba) <output>{bonus.banner_layout.buttonY}%</output><input type="range" min="-30" max="30" step="1" value={bonus.banner_layout.buttonY} disabled={busy || demo} onChange={event => updateButtonLayout(bonus, 'buttonY', Number(event.target.value))} /></label>
+            <label>Tamaño del botón <output>{bonus.banner_layout.buttonScale}%</output><input type="range" min="70" max="150" step="1" value={bonus.banner_layout.buttonScale} disabled={busy || demo} onChange={event => updateButtonLayout(bonus, 'buttonScale', Number(event.target.value))} /></label>
+            <button type="button" disabled={busy || demo} onClick={() => { setBonuses(old => old.map(item => item.id === bonus.id ? { ...item, banner_layout: { ...item.banner_layout, buttonX: 0, buttonY: 0, buttonScale: 100 } } : item)); setSavedLayoutId(null); }}>Centrar y restablecer tamaño</button>
+          </div>
         </div>
       </article>)}
     </div>}
