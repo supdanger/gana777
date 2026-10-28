@@ -1,6 +1,5 @@
 import { authenticate, cors, HttpError, json, serverClient } from '../_shared/http.ts';
 import { canonicalFootprint } from '../_shared/footprint.ts';
-import { pickExistingIpAccount, type IpAccountRow } from '../_shared/ip-account.ts';
 import { requestIp } from '../_shared/ip.ts';
 
 function record(value: unknown): Record<string, unknown> {
@@ -86,29 +85,6 @@ async function footprintDigest(value: unknown) {
   const canonical = canonicalFootprint(value);
   return canonical ? digest(`${pepper()}:footprint:${canonical}`) : null;
 }
-async function requestsForFootprint(server: ReturnType<typeof serverClient>, footprintHash: string): Promise<IpAccountRow[]> {
-  const flagged = await server.from('player_access_requests').select('id,username,status,player_user_id,ip_blocked').eq('footprint_hash', footprintHash).in('status', ['pending', 'approved']).order('created_at', { ascending: false }).limit(100);
-  if (!flagged.error) return (flagged.data ?? []) as IpAccountRow[];
-  if (missingIpColumn(flagged.error)) return [];
-  throw new HttpError(500, 'No pudimos verificar el celular.');
-}
-async function requestsForDevice(server: ReturnType<typeof serverClient>, deviceHash: string): Promise<IpAccountRow[]> {
-  const flagged = await server.from('player_access_requests').select('id,username,status,player_user_id,ip_blocked').eq('device_hash', deviceHash).in('status', ['pending', 'approved']).order('created_at', { ascending: false }).limit(100);
-  if (!flagged.error) return (flagged.data ?? []) as IpAccountRow[];
-  if (!missingIpColumn(flagged.error)) throw new HttpError(500, 'No pudimos verificar la conexión.');
-  const plain = await server.from('player_access_requests').select('id,username,status,player_user_id').eq('device_hash', deviceHash).in('status', ['pending', 'approved']).order('created_at', { ascending: false }).limit(100);
-  if (plain.error) throw new HttpError(500, 'No pudimos verificar la conexión.');
-  return (plain.data ?? []) as IpAccountRow[];
-}
-async function rememberDuplicateAttempt(server: ReturnType<typeof serverClient>, requestId: string, attemptedUsername: string) {
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const { count } = await server.from('player_access_messages').select('id', { count: 'exact', head: true }).eq('request_id', requestId).eq('sender', 'admin').gte('created_at', since).ilike('body', 'Intento de otra cuenta%');
-  if ((count ?? 0) >= 3) return;
-  await server.from('player_access_messages').insert({
-    request_id: requestId, sender: 'admin',
-    body: `Intento de otra cuenta desde el mismo celular. Pidieron @${attemptedUsername}. Este celular ya tiene un usuario, así que no se crea otra cuenta.`,
-  });
-}
 async function publicThread(server: ReturnType<typeof serverClient>, tokenValue: unknown) {
   const token = bearerToken(tokenValue);
   const tokenHash = await digest(`${pepper()}:${token}`);
@@ -120,7 +96,7 @@ async function publicThread(server: ReturnType<typeof serverClient>, tokenValue:
   }
   if (flagged.error) throw new HttpError(500, 'No pudimos cargar la solicitud.');
   if (!flagged.data) throw new HttpError(404, 'No encontramos la solicitud. Revisá que estés en el mismo dispositivo donde la creaste.');
-  return flagged.data;
+  return { ...flagged.data, ip_blocked: false };
 }
 async function messagesFor(server: ReturnType<typeof serverClient>, requestId: string) {
   const { data, error } = await server.from('player_access_messages').select('id,sender,body,created_at').eq('request_id', requestId).order('created_at').order('id');
@@ -170,53 +146,31 @@ Deno.serve(async request => {
       const { data: existingToken } = await server.from('player_access_requests').select('id,username,status').eq('access_token_hash', tokenHash).maybeSingle();
       if (existingToken) return json({ ok: true, request_id: existingToken.id, username: existingToken.username, status: existingToken.status, resumed: true });
 
-      const { data: openDevice } = await server.from('player_access_requests').select('id').eq('device_hash', deviceHash).eq('status', 'pending').maybeSingle();
-      if (openDevice) throw new HttpError(409, 'Este celular ya tiene una solicitud abierta. Retomá la conversación guardada en este navegador.');
+      const { data: deviceRequests, error: deviceCheckError } = await server.from('player_access_requests')
+        .select('id,username,status,player_user_id').eq('device_hash', deviceHash).in('status', ['pending', 'approved']).limit(100);
+      if (deviceCheckError) throw new HttpError(500, 'No pudimos verificar este dispositivo.');
+      const deviceAccount = (deviceRequests ?? []).find(row =>
+        row.status === 'pending' || (row.status === 'approved' && Boolean(row.player_user_id))
+      );
+      if (deviceAccount) throw new HttpError(409, 'Este dispositivo ya tiene una solicitud o un usuario asociado. Contactá a soporte si necesitás ayuda.');
 
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { count, error: deviceRateError } = await server.from('player_access_requests').select('id', { count: 'exact', head: true }).eq('device_hash', deviceHash).gte('created_at', since);
       if (deviceRateError) throw new HttpError(500, 'No pudimos verificar la solicitud.');
       if ((count ?? 0) >= 5) throw new HttpError(429, 'Ya se enviaron varias solicitudes desde este celular. Esperá 24 horas o escribinos por el canal de soporte.');
       const footprintHash = await footprintDigest(payload.footprint);
-      if (footprintHash) {
-        const footprintRate = await server.from('player_access_requests').select('id', { count: 'exact', head: true }).eq('footprint_hash', footprintHash).gte('created_at', since);
-        if (footprintRate.error && !missingIpColumn(footprintRate.error)) throw new HttpError(500, 'No pudimos verificar la solicitud.');
-        if (!footprintRate.error && (footprintRate.count ?? 0) >= 5) throw new HttpError(429, 'Ya se enviaron varias solicitudes desde este celular. Esperá 24 horas o escribinos por el canal de soporte.');
-      }
 
       const referralCode = typeof payload.referral_code === 'string' ? payload.referral_code.trim().replace(/^@/, '').toLowerCase() : '';
       if (referralCode.length > 32 || (referralCode && !/^[a-z0-9][a-z0-9._-]{2,31}$/.test(referralCode))) throw new HttpError(400, 'El código recomendado no tiene un formato válido.');
-
-      const match = pickExistingIpAccount(await requestsForDevice(server, deviceHash))
-        ?? (footprintHash ? pickExistingIpAccount(await requestsForFootprint(server, footprintHash)) : null);
-      if (match) {
-        const duplicateMessage = 'Este celular ya tiene un usuario. No se crea otra cuenta desde el mismo teléfono.';
-        const inserted = await server.from('player_access_requests').insert({
-          username: playerUsername, referral_code: referralCode || null,
-          access_token_hash: tokenHash, device_hash: deviceHash, ip_hash: ipHash, footprint_hash: footprintHash,
-          origin_ip: originIp, origin_user_agent: originUserAgent,
-          ip_blocked: true, matched_request_id: match.id, matched_username: match.username,
-        }).select('id,username,status').single();
-        if (inserted.error || !inserted.data) {
-          if (missingIpColumn(inserted.error) || inserted.error?.code === '23505') {
-            await rememberDuplicateAttempt(server, match.id, playerUsername);
-            throw new HttpError(409, duplicateMessage);
-          }
-          throw new HttpError(500, 'No pudimos guardar la solicitud. Volvé a intentarlo más tarde.');
-        }
-        const { error: messageError } = await server.from('player_access_messages').insert([
-          { request_id: inserted.data.id, sender: 'player', body: `Solicito la creación del usuario @${playerUsername}.` },
-          { request_id: inserted.data.id, sender: 'admin', body: 'Este celular ya tiene un usuario. No creamos otra cuenta desde el mismo teléfono.' },
-        ]);
-        if (messageError) { await server.from('player_access_requests').delete().eq('id', inserted.data.id); throw new HttpError(500, 'No pudimos registrar el aviso.'); }
-        return json({ ok: true, request_id: inserted.data.id, username: inserted.data.username, status: inserted.data.status, resumed: false, ip_blocked: true });
-      }
 
       const { data: created, error } = await server.from('player_access_requests').insert({
         username: playerUsername, referral_code: referralCode || null,
         access_token_hash: tokenHash, device_hash: deviceHash, ip_hash: ipHash, footprint_hash: footprintHash,
         origin_ip: originIp, origin_user_agent: originUserAgent,
       }).select('id,username,status,created_at,updated_at').single();
+      if (error?.code === '23505' && error.message.includes('player_access_requests_one_open_device')) {
+        throw new HttpError(409, 'Este dispositivo ya tiene una solicitud abierta. Retomá la conversación guardada en este navegador.');
+      }
       if (error || !created) throw new HttpError(500, 'No pudimos guardar la solicitud. Volvé a intentarlo más tarde.');
       const { error: messageError } = await server.from('player_access_messages').insert({ request_id: created.id, sender: 'player', body: `Solicito la creación del usuario @${playerUsername}.` });
       if (messageError) { await server.from('player_access_requests').delete().eq('id', created.id); throw new HttpError(500, 'No pudimos iniciar la conversación.'); }
@@ -254,6 +208,24 @@ Deno.serve(async request => {
         : flaggedInbox;
       if (listed.error) throw new HttpError(500, 'No pudimos cargar las solicitudes. Aplicá la migración 031.');
       const data = listed.data ?? [];
+      const requestIds = data.map(row => row.id);
+      const { data: requestIps, error: requestIpsError } = requestIds.length
+        ? await server.from('player_access_requests').select('id,ip_hash').in('id', requestIds)
+        : { data: [], error: null };
+      if (requestIpsError) throw new HttpError(500, 'No pudimos revisar las coincidencias de red.');
+      const activeIpHashes = [...new Set((requestIps ?? []).flatMap(row => row.ip_hash ? [row.ip_hash] : []))];
+      const { data: ipPeers, error: ipPeersError } = activeIpHashes.length
+        ? await server.from('player_access_requests').select('id,username,status,ip_hash').in('ip_hash', activeIpHashes).in('status', ['pending', 'approved']).limit(2000)
+        : { data: [], error: null };
+      if (ipPeersError) throw new HttpError(500, 'No pudimos revisar las coincidencias de red.');
+      const ipPeersByHash = new Map<string, string[]>();
+      for (const peer of ipPeers ?? []) {
+        if (!peer.ip_hash || !peer.username) continue;
+        const peers = ipPeersByHash.get(peer.ip_hash) ?? [];
+        peers.push(peer.username);
+        ipPeersByHash.set(peer.ip_hash, peers);
+      }
+      const ipHashByRequest = new Map((requestIps ?? []).map(row => [row.id, row.ip_hash]));
       const approvedIds = (data ?? []).flatMap(row => row.status === 'approved' && row.player_user_id ? [row.player_user_id] : []);
       const { data: links, error: linksError } = approvedIds.length
         ? await server.from('player_casino_links').select('user_id').in('user_id', approvedIds)
@@ -264,6 +236,7 @@ Deno.serve(async request => {
         id: row.id, username: row.username, referral_code: row.referral_code, status: row.status,
         player_user_id: row.player_user_id, created_at: row.created_at, updated_at: row.updated_at,
         has_personal_url: Boolean(row.player_user_id && linkedIds.has(row.player_user_id)),
+        same_ip_usernames: (ipPeersByHash.get(ipHashByRequest.get(row.id) ?? '') ?? []).filter(name => name !== row.username),
         ip_blocked: Boolean('ip_blocked' in row && row.ip_blocked),
         matched_username: 'matched_username' in row && typeof row.matched_username === 'string' ? row.matched_username : null,
         latest_message: row.last_sender ? { sender: row.last_sender, body: typeof row.last_body === 'string' && /Contraseña(?: temporal)?:/.test(row.last_body) ? 'Credenciales enviadas' : row.last_body, created_at: row.last_message_at } : null,
@@ -297,13 +270,9 @@ Deno.serve(async request => {
     if (action === 'admin-close') {
       const { server } = await requireStaff(request);
       const requestId = id(payload.request_id);
-      const current = await server.from('player_access_requests').select('ip_blocked').eq('id', requestId).eq('status', 'pending').maybeSingle();
-      if (current.error && !missingIpColumn(current.error)) throw new HttpError(500, 'No pudimos cerrar la solicitud. Actualizá la bandeja.');
       const { data, error } = await server.from('player_access_requests').update({ status: 'rejected', updated_at: new Date().toISOString() }).eq('id', requestId).eq('status', 'pending').select('id').maybeSingle();
       if (error || !data) throw new HttpError(409, 'No pudimos cerrar la solicitud. Actualizá la bandeja.');
-      const closing = !current.error && current.data?.ip_blocked
-        ? 'Este celular ya tiene un usuario. No se crea otra cuenta desde el mismo teléfono.'
-        : 'Por ahora no pudimos aprobar esta solicitud. Si necesitás ayuda, respondé por los canales de contacto disponibles.';
+      const closing = 'Por ahora no pudimos aprobar esta solicitud. Si necesitás ayuda, respondé por los canales de contacto disponibles.';
       const { error: messageError } = await server.from('player_access_messages').insert({ request_id: requestId, sender: 'admin', body: closing });
       if (messageError) throw new HttpError(500, 'La solicitud se cerró, pero no se pudo enviar el aviso.');
       return json({ ok: true });
@@ -312,15 +281,14 @@ Deno.serve(async request => {
     if (action === 'admin-approve') {
       const { server, user } = await requireStaff(request);
       const requestId = id(payload.request_id);
-      const { data: accessRequest, error: requestError } = await server.from('player_access_requests').select('id,username,referral_code,referrer_user_id,status').eq('id', requestId).maybeSingle();
+      const { data: accessRequest, error: requestError } = await server.from('player_access_requests').select('id,username,referral_code,referrer_user_id,status,device_hash').eq('id', requestId).maybeSingle();
       if (requestError || !accessRequest) throw new HttpError(404, 'La solicitud ya no existe.');
       if (accessRequest.status !== 'pending') throw new HttpError(409, 'La solicitud ya fue procesada.');
-      const blocked = await server.from('player_access_requests').select('ip_blocked,matched_username').eq('id', requestId).maybeSingle();
-      if (blocked.error && !missingIpColumn(blocked.error)) throw new HttpError(500, 'No pudimos verificar si esta IP ya tiene un usuario.');
-      if (blocked.data?.ip_blocked) {
-        const existingName = typeof blocked.data.matched_username === 'string' ? blocked.data.matched_username : 'existente';
-        throw new HttpError(409, `Este celular ya tiene el usuario @${existingName}. No se crea otra cuenta.`);
-      }
+      const { data: existingDeviceAccount, error: deviceAccountError } = await server.from('player_access_requests')
+        .select('id').eq('device_hash', accessRequest.device_hash).eq('status', 'approved')
+        .not('player_user_id', 'is', null).neq('id', requestId).limit(1).maybeSingle();
+      if (deviceAccountError) throw new HttpError(500, 'No pudimos verificar si este dispositivo ya tiene un usuario.');
+      if (existingDeviceAccount) throw new HttpError(409, 'Este dispositivo ya tiene un usuario asociado.');
       const playerUsername = username(accessRequest.username);
       const playerPassword = password(payload.password);
       const playerCasinoUrl = casinoUrl(payload.casino_url);
@@ -359,6 +327,7 @@ Deno.serve(async request => {
         if (finalized?.status === 'approved' && finalized.player_user_id === created.user.id) return json({ ok: true });
         await server.auth.admin.deleteUser(created.user.id);
         if (finalizeError.code === '40001') throw new HttpError(409, 'La solicitud cambió mientras se procesaba. Actualizá la bandeja antes de reintentar.');
+        if (finalizeError.code === '23505' && finalizeError.message.includes('player_access_requests_one_approved_device')) throw new HttpError(409, 'Este dispositivo ya tiene un usuario asociado.');
         if (finalizeError.code === '23505') throw new HttpError(409, 'La URL personal ya se asignó a otro jugador.');
         throw new HttpError(500, 'No pudimos completar el acceso, el enlace o enviar las credenciales. No se creó la cuenta.');
       }

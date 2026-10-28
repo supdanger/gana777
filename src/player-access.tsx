@@ -7,7 +7,7 @@ import { supabase } from './lib';
 const tokenKey = 'gana777-access-chat-token';
 const deviceKey = 'gana777-access-device-id';
 type AccessMessage = { id: number; sender: 'player' | 'admin'; body: string; created_at: string };
-type AccessThread = { id: string; username: string; referral_code: string | null; status: 'pending' | 'approved' | 'rejected'; created_at: string; updated_at: string; ip_blocked?: boolean };
+type AccessThread = { id: string; username: string; referral_code: string | null; status: 'pending' | 'approved' | 'rejected'; created_at: string; updated_at: string };
 const casinoNames = ['jackpot', 'ruleta', 'fichero', 'triple777', 'dama', 'blackjack', 'comodin', 'fortuna', 'ganador', 'poker'];
 
 function secret() {
@@ -118,10 +118,10 @@ export function PlayerAccessRequest({ onBack }: { onBack: () => void }) {
       <label className="player-access-honeypot" aria-hidden="true">Dejar vacío<input name="website" tabIndex={-1} autoComplete="off" /></label>
       {error && <p className="player-access-error" role="alert">{error}</p>}
       <button className="primary" disabled={busy || restoring}>{restoring ? 'Cargando…' : busy ? 'Enviando solicitud…' : 'Solicitar usuario'}</button>
-      <small>La cuenta se crea manualmente después de revisar tu solicitud. No envíes documentos ni datos bancarios por este chat.</small>
-      <small>Cada celular puede pedir una sola cuenta, aunque se borren los datos del navegador. Otra persona en la misma WiFi puede pedir la suya.</small>
+      <small>No envíes documentos ni datos bancarios por este chat.</small>
+      <small>La cuenta se crea manualmente después de revisar tu solicitud. Podés solicitar usuarios desde una red compartida.</small>
     </form> : <>
-      <div className={`player-access-status${thread.ip_blocked ? ' is-blocked' : ''}`}><strong>{thread.ip_blocked ? 'No se crea otra cuenta' : thread.status === 'approved' ? 'Usuario creado' : thread.status === 'rejected' ? 'Solicitud cerrada' : 'Esperando al equipo'}</strong><span>{thread.ip_blocked ? 'Este celular ya tiene un usuario.' : `Usuario solicitado: @${thread.username}`}</span>{thread.referral_code && !thread.ip_blocked && <small>Recomendado por @{thread.referral_code}</small>}</div>
+      <div className="player-access-status"><strong>{thread.status === 'approved' ? 'Usuario creado' : thread.status === 'rejected' ? 'Solicitud cerrada' : 'Esperando al equipo'}</strong><span>Usuario solicitado: @{thread.username}</span>{thread.referral_code && <small>Recomendado por @{thread.referral_code}</small>}</div>
       <div className="player-access-messages" ref={log} role="log" aria-live="polite">
         {messages.map(message => <article key={message.id} className={`player-access-message${message.sender === 'admin' ? ' from-admin' : ''}`}><p>{message.body}</p><time>{new Intl.DateTimeFormat('es', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(message.created_at))}</time></article>)}
       </div>

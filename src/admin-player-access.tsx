@@ -7,9 +7,9 @@ import { safeHttpsLink } from './security';
 
 type AccessMessage = { id: number; sender: 'player' | 'admin'; body: string; created_at: string };
 type Latest = { sender: string; body: string; created_at: string } | null;
-type AccessRequest = { id: string; username: string; referral_code: string | null; status: 'pending' | 'approved' | 'rejected'; player_user_id: string | null; has_personal_url: boolean; created_at: string; updated_at: string; latest_message: Latest; ip_blocked?: boolean; matched_username?: string | null };
+type AccessRequest = { id: string; username: string; referral_code: string | null; status: 'pending' | 'approved' | 'rejected'; player_user_id: string | null; has_personal_url: boolean; created_at: string; updated_at: string; latest_message: Latest; same_ip_usernames?: string[] };
 function requestPreview(item: AccessRequest) {
-  if (item.ip_blocked) return `Celular repetido · ya tiene @${item.matched_username || 'otro usuario'}`;
+  if (item.same_ip_usernames?.length) return `Aviso interno · misma IP que @${item.same_ip_usernames.join(', @')}`;
   if (item.status === 'approved' && !item.has_personal_url) return 'Acceso creado · falta enlace personal';
   return item.latest_message?.body ?? (item.referral_code ? `Recomendado por @${item.referral_code}` : 'Sin código de recomendado');
 }
@@ -28,7 +28,6 @@ export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy:
   const log = useRef<HTMLDivElement>(null);
   const selected = requests.find(item => item.id === selectedId) ?? null;
   const needsSetup = (item: AccessRequest) => item.status === 'pending' || (item.status === 'approved' && !item.has_personal_url);
-  const repeatedIp = requests.filter(item => item.ip_blocked && item.status === 'pending').length;
   const visible = requests.filter(item => (filter === 'all' || needsSetup(item)) && (!search.trim() || `${item.username} ${item.referral_code ?? ''} ${item.latest_message?.body ?? ''}`.toLocaleLowerCase('es').includes(search.trim().replace(/^@/, '').toLocaleLowerCase('es'))));
 
   async function refresh() {
@@ -107,19 +106,19 @@ export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy:
     {threadError && <p className="access-admin-error" role="alert">{threadError}</p>}
     <div className="access-admin-layout">
       <aside className="access-admin-inbox">
-        <strong>Solicitudes de acceso</strong><small>{requests.filter(needsSetup).length} por configurar{repeatedIp ? <> · <em className="is-alert">{repeatedIp} {repeatedIp === 1 ? 'aviso de celular repetido' : 'avisos de celular repetido'}</em></> : null} · {requests.length} recientes</small>
+        <strong>Solicitudes de acceso</strong><small>{requests.filter(needsSetup).length} por configurar · {requests.length} recientes</small>
         <label><span className="sr-only">Buscar solicitud</span><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar usuario o recomendado" /></label>
         <div className="access-admin-filters"><button type="button" className={filter === 'setup' ? 'active' : ''} onClick={() => setFilter('setup')}>Por configurar</button><button type="button" className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>Todas</button></div>
         <div className="access-admin-list">
-          {loading ? <p>Cargando solicitudes…</p> : visible.length ? visible.map(item => <button type="button" key={item.id} className={`access-admin-item${selectedId === item.id ? ' active' : ''}${item.ip_blocked ? ' is-ip-blocked' : ''}`} onClick={() => { setSelectedId(item.id); setThreadError(''); }}><span className="access-admin-avatar"><UserRound size={18} /></span><span><strong>@{item.username}</strong><small>{requestPreview(item)}</small></span><time>{date(item.created_at)}</time><i className={`access-status-dot ${item.ip_blocked ? 'pending' : item.status}`} /></button>) : <p>{search ? 'No encontramos coincidencias.' : filter === 'setup' ? 'No hay accesos por configurar.' : 'Todavía no hay solicitudes.'}</p>}
+          {loading ? <p>Cargando solicitudes…</p> : visible.length ? visible.map(item => <button type="button" key={item.id} className={`access-admin-item${selectedId === item.id ? ' active' : ''}`} onClick={() => { setSelectedId(item.id); setThreadError(''); }}><span className="access-admin-avatar"><UserRound size={18} /></span><span><strong>@{item.username}</strong><small>{requestPreview(item)}</small></span><time>{date(item.created_at)}</time><i className={`access-status-dot ${item.status}`} /></button>) : <p>{search ? 'No encontramos coincidencias.' : filter === 'setup' ? 'No hay accesos por configurar.' : 'Todavía no hay solicitudes.'}</p>}
         </div>
       </aside>
       <section className="access-admin-thread" aria-label={selected ? `Solicitud de ${selected.username}` : 'Elegí una solicitud'}>
         {selected ? <>
-          <header><span className="access-admin-avatar"><UserRound size={20} /></span><div><strong>@{selected.username}</strong><small>{selected.referral_code ? `Código recomendado: @${selected.referral_code}` : 'Sin código de recomendado'} · {selected.ip_blocked ? 'Celular repetido' : selected.status === 'pending' ? 'Pendiente' : selected.status === 'approved' ? 'Acceso creado' : 'Cerrada'}</small></div></header>
-          {selected.ip_blocked && <p className="access-admin-ip-alert" role="alert">Este celular ya coincide con @{selected.matched_username || 'otro usuario'}. No se crea otra cuenta, aunque hayan borrado el navegador.</p>}
+          <header><span className="access-admin-avatar"><UserRound size={20} /></span><div><strong>@{selected.username}</strong><small>{selected.referral_code ? `Código recomendado: @${selected.referral_code}` : 'Sin código de recomendado'} · {selected.status === 'pending' ? 'Pendiente' : selected.status === 'approved' ? 'Acceso creado' : 'Cerrada'}</small></div></header>
+          {!!selected.same_ip_usernames?.length && <p className="access-admin-network-note" role="status">Aviso interno: comparte IP con @{selected.same_ip_usernames.join(', @')}. Esto no impide crear el usuario.</p>}
           <div className="access-admin-messages" ref={log} role="log" aria-live="polite">{messages.map(message => <article key={message.id} className={`access-admin-message${message.sender === 'admin' ? ' from-admin' : ''}`}><p>{message.body}</p><time>{date(message.created_at)}</time></article>)}</div>
-          {(selected.status === 'pending' || selected.status === 'approved') && !selected.ip_blocked && <>
+          {(selected.status === 'pending' || selected.status === 'approved') && <>
             <form className="access-admin-create" onSubmit={event => void saveAccess(event)}>
               <div className="access-admin-create-heading"><div><h3>{selected.status === 'approved' ? 'Configurar acceso existente' : 'Crear acceso'}</h3><p>{selected.status === 'approved' ? 'Asigná el enlace personal y establecé la contraseña definitiva. Los nuevos datos llegarán al chat del portal.' : 'El usuario solicitado ya está cargado. Definí su contraseña y el enlace que abrirá el banner del casino.'}</p></div></div>
               <div className="access-admin-create-fields">
@@ -130,8 +129,7 @@ export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy:
               <div className="access-admin-actions"><button type="submit" disabled={busy || demo || !password || !casinoUrl}><CheckCircle2 size={16} />{selected.status === 'approved' ? 'Guardar y enviar nuevos datos' : 'Crear usuario y enviar acceso'}</button>{selected.status === 'pending' && <button type="button" disabled={busy || demo} onClick={() => void closeRequest()}><XCircle size={16} />Cerrar solicitud</button>}</div>
             </form>
           </>}
-          {selected.status === 'pending' && <form className="access-admin-composer" onSubmit={event => void send(event)}><input name="message" maxLength={2000} placeholder={selected.ip_blocked ? 'Avisale que use la cuenta que ya tiene…' : 'Respondé antes de crear el acceso…'} aria-label="Responder al solicitante" required /><button type="submit" disabled={busy || demo} aria-label="Enviar respuesta"><Send size={17} /></button></form>}
-          {selected.ip_blocked && selected.status === 'pending' && <div className="access-admin-actions access-admin-ip-actions"><button type="button" disabled={busy || demo} onClick={() => void closeRequest()}><XCircle size={16} />Cerrar aviso</button></div>}
+          {selected.status === 'pending' && <form className="access-admin-composer" onSubmit={event => void send(event)}><input name="message" maxLength={2000} placeholder="Respondé antes de crear el acceso…" aria-label="Responder al solicitante" required /><button type="submit" disabled={busy || demo} aria-label="Enviar respuesta"><Send size={17} /></button></form>}
         </> : <div className="access-admin-empty"><MessageCircle size={34} /><h2>Elegí una solicitud</h2><p>Vas a poder responder y crear el usuario desde esta conversación.</p></div>}
       </section>
     </div>

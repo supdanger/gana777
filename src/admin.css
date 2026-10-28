@@ -1484,6 +1484,7 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .access-admin-ip-alert { margin: 0; padding: 12px 15px; border-bottom: 1px solid #8a4454; background: #301820; color: #ffd5dc; font-size: 12px; line-height: 1.45; }
 .access-admin-ip-actions { padding: 0 14px 14px; }
 .access-admin-ip-actions button { border-color: #684452; background: #291923; color: #f0bbcc; }
+.access-admin-network-note { margin: 0; padding: 11px 15px; border-bottom: 1px solid #6a5525; background: #2b2414; color: #f4d58b; font-size: 12px; line-height: 1.45; }
 .access-admin-avatar { display: grid; place-items: center; width: 35px; height: 35px; border: 1px solid #38799c; border-radius: 50%; background: #103049; color: #85dfff; }
 .access-admin-item > span:nth-child(2) { display: grid; min-width: 0; gap: 3px; }
 .access-admin-item strong { color: #eff6fa; font-size: 12px; }
