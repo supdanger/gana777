@@ -102,6 +102,7 @@ function App() {
   const [withdrawalParts, setWithdrawalParts] = useState<WithdrawalPart[]>([]);
   const [partPreview, setPartPreview] = useState<{ key: string; url: string } | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [chatBubbleOpen, setChatBubbleOpen] = useState(false);
   const [chatInbox, setChatInbox] = useState<ChatInboxRow[]>([]);
   const [chatReload, setChatReload] = useState(0);
   const [externalChatInbox, setExternalChatInbox] = useState<ExternalChatInboxRow[]>([]);
@@ -160,19 +161,28 @@ function App() {
     return () => { alive = false; };
   }, [demo, session?.user.id]);
 
-  function navigate(nextPage: Page) { setPage(nextPage); if (nextPage !== 'deposit') setSelectedSpecialBonusId(''); setSelectedDepositId(null); setApprovedDeposit(null); setError(''); setNotice(''); }
+  function navigate(nextPage: Page) {
+    if (!adminApp && nextPage === 'chat') { setPage('home'); setChatBubbleOpen(true); return; }
+    setPage(nextPage); if (nextPage !== 'deposit') setSelectedSpecialBonusId(''); setSelectedDepositId(null); setApprovedDeposit(null); setError(''); setNotice('');
+  }
   useEffect(() => {
     if (adminApp || !session) return;
     function openNotification(url: string) {
       const target = new URL(url, window.location.origin);
       if (target.origin !== window.location.origin) return;
       const view = target.searchParams.get('view');
+      if (view === 'chat') {
+        navigate('home');
+        setChatBubbleOpen(true);
+        window.history.replaceState(null, '', window.location.pathname);
+        return;
+      }
       if (view === 'wheel' && !settings.wheel_enabled) {
         navigate('home');
         window.history.replaceState(null, '', window.location.pathname);
         return;
       }
-      if (view === 'chat' || view === 'deposit' || view === 'profile' || view === 'home' || view === 'wheel') {
+      if (view === 'deposit' || view === 'profile' || view === 'home' || view === 'wheel') {
         if (view === 'profile') setUserHistoryOpen(old => ({ ...old, withdrawal: true }));
         navigate(view);
         window.history.replaceState(null, '', window.location.pathname);
@@ -259,7 +269,7 @@ function App() {
     });
     const { data } = supabase.auth.onAuthStateChange((_event, value) => {
       setSession(value);
-      if (!value) { setRequests([]); setWithdrawalParts([]); setPartPreview(null); setMessages([]); setChatInbox([]); setExternalChatInbox([]); setExternalThread(''); setAccessRequestCount(0); setBank(null); setBankOperation(null); setIsAdmin(false); setStaffReady(false); setStaffContext({ superAdmin: false, username: '', displayName: '', avatarPath: null, permissions: noStaffPermissions }); setThread(''); setDepositRows([]); setDepositTotal(0); setDepositPage(0); setPendingDepositCount(0); setPendingWithdrawalCount(0); setLiveBonusCounters([]); setPlayerWhatsAppUrl(null); setPlayerUsername(null); setPlayerCasinoUrl(null); }
+      if (!value) { setChatBubbleOpen(false); setRequests([]); setWithdrawalParts([]); setPartPreview(null); setMessages([]); setChatInbox([]); setExternalChatInbox([]); setExternalThread(''); setAccessRequestCount(0); setBank(null); setBankOperation(null); setIsAdmin(false); setStaffReady(false); setStaffContext({ superAdmin: false, username: '', displayName: '', avatarPath: null, permissions: noStaffPermissions }); setThread(''); setDepositRows([]); setDepositTotal(0); setDepositPage(0); setPendingDepositCount(0); setPendingWithdrawalCount(0); setLiveBonusCounters([]); setPlayerWhatsAppUrl(null); setPlayerUsername(null); setPlayerCasinoUrl(null); }
     });
     return () => { alive = false; data.subscription.unsubscribe(); };
   }, []);
@@ -933,7 +943,7 @@ function App() {
       {(adminApp || (page !== 'deposit' && page !== 'withdrawal')) && feedback}
       {!adminApp && page === 'profile' && <UserProfile name={name} busy={busy} logout={() => void logout()} />}
       {!adminApp && !demo && session && <PlayerNotifications key={session.user.id} userId={session.user.id} settingsPage={page === 'home' || page === 'profile' ? page : null} onOpenChat={() => navigate('chat')} onOpenWheel={() => navigate('wheel')} />}
-      {page === 'home' && (adminApp ? <><div className="welcome"><h1><span>Resumen del turno</span></h1></div>{!demo && !staffContext.superAdmin && !sacStation ? <p className="shift-note">Elegí el SAC de esta computadora en Cargas para ver sus pendientes.</p> : null}<div className="stats">{(['deposit', 'withdrawal'] as const).map(kind => <section className="card" key={kind}><p>{kind === 'deposit' ? 'Cargas pendientes' : 'Retiros pendientes'}</p><h1>{kind === 'deposit' ? pendingCounts.deposit : pendingCounts.withdrawal}</h1></section>)}</div>{bonusBoard()}<DepositLeaderboard demo={demo} requests={requests} reloadKey={leaderboardReload} /></> : <UserHome name={name} navigate={navigate} onClaimSpecialBonus={id => { setSelectedSpecialBonusId(id); navigate('deposit'); }} whatsappUrl={demo ? undefined : playerWhatsAppUrl} username={demo ? null : playerUsername} casinoUrl={demo ? null : playerCasinoUrl} demo={demo} userId={demo ? '' : userId} />)}
+      {page === 'home' && (adminApp ? <><div className="welcome"><h1><span>Resumen del turno</span></h1></div>{!demo && !staffContext.superAdmin && !sacStation ? <p className="shift-note">Elegí el SAC de esta computadora en Cargas para ver sus pendientes.</p> : null}<div className="stats">{(['deposit', 'withdrawal'] as const).map(kind => <section className="card" key={kind}><p>{kind === 'deposit' ? 'Cargas pendientes' : 'Retiros pendientes'}</p><h1>{kind === 'deposit' ? pendingCounts.deposit : pendingCounts.withdrawal}</h1></section>)}</div>{bonusBoard()}<DepositLeaderboard demo={demo} requests={requests} reloadKey={leaderboardReload} /></> : <UserHome name={name} navigate={navigate} onOpenChat={() => setChatBubbleOpen(true)} onClaimSpecialBonus={id => { setSelectedSpecialBonusId(id); navigate('deposit'); }} whatsappUrl={demo ? undefined : playerWhatsAppUrl} username={demo ? null : playerUsername} casinoUrl={demo ? null : playerCasinoUrl} demo={demo} userId={demo ? '' : userId} />)}
       {!adminApp && page === 'profile' && <>{history('deposit')}{history('withdrawal')}<ReferralBonusHistory userId={userId} demo={demo} /></>}
       {(page === 'deposit' || page === 'withdrawal') && !adminApp && <RequestForm key={`${page}:${selectedSpecialBonusId}`} kind={page} requests={requests.filter(r => r.user_id === userId)} bank={bank} bankOperation={bankOperation} retryAt={page === 'deposit' ? depositRetryAt : 0} initialSpecialBonusId={page === 'deposit' ? selectedSpecialBonusId : ''} busy={busy} demo={demo} feedback={feedback} onSubmit={submitRequest} onCopy={(text, label) => void action(async () => { await navigator.clipboard.writeText(text); setNotice(`${label} copiado.`); })} onOpenWithdrawalHistory={() => { setUserHistoryOpen(old => ({ ...old, withdrawal: true })); setProfileHistoryTarget('withdrawal'); navigate('profile'); }} />}
       {adminApp && page === 'deposit' && depositList()}
@@ -998,7 +1008,7 @@ function App() {
       {adminApp && page === 'accounts' && <AccountAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'shifts' && <ShiftAdmin demo={demo} busy={busy} action={action} station={sacStation} onStation={chooseSac} />}
       {adminApp && page === 'cashiers' && staffContext.superAdmin && <CashierAdmin demo={demo} busy={busy} action={action} />}
-      {page === 'chat' && (adminApp ? <AdminChat inbox={chatInbox} selectedId={thread} demo={demo} onSelect={setThread} onChanged={() => setChatReload(value => value + 1)} /> : <Conversation messages={messages} userId={userId} busy={busy} disabled={demo} onSubmit={sendMessage} />)}
+      {adminApp && page === 'chat' && <AdminChat inbox={chatInbox} selectedId={thread} demo={demo} onSelect={setThread} onChanged={() => setChatReload(value => value + 1)} />}
       {adminApp && page === 'external-chat' && <AdminExternalChat inbox={externalChatInbox} selectedId={externalThread} demo={demo} onSelect={setExternalThread} onChanged={() => setExternalChatReload(value => value + 1)} />}
       {adminApp && page === 'external-chat-admin' && (demo || staffContext.superAdmin) && <AdminExternalChatSettings demo={demo} />}
     </>}
@@ -1009,6 +1019,7 @@ function App() {
   return <div className={`app user-app page-${page} ${surface.className}`} style={surface.style}>
     <UserHeader page={page} navigate={navigate} name={name} />
     {content}
+    {session && !demo && <Conversation messages={messages} userId={userId} busy={busy} disabled={false} open={chatBubbleOpen} onOpenChange={setChatBubbleOpen} onSubmit={sendMessage} />}
   </div>;
 }
 createRoot(document.getElementById('root')!).render(<React.StrictMode><ContentProvider><App /></ContentProvider></React.StrictMode>);

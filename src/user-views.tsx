@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { ArrowLeft, Camera, ChevronRight, Disc, Eye, EyeOff, FileText, Images, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserPlus, UserRound } from 'lucide-react';
+import { ArrowLeft, Camera, ChevronRight, Disc, Eye, EyeOff, FileText, Images, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserPlus, UserRound, X } from 'lucide-react';
 import { PortalBanners, StorageImage, useContent } from './content';
 import { HomeBonusCarousel } from './special-bonus-carousel';
 import { asBonusRule, bonusEnabled, moneyInputMaxLength, moneyInputPattern, percentText, readMoney } from '../supabase/functions/_shared/bonus-rule';
@@ -19,7 +19,6 @@ import { headerLogoLayout, headerLogoStyle } from './header-logo-layout';
 import { themeBase, themeSurface } from './portal-theme-design';
 import { referralShareMessage, referralShareUrl } from './share-referral';
 import referralBannerUrl from './assets/home-casino-banner-v3.png';
-import supportAvatarUrl from './assets/support-panda-avatar.png';
 import { PlayerAccessRequest } from './player-access';
 import { ChatImage, useChatImagePreview } from './chat-images';
 
@@ -110,7 +109,7 @@ function playerGreeting() {
   const hour = Number(greetingHourFormatter.format(new Date()));
   return hour >= 6 && hour < 12 ? 'Buenos días' : hour >= 12 && hour < 20 ? 'Buenas tardes' : 'Buenas noches';
 }
-export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, username, casinoUrl, demo = false, userId = '' }: { name: string; navigate: (page: Page) => void; onClaimSpecialBonus: (id: string) => void; whatsappUrl?: string | null; username?: string | null; casinoUrl?: string | null; demo?: boolean; userId?: string }) {
+export function UserHome({ name, navigate, onOpenChat, onClaimSpecialBonus, whatsappUrl, username, casinoUrl, demo = false, userId = '' }: { name: string; navigate: (page: Page) => void; onOpenChat: () => void; onClaimSpecialBonus: (id: string) => void; whatsappUrl?: string | null; username?: string | null; casinoUrl?: string | null; demo?: boolean; userId?: string }) {
   const { settings, contactAnimations } = useContent();
   const bannerUrl = homeBannerLink(settings, casinoUrl);
   const bannerImage = homeBannerImage(settings, settings.portal_theme);
@@ -203,7 +202,7 @@ export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, use
         { id: 'wheel', title: 'Ruleta', description: 'Girás una vez por día', Icon: Disc },
       ] as const).filter(action => action.id !== 'wheel' || settings.wheel_enabled).map(({ id, title, description, Icon }) => {
         const detail = id === 'wheel' && wheelWait ? wheelWait : description;
-        return <button className="action-card" data-theme-card={id} key={id} onClick={() => navigate(id)}><span className="icon-circle"><Icon /></span><span><strong>{title}</strong><small className={id === 'wheel' && wheelWait ? 'wheel-home-wait' : undefined} role={id === 'wheel' && wheelWait ? 'timer' : undefined}>{detail}</small></span><ChevronRight /></button>;
+        return <button className="action-card" data-theme-card={id} key={id} onClick={() => id === 'chat' ? onOpenChat() : navigate(id)}><span className="icon-circle"><Icon /></span><span><strong>{title}</strong><small className={id === 'wheel' && wheelWait ? 'wheel-home-wait' : undefined} role={id === 'wheel' && wheelWait ? 'timer' : undefined}>{detail}</small></span><ChevronRight /></button>;
       })}
     </div>
     {contacts.length > 0 && <section className="card contacts"><h2>Contactanos</h2><div className="contact-links">{contacts.map(({ name, url, mark, className, animation }) => {
@@ -381,20 +380,36 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     {pendingDeposit && <p id="deposit-pending-message" className="deposit-pending-message" role="status">Tu carga ya está en proceso. Podrás solicitar otra cuando sea aprobada o rechazada.</p>}
   </form>;
 }
-export function Conversation({ messages, userId, busy, disabled, onSubmit }: { messages: Message[]; userId: string; busy: boolean; disabled: boolean; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
+export function Conversation({ messages, userId, busy, disabled, open, onOpenChange, onSubmit }: { messages: Message[]; userId: string; busy: boolean; disabled: boolean; open: boolean; onOpenChange: (open: boolean) => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
   const log = useRef<HTMLElement>(null);
   const nearBottom = useRef(true);
   const [image, setImage] = useState<File | null>(null);
   const imagePreview = useChatImagePreview(image);
   const imageInput = useRef<HTMLInputElement>(null);
-  useEffect(() => { if (log.current && nearBottom.current) log.current.scrollTop = log.current.scrollHeight; }, [messages]);
-  return <>
-    <section className="card support"><div className="support-profile"><img className="support-avatar" src={supportAvatarUrl} alt="Panda de soporte GANA777" /><div><h2>Soporte</h2><p className="support-domain">gana777bet.com</p></div></div></section>
-    <section ref={log} className="card chat-log" role="log" aria-label="Conversación con soporte" aria-live="polite" onScroll={e => { const el = e.currentTarget; nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }}>
-      <div className="chat-date"><span>Tu conversación</span></div>
-      {!messages.length && <p className="chat-welcome">¡Hola! Bienvenido a GANA777.<br />¿En qué podemos ayudarte?</p>}
-      {messages.map(m => <div className={`message ${m.sender_id === userId ? 'mine' : ''}`} key={m.id}><p>{m.body === 'Imagen adjunta' && m.attachment_path ? '' : m.body}{m.attachment_path && <ChatImage path={m.attachment_path} />}</p><small>{date(m.created_at)}</small></div>)}
+  const launcher = useRef<HTMLButtonElement>(null);
+  const messageInput = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (open && log.current && nearBottom.current) log.current.scrollTop = log.current.scrollHeight; }, [messages, open]);
+  useEffect(() => { if (open) messageInput.current?.focus(); }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') { onOpenChange(false); launcher.current?.focus(); } };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [open, onOpenChange]);
+  return <div className={`player-chat-widget${open ? ' is-open' : ''}`}>
+    <section className="player-chat-panel" role="dialog" aria-label="Chat de soporte Gana777bet.com" hidden={!open}>
+      <header className="player-chat-head">
+        <img className="player-chat-avatar" src="https://gana777bet.online/support-chat-avatar.webp" alt="" />
+        <div className="player-chat-identity"><strong>Soporte Gana777bet.com</strong><small>Atención al cliente</small></div>
+        <button className="player-chat-close" type="button" aria-label="Cerrar chat" onClick={() => { onOpenChange(false); launcher.current?.focus(); }}><X size={20} /></button>
+      </header>
+      <section ref={log} className="player-chat-log" role="log" aria-label="Conversación con soporte" aria-live="polite" onScroll={e => { const el = e.currentTarget; nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }}>
+        <div className="chat-date"><span>Tu conversación</span></div>
+        {!messages.length && <p className="player-chat-welcome">¡Hola! Bienvenido a GANA777.<br />¿En qué podemos ayudarte?</p>}
+        {messages.map(m => <div className={`message ${m.sender_id === userId ? 'mine' : ''}`} key={m.id}><p>{m.body === 'Imagen adjunta' && m.attachment_path ? '' : m.body}{m.attachment_path && <ChatImage path={m.attachment_path} />}</p><small>{date(m.created_at)}</small></div>)}
+      </section>
+      <form className="composer chat-composer" onSubmit={onSubmit} onReset={() => setImage(null)}>{imagePreview && <div className="chat-image-preview"><img src={imagePreview} alt="Imagen seleccionada" /><span>{image?.name}</span><button type="button" aria-label="Quitar imagen" onClick={() => { setImage(null); if (imageInput.current) imageInput.current.value = ''; }}><Trash2 size={16} /></button></div>}<input ref={imageInput} className="chat-file-input" name="image" type="file" accept="image/*" disabled={busy || disabled} onChange={event => setImage(event.target.files?.[0] ?? null)} /><button type="button" className="chat-gallery-button" aria-label="Adjuntar imagen de la galería" disabled={busy || disabled} onClick={() => imageInput.current?.click()}><Images size={20} /></button><input ref={messageInput} className="player-chat-message" name="message" aria-label="Mensaje" placeholder="Escribí un mensaje…" maxLength={2000} autoComplete="off" enterKeyHint="send" required={!image} disabled={busy || disabled} /><button className="send" aria-label="Enviar mensaje" disabled={busy || disabled}><Send size={21} /></button></form>
     </section>
-    <form className="composer chat-composer" onSubmit={onSubmit} onReset={() => setImage(null)}>{imagePreview && <div className="chat-image-preview"><img src={imagePreview} alt="Imagen seleccionada" /><span>{image?.name}</span><button type="button" aria-label="Quitar imagen" onClick={() => { setImage(null); if (imageInput.current) imageInput.current.value = ''; }}><Trash2 size={16} /></button></div>}<input ref={imageInput} className="chat-file-input" name="image" type="file" accept="image/*" disabled={busy || disabled} onChange={event => setImage(event.target.files?.[0] ?? null)} /><button type="button" className="chat-gallery-button" aria-label="Adjuntar imagen de la galería" disabled={busy || disabled} onClick={() => imageInput.current?.click()}><Images size={22} /></button><input name="message" aria-label="Mensaje" placeholder="Escribí un mensaje…" maxLength={2000} autoComplete="off" enterKeyHint="send" required={!image} /><button className="send" aria-label="Enviar mensaje" disabled={busy || disabled}><Send size={24} /></button></form>
-  </>;
+    <button ref={launcher} className="player-chat-launcher" type="button" aria-label={open ? 'Cerrar chat de soporte' : 'Abrir chat de soporte'} aria-expanded={open} onClick={() => onOpenChange(!open)}><MessageCircle size={26} /></button>
+  </div>;
 }
