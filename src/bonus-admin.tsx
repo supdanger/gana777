@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent, type ChangeEvent, type CSSProperties } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { asBonusRule, percentText, type BonusMode } from '../supabase/functions/_shared/bonus-rule';
-import { assertFormFields, InputError, parseBonusRule } from '../supabase/functions/_shared/validation';
+import { assertFormFields, InputError, parseAmount, parseBonusRewardLabel, parseBonusRule, parseBonusTitle } from '../supabase/functions/_shared/validation';
 import { money, supabase } from './lib';
 import { StorageImage, useContent } from './content';
 import { BannerLayoutEditor } from './banner-layout-editor';
@@ -12,6 +12,8 @@ import { themeBase } from './portal-theme-design';
 export type BonusOffer = {
   id: string;
   title: string;
+  reward_type: 'cash' | 'free_spins';
+  reward_label: string;
   bonus_mode: BonusMode;
   bonus_percent: number;
   bonus_amount: number;
@@ -24,11 +26,14 @@ export type BonusOffer = {
   sort_order: number;
 };
 
-const offerColumns = 'id,title,bonus_mode,bonus_percent,bonus_amount,min_amount,max_amount,cooldown_hours,image_path,banner_layout,active,sort_order';
+const offerColumns = 'id,title,reward_type,reward_label,bonus_mode,bonus_percent,bonus_amount,min_amount,max_amount,cooldown_hours,image_path,banner_layout,active,sort_order';
 const previewNotice = 'La vista previa no guarda los bonos. Entrá con la cuenta de administrador para que el usuario pueda elegirlos al cargar.';
 
 function persistError(error: { code?: string; message?: string }): Error {
   const message = error.message ?? '';
+  if (/reward_type|reward_label/i.test(message)) {
+    return new InputError('Falta aplicar la migración 067 de premios de giros gratis en Supabase.');
+  }
   if (/cooldown_hours|banner_layout|promotions_special_fixed/i.test(message)) {
     return new InputError('Falta aplicar la migración 057 de bonos especiales en Supabase.');
   }
@@ -42,12 +47,12 @@ function persistError(error: { code?: string; message?: string }): Error {
   return error instanceof Error ? error : new Error(message || 'No se pudo guardar el bono.');
 }
 
-function offerFromRow(row: { id: string; title: string; active: boolean; bonus_mode?: string | null; bonus_percent?: number | null; bonus_amount?: number | null; min_amount?: number | null; max_amount?: number | null; cooldown_hours?: number | null; image_path?: string | null; banner_layout?: unknown; sort_order?: number | null }, theme: ReturnType<typeof themeBase>): BonusOffer {
-  return { id: row.id, title: row.title, active: row.active, ...asBonusRule(row), cooldown_hours: Number(row.cooldown_hours) || 0, image_path: row.image_path ?? null, banner_layout: normalizeBonusBannerLayout(row.banner_layout, theme), sort_order: Number(row.sort_order) || 0 };
+function offerFromRow(row: { id: string; title: string; reward_type?: string | null; reward_label?: string | null; active: boolean; bonus_mode?: string | null; bonus_percent?: number | null; bonus_amount?: number | null; min_amount?: number | null; max_amount?: number | null; cooldown_hours?: number | null; image_path?: string | null; banner_layout?: unknown; sort_order?: number | null }, theme: ReturnType<typeof themeBase>): BonusOffer {
+  return { id: row.id, title: row.title, reward_type: row.reward_type === 'free_spins' ? 'free_spins' : 'cash', reward_label: row.reward_label ?? '', active: row.active, ...asBonusRule(row), cooldown_hours: Number(row.cooldown_hours) || 0, image_path: row.image_path ?? null, banner_layout: normalizeBonusBannerLayout(row.banner_layout, theme), sort_order: Number(row.sort_order) || 0 };
 }
 
 function offerDetail(bonus: BonusOffer) {
-  const value = bonus.bonus_mode === 'fixed' ? `+${money(bonus.bonus_amount)}` : `+${percentText(bonus.bonus_percent)}%`;
+  const value = bonus.reward_type === 'free_spins' ? bonus.reward_label : bonus.bonus_mode === 'fixed' ? `+${money(bonus.bonus_amount)}` : `+${percentText(bonus.bonus_percent)}%`;
   return `${value} · de ${money(bonus.min_amount)} a ${money(bonus.max_amount)}${bonus.cooldown_hours ? ` · cada ${bonus.cooldown_hours} h` : ''} · ${bonus.active ? 'Disponible para cargar' : 'Pausado'}`;
 }
 
@@ -58,6 +63,8 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
   const [loading, setLoading] = useState(!demo && !!supabase);
   const [loadError, setLoadError] = useState('');
   const [mode, setMode] = useState<BonusMode>('percent');
+  const [rewardType, setRewardType] = useState<'cash' | 'free_spins'>('cash');
+  const [rewardValue, setRewardValue] = useState('');
   const [timed, setTimed] = useState(false);
   const [savedLayoutId, setSavedLayoutId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -70,8 +77,10 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
       if (!alive) return;
       setLoading(false);
       if (error) {
-        setLoadError(/bonus_mode|bonus_amount|min_amount|max_amount|cooldown_hours|banner_layout/i.test(error.message ?? '')
-          ? 'Falta aplicar la migración 057 de bonos especiales en Supabase.'
+        setLoadError(/reward_type|reward_label/i.test(error.message ?? '')
+          ? 'Falta aplicar la migración 067 de premios de giros gratis en Supabase.'
+          : /bonus_mode|bonus_amount|min_amount|max_amount|cooldown_hours|banner_layout/i.test(error.message ?? '')
+            ? 'Falta aplicar la migración 057 de bonos especiales en Supabase.'
           : 'No pudimos cargar los bonos.');
         return;
       }
@@ -85,14 +94,20 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
     const form = new FormData(element);
     await action(async () => {
       assertFormFields(form, timed
-        ? ['title', 'mode', 'value', 'min_amount', 'max_amount', 'cooldown_hours']
-        : ['title', 'mode', 'value', 'min_amount', 'max_amount']);
-      const rule = parseBonusRule(form);
+        ? ['title', 'reward_type', 'mode', 'value', 'min_amount', 'max_amount', 'cooldown_hours']
+        : ['title', 'reward_type', 'mode', 'value', 'min_amount', 'max_amount']);
+      const selectedRewardType = form.get('reward_type') === 'free_spins' ? 'free_spins' : 'cash';
+      const rule = selectedRewardType === 'free_spins'
+        ? { title: parseBonusTitle(form.get('title')), bonus_mode: 'fixed' as const, bonus_percent: 0, bonus_amount: 0, min_amount: parseAmount(form.get('min_amount')), max_amount: parseAmount(form.get('max_amount')) }
+        : parseBonusRule(form);
+      if (rule.max_amount < rule.min_amount) throw new InputError('El monto máximo tiene que ser igual o mayor que el mínimo.');
+      const rewardLabel = selectedRewardType === 'free_spins' ? parseBonusRewardLabel(form.get('value')) : '';
       const hours = timed ? Number(form.get('cooldown_hours')) : 0;
-      if (timed && (rule.bonus_mode !== 'fixed' || !Number.isInteger(hours) || hours < 1 || hours > 720)) throw new InputError('El bono especial debe ser de monto fijo y esperar entre 1 y 720 horas.');
+      if (timed && (selectedRewardType === 'cash' && rule.bonus_mode !== 'fixed' || !Number.isInteger(hours) || hours < 1 || hours > 720)) throw new InputError('El bono especial debe ser de monto fijo o giros gratis, y esperar entre 1 y 720 horas.');
       const current = bonuses.find(item => item.id === editingId) ?? null;
       if (demo || !supabase) throw new InputError(previewNotice);
       const payload = {
+        reward_type: selectedRewardType, reward_label: rewardLabel,
         title: rule.title, bonus_mode: rule.bonus_mode, bonus_percent: rule.bonus_percent,
         bonus_amount: rule.bonus_amount, min_amount: rule.min_amount, max_amount: rule.max_amount, cooldown_hours: hours,
       };
@@ -105,6 +120,8 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
       setBonuses(old => current ? old.map(item => item.id === saved.id ? { ...item, ...saved } : item) : [...old, saved]);
       setEditingId(null);
       setMode('percent');
+      setRewardType('cash');
+      setRewardValue('');
       setTimed(false);
       element.reset();
       reloadPromotions();
@@ -113,6 +130,8 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
   function beginEdit(bonus: BonusOffer) {
     setEditingId(bonus.id);
     setMode(bonus.bonus_mode);
+    setRewardType(bonus.reward_type);
+    setRewardValue(bonus.reward_type === 'free_spins' ? bonus.reward_label : String(bonus.bonus_mode === 'fixed' ? bonus.bonus_amount : bonus.bonus_percent));
     setTimed(bonus.cooldown_hours > 0);
     document.getElementById('bonus-title')?.scrollIntoView({ block: 'start' });
   }
@@ -129,7 +148,7 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
       }
       if (!data?.length) throw new InputError('Ese bono ya no está.');
       setBonuses(old => old.filter(item => item.id !== bonus.id));
-      if (editingId === bonus.id) { setEditingId(null); setMode('percent'); setTimed(false); }
+      if (editingId === bonus.id) { setEditingId(null); setMode('percent'); setRewardType('cash'); setTimed(false); }
       reloadPromotions();
     });
   }
@@ -194,13 +213,19 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
     <form className="bonus-create" key={editing?.id ?? 'new'} onSubmit={createBonus}>
       <p>{demo ? previewNotice : editing ? 'Los cambios valen para las próximas cargas. Las que ya se enviaron conservan el valor anterior.' : 'Cada bono se mostrará en el apartado Bonos con su propio banner y botón Obtener.'}</p>
       <label>Nombre<input name="title" maxLength={80} placeholder="Ejemplo: Recarga" defaultValue={editing?.title ?? ''} required /></label>
-      <label className="bonus-special-toggle"><input type="checkbox" checked={timed} onChange={event => { setTimed(event.target.checked); if (event.target.checked) setMode('fixed'); }} /> Bono especial con tiempo de espera y banner</label>
+      <fieldset className="bonus-mode">
+        <legend>Tipo de premio</legend>
+        <label className={rewardType === 'cash' ? 'selected' : ''}><input type="radio" name="reward_type" value="cash" checked={rewardType === 'cash'} onChange={() => { setRewardType('cash'); setRewardValue(''); }} />Bono en dinero</label>
+        <label className={rewardType === 'free_spins' ? 'selected' : ''}><input type="radio" name="reward_type" value="free_spins" checked={rewardType === 'free_spins'} onChange={() => { setRewardType('free_spins'); setRewardValue(''); }} />Giros gratis</label>
+      </fieldset>
+      <label className="bonus-special-toggle"><input type="checkbox" checked={timed} onChange={event => { setTimed(event.target.checked); if (event.target.checked && rewardType === 'cash') setMode('fixed'); }} /> Bono especial con tiempo de espera y banner</label>
       <fieldset className="bonus-mode">
         <legend>Tipo de bono</legend>
-        <label className={mode === 'percent' ? 'selected' : ''}><input type="radio" name="mode" value="percent" checked={mode === 'percent'} disabled={timed} onChange={() => setMode('percent')} />Porcentaje</label>
-        <label className={mode === 'fixed' ? 'selected' : ''}><input type="radio" name="mode" value="fixed" checked={mode === 'fixed'} onChange={() => setMode('fixed')} />Monto fijo</label>
+        {rewardType === 'free_spins' && <input type="hidden" name="mode" value="fixed" />}
+        <label className={mode === 'percent' ? 'selected' : ''}><input type="radio" name="mode" value="percent" checked={mode === 'percent'} disabled={timed || rewardType === 'free_spins'} onChange={() => setMode('percent')} />Porcentaje</label>
+        <label className={mode === 'fixed' ? 'selected' : ''}><input type="radio" name="mode" value="fixed" checked={mode === 'fixed'} disabled={rewardType === 'free_spins'} onChange={() => setMode('fixed')} />Monto fijo</label>
       </fieldset>
-      <label>{mode === 'percent' ? 'Porcentaje' : 'Monto del bono'}<input name="value" inputMode="decimal" maxLength={18} placeholder={mode === 'percent' ? '10' : '5.000'} defaultValue={editing ? String(editing.bonus_mode === 'fixed' ? editing.bonus_amount : editing.bonus_percent) : ''} required /></label>
+      <label>{rewardType === 'free_spins' ? 'Nombre del premio de giros' : mode === 'percent' ? 'Porcentaje' : 'Monto del bono'}<input name="value" inputMode={rewardType === 'free_spins' ? 'text' : 'decimal'} maxLength={rewardType === 'free_spins' ? 80 : 18} placeholder={rewardType === 'free_spins' ? 'Ejemplo: 25 giros gratis' : mode === 'percent' ? '10' : '5.000'} value={rewardValue} onChange={event => setRewardValue(event.target.value)} required /></label>
       {timed && <label>Disponible nuevamente después de (horas)<input name="cooldown_hours" type="number" min="1" max="720" step="1" defaultValue={editing?.cooldown_hours || 6} required /></label>}
       <div className="bonus-range">
         <label>Monto mínimo<input name="min_amount" inputMode="decimal" maxLength={18} placeholder="10.000" defaultValue={editing ? String(editing.min_amount) : ''} required /></label>
@@ -208,7 +233,7 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
       </div>
       <div className="bonus-form-actions">
         <button type="submit" disabled={busy || loading}>{busy ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear bono'}</button>
-        {editing && <button type="button" disabled={busy} onClick={() => { setEditingId(null); setMode('percent'); setTimed(false); }}>Cancelar</button>}
+        {editing && <button type="button" disabled={busy} onClick={() => { setEditingId(null); setMode('percent'); setRewardType('cash'); setRewardValue(''); setTimed(false); }}>Cancelar</button>}
       </div>
     </form>
     {loading ? <p className="empty">Cargando bonos…</p> : loadError ? <p className="empty">{loadError}</p> : !bonuses.length ? <p className="empty">Todavía no hay bonos. Los que crees aparecerán en el apartado Bonos del portal.</p> : <div className="bonus-offers">
@@ -226,7 +251,7 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
           <small className="bonus-banner-guidance">Imagen JPG, PNG o WebP hasta 5 MB; tamaño recomendado: 720 × 400 px (relación 9:5). Video MP4 o WebM hasta 20 MB. Ajustá el encuadre en la vista previa.</small>
           <BannerLayoutEditor label={bonus.title} layout={bonus.banner_layout} previewLayout={{ ...specialBonusDisplayLayout(bonus.banner_layout), height: 55.6 }} extraStyle={bonusButtonLayoutStyles(bonus.banner_layout) as CSSProperties} defaults={defaultBonusBannerLayout(theme)} heightRange={[55.6, 55.6]} hideHeight disabled={busy || demo} saved={savedLayoutId === bonus.id} onChange={layout => { setBonuses(old => old.map(item => item.id === bonus.id ? { ...item, banner_layout: normalizeBonusBannerLayout(layout, theme) } : item)); setSavedLayoutId(null); }} onSave={() => void saveLayout(bonus)}>
             {bonus.image_path ? /\.(mp4|webm)$/i.test(bonus.image_path) ? <video src={supabase?.storage.from('app-assets').getPublicUrl(bonus.image_path).data.publicUrl} autoPlay muted loop playsInline /> : <StorageImage path={bonus.image_path} alt={bonus.title} /> : <span>{bonus.title} · imagen pendiente</span>}
-            <div className="special-banner-copy">{!bonus.image_path && <><span className="special-banner-name">{bonus.title}</span><span className="special-banner-minimum">Desde {money(bonus.min_amount)}</span><strong className="special-banner-reward">{bonus.bonus_mode === 'fixed' ? `+${money(bonus.bonus_amount)}` : `+${percentText(bonus.bonus_percent)}%`}</strong></>}<button type="button">Obtener</button></div>
+            <div className="special-banner-copy">{!bonus.image_path && <><span className="special-banner-name">{bonus.title}</span><span className="special-banner-minimum">Desde {money(bonus.min_amount)}</span><strong className="special-banner-reward">{bonus.reward_type === 'free_spins' ? bonus.reward_label : bonus.bonus_mode === 'fixed' ? `+${money(bonus.bonus_amount)}` : `+${percentText(bonus.bonus_percent)}%`}</strong></>}<button type="button">Obtener</button></div>
           </BannerLayoutEditor>
           <div className="bonus-button-layout-controls">
             <h4>Ubicación y tamaño del botón Obtener</h4>

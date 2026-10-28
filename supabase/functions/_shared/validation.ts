@@ -10,6 +10,14 @@ export function parseBonusTitle(raw: unknown): string {
   if (title.length < 2 || title.length > 80 || forbiddenText.test(title) || !/^[\p{L}\p{M}\p{N}][\p{L}\p{M}\p{N} .'+%-]*[\p{L}\p{M}\p{N}%]$/u.test(title)) throw new InputError('El nombre del bono debe tener entre 2 y 80 caracteres.');
   return title;
 }
+export function parseBonusRewardLabel(raw: unknown): string {
+  if (typeof raw !== 'string') throw new InputError('Ingresá el nombre del premio de giros gratis.');
+  const label = raw.normalize('NFC').trim().replace(/\s+/g, ' ');
+  if (label.length < 2 || label.length > 80 || forbiddenText.test(label) || /[<>]/.test(label)) {
+    throw new InputError('El premio de giros gratis debe tener entre 2 y 80 caracteres.');
+  }
+  return label;
+}
 export function parseBonusPercent(raw: unknown): number {
   if (typeof raw !== 'string') throw new InputError('Ingresá un porcentaje de bono válido.');
   const value = raw.trim();

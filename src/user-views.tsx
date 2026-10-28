@@ -264,9 +264,11 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
   useEffect(() => { if (kind === 'deposit') reloadPromotions(); }, [kind, reloadPromotions]);
   const typedAmount = kind === 'deposit' ? readMoney(rawAmount) : null;
   const selectedOffer = promotions.find(offer => offer.id === bonus && offer.selectable);
-  const bonusValid = !!selectedOffer && typedAmount !== null && bonusEnabled(asBonusRule(selectedOffer), typedAmount);
-  const bonusIdForForm = selectedOffer?.cooldown_hours && selectedOffer.cooldown_hours > 0 ? selectedOffer.id : bonusValid ? selectedOffer?.id ?? '' : '';
-  const bonusCredit = bonusValid && selectedOffer ? creditAmounts(typedAmount!, selectedOffer.bonus_mode === 'percent' ? selectedOffer.bonus_percent : 0, selectedOffer.bonus_mode === 'fixed' ? selectedOffer.bonus_amount : 0).bonus : 0;
+  const bonusValid = !!selectedOffer && typedAmount !== null && (selectedOffer.reward_type === 'free_spins'
+    ? typedAmount >= selectedOffer.min_amount && typedAmount <= selectedOffer.max_amount
+    : bonusEnabled(asBonusRule(selectedOffer), typedAmount));
+  const bonusIdForForm = selectedOffer?.cooldown_hours && selectedOffer.cooldown_hours > 0 && selectedOffer.reward_type === 'cash' ? selectedOffer.id : bonusValid ? selectedOffer?.id ?? '' : '';
+  const bonusCredit = bonusValid && selectedOffer?.reward_type !== 'free_spins' && selectedOffer ? creditAmounts(typedAmount!, selectedOffer.bonus_mode === 'percent' ? selectedOffer.bonus_percent : 0, selectedOffer.bonus_mode === 'fixed' ? selectedOffer.bonus_amount : 0).bonus : 0;
   const bonusCreditLabel = bonusCredit > 0 ? `+ ${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 }).format(bonusCredit)}` : '';
   useEffect(() => { if (bonus && !promotions.some(offer => offer.id === bonus && offer.selectable)) setBonus(''); }, [promotions, bonus]);
   useEffect(() => {
@@ -321,9 +323,9 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
       <input type="hidden" name="bonus_id" value={bonusIdForForm} />
       {!bank && bankOperation && bankOperation.mode !== 'online' ? <BankPause status={bankOperation} now={now} /> : bank ? <BankTransferCard bank={bank} onCopy={onCopy} /> : <section className="card bank-loading-card" aria-live="polite"><Landmark /><div><strong>Preparando una cuenta</strong><small>Esperá un momento…</small></div></section>}
       <section className="card deposit-amount">
-        {selectedOffer ? <div className="deposit-selected-bonus"><div><strong>{selectedOffer.title}</strong><small>{selectedOffer.bonus_mode === 'fixed' ? `+${money(selectedOffer.bonus_amount)}` : `+${percentText(selectedOffer.bonus_percent)}%`} · desde {money(selectedOffer.min_amount)} hasta {money(selectedOffer.max_amount)}</small></div><button type="button" onClick={() => setBonus('')}>Quitar</button></div> : <div className="deposit-bonus-empty"><span>¿Querés sumar un bono a tu carga?</span>{onBrowseBonuses && <button type="button" onClick={onBrowseBonuses}><Gift size={17} /> Elegir bono</button>}</div>}
+        {selectedOffer ? <div className="deposit-selected-bonus"><div><strong>{selectedOffer.title}</strong><small>{selectedOffer.reward_type === 'free_spins' ? selectedOffer.reward_label : selectedOffer.bonus_mode === 'fixed' ? `+${money(selectedOffer.bonus_amount)}` : `+${percentText(selectedOffer.bonus_percent)}%`} · desde {money(selectedOffer.min_amount)} hasta {money(selectedOffer.max_amount)}</small></div><button type="button" onClick={() => setBonus('')}>Quitar</button></div> : <div className="deposit-bonus-empty"><span>¿Querés sumar un bono a tu carga?</span>{onBrowseBonuses && <button type="button" onClick={onBrowseBonuses}><Gift size={17} /> Elegir bono</button>}</div>}
         {amount}
-        {selectedOffer && typedAmount !== null && !bonusValid && <p className={`deposit-bonus-note${selectedOffer.cooldown_hours > 0 ? ' is-special' : ''}`}>{selectedOffer.cooldown_hours > 0 ? 'Este bono especial se enviará para revisión. Si el monto no cumple las condiciones, podrán acreditar la carga sin el bono.' : 'Este monto está fuera del rango del bono. La carga se enviará sin bono.'}</p>}
+        {selectedOffer && typedAmount !== null && !bonusValid && <p className={`deposit-bonus-note${selectedOffer.cooldown_hours > 0 ? ' is-special' : ''}`}>{selectedOffer.reward_type === 'free_spins' ? 'Este monto está fuera del rango del premio. La carga se enviará sin giros gratis.' : selectedOffer.cooldown_hours > 0 ? 'Este bono especial se enviará para revisión. Si el monto no cumple las condiciones, podrán acreditar la carga sin el bono.' : 'Este monto está fuera del rango del bono. La carga se enviará sin bono.'}</p>}
       </section>
       <section className="card receipt-card compact-receipt-card">
         <div className="receipt-compact-heading"><span><FileText /></span><strong>Comprobante</strong></div>

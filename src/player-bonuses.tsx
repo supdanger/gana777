@@ -16,6 +16,7 @@ function countdown(milliseconds: number) {
 }
 
 function reward(offer: Promotion) {
+  if (offer.reward_type === 'free_spins') return offer.reward_label;
   return offer.bonus_mode === 'fixed' ? `+${money(offer.bonus_amount)}` : `+${percentText(offer.bonus_percent)}%`;
 }
 
@@ -25,7 +26,7 @@ export function PlayerBonuses({ demo, onClaim }: { demo: boolean; onClaim: (id: 
   const [ready, setReady] = useState(!supabase || demo);
   const [now, setNow] = useState(Date.now);
   const [clockOffset, setClockOffset] = useState(0);
-  const offers = promotions.filter(offer => offer.selectable && (offer.bonus_mode === 'fixed' ? offer.bonus_amount > 0 : offer.bonus_percent > 0));
+  const offers = promotions.filter(offer => offer.selectable && (offer.reward_type === 'free_spins' ? !!offer.reward_label : offer.bonus_mode === 'fixed' ? offer.bonus_amount > 0 : offer.bonus_percent > 0));
   const timedOffers = offers.filter(offer => offer.cooldown_hours > 0);
 
   useEffect(() => {

@@ -17,12 +17,13 @@ import { ApprovedReferralNotice, ReferralBonusHistory, ReferralRewardsAdmin } fr
 import { UserWheel, WheelAdmin } from './wheel';
 
 function missingBonusAmount(error: { message?: string } | null) {
-  return !!error && /bonus_amount|requested_special_bonus_id/i.test(error.message ?? '');
+  return !!error && /bonus_amount|requested_special_bonus_id|bonus_reward_type|bonus_reward_label/i.test(error.message ?? '');
 }
 function missingDepositRoute(error: { message?: string } | null) {
   return !!error && /deposit_sac|deposit_phone|deposit_holder/i.test(error.message ?? '');
 }
 function requestedBonus(row: RequestRow) {
+  if (row.bonus_id && row.bonus_reward_type === 'free_spins' && row.bonus_reward_label) return row.bonus_reward_label;
   if (row.bonus_percent > 0) return `+${percentText(row.bonus_percent)}%`;
   if ((row.bonus_amount ?? 0) > 0) return `+${money(row.bonus_amount ?? 0)}`;
   return '';
@@ -907,7 +908,7 @@ function App() {
           <div className="credit-copy-field"><span>Nombre de usuario</span><div><strong>{approvedName}</strong><button aria-label="Copiar nombre de usuario" onClick={() => void copyCreditValue(approvedName, 'user')}>{copiedCreditField === 'user' ? <><Check size={17} /> Copiado</> : <><Copy size={17} /> Copiar</>}</button></div></div>
           <div className="credit-breakdown">
             <div><span>Monto a acreditar</span><strong>{money(approvedDeposit.amount)}</strong></div>
-            <div><span>{approvedBonus ? `Bono ${approvedBonus}` : 'Sin bono'}</span><strong>{approvedBonus ? `+${money(credit.bonus)}` : money(0)}</strong></div>
+            <div><span>{approvedBonus ? approvedDeposit.bonus_reward_type === 'free_spins' ? `Premio externo · ${approvedBonus}` : `Bono ${approvedBonus}` : 'Sin bono'}</span><strong>{approvedBonus && approvedDeposit.bonus_reward_type === 'free_spins' ? 'Giros gratis' : approvedBonus ? `+${money(credit.bonus)}` : money(0)}</strong></div>
           </div>
           <div className="credit-copy-field credit-total"><span>Total a acreditar</span><div><strong>{money(credit.total)}</strong><button aria-label="Copiar total a acreditar" onClick={() => void copyCreditValue(credit.copyValue, 'amount')}>{copiedCreditField === 'amount' ? <><Check size={17} /> Copiado</> : <><Copy size={17} /> Copiar monto</>}</button></div><small>Se copiará {credit.copyValue}, listo para pegar.</small></div>
           {!demo && <ApprovedReferralNotice requestId={approvedDeposit.id} />}
