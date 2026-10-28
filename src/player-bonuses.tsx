@@ -57,7 +57,6 @@ export function PlayerBonuses({ demo, onClaim }: { demo: boolean; onClaim: (id: 
   }, [demo, timedOffers.length]);
 
   return <section className="player-bonuses" aria-label="Bonos disponibles">
-    <p className="player-bonuses-intro">Elegí un bono y después ingresá el monto de tu carga. El bono se aplica si la carga cumple sus condiciones.</p>
     {!offers.length ? <div className="player-bonuses-empty"><Gift size={28} /><strong>No hay bonos disponibles</strong><span>Cuando haya nuevas promociones, aparecerán acá.</span></div> : offers.map(offer => {
       const timed = offer.cooldown_hours > 0;
       const status = availability[offer.id];
@@ -68,7 +67,7 @@ export function PlayerBonuses({ demo, onClaim }: { demo: boolean; onClaim: (id: 
       const video = !!offer.image_path && /\.(mp4|webm)$/i.test(offer.image_path);
       const mediaUrl = offer.image_path && video ? supabase?.storage.from('app-assets').getPublicUrl(offer.image_path).data.publicUrl : null;
       return <article className={`player-bonus-card${timed ? ' is-timed' : ''}`} style={homeBannerLayoutStyles(layout) as CSSProperties} key={offer.id} aria-label={offer.title}>
-        {offer.image_path ? video ? <video className="player-bonus-media" src={mediaUrl ?? undefined} autoPlay muted loop playsInline preload="metadata" aria-label={offer.title} /> : <StorageImage path={offer.image_path} alt={offer.title} className="player-bonus-media" /> : <div className="player-bonus-placeholder"><Gift size={30} /><strong>{offer.title}</strong></div>}
+        {offer.image_path ? video ? <video className="player-bonus-media" src={mediaUrl ?? undefined} autoPlay muted loop playsInline preload="metadata" aria-label={offer.title} /> : <StorageImage path={offer.image_path} alt={offer.title} className="player-bonus-media" /> : <div className="player-bonus-placeholder" aria-hidden="true" />}
         <div className="player-bonus-copy">
           <strong className="player-bonus-title">{offer.title}</strong>
           <span className="player-bonus-range">Desde {money(offer.min_amount)} hasta {money(offer.max_amount)}</span>

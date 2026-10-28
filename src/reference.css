@@ -1433,15 +1433,16 @@ body:has(.user-app.theme-halloween), body:has(.user-login.theme-halloween) { bac
 .player-bonuses-empty { display: grid; justify-items: center; gap: 9px; padding: 34px 18px; border: 1px solid #573267; border-radius: 14px; background: #100c14; color: #d9c5e5; text-align: center; }
 .player-bonuses-empty strong { color: #fff; }
 .player-bonuses-empty span { color: #b4a4bd; font-size: 13px; }
-.player-bonus-card { position: relative; width: 100%; margin: 0; overflow: hidden; aspect-ratio: var(--home-banner-ratio, 100 / 43); border: 1px solid #71428a; border-radius: var(--home-banner-radius, 12px); background: #100b15; box-shadow: 0 8px 22px #0008; }
+.player-bonus-card { position: relative; width: 100%; margin: 0; overflow: hidden; aspect-ratio: 9 / 5; border: 1px solid #71428a; border-radius: var(--home-banner-radius, 12px); background: #100b15; box-shadow: 0 8px 22px #0008; }
 .player-bonus-media { position: absolute; inset: auto; left: calc(50% + var(--home-banner-image-x, 0%)); top: calc(50% + var(--home-banner-image-y, 0%)); width: var(--home-banner-image-width, 100%); height: var(--home-banner-image-height, 100%); max-width: none; object-fit: cover; object-position: center; transform: translate(-50%, -50%); pointer-events: none; }
 .player-bonus-placeholder { display: grid; place-content: center; width: 100%; height: 100%; gap: 8px; background: radial-gradient(circle at 25% 20%, #6f2a84, #130b19 72%); color: #f4e9ff; text-align: center; }
-.player-bonus-copy { position: absolute; z-index: 1; top: 50%; left: clamp(14px, 5%, 28px); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; width: min(48%, 280px); max-height: calc(100% - 12px); overflow: hidden; color: #fff; text-align: left; text-shadow: 0 1px 4px #000, 0 0 10px #000; transform: translateY(-50%); }
+.player-bonus-copy { position: absolute; z-index: 1; inset: 0; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; box-sizing: border-box; width: 100%; padding: 12px 14px 54px; overflow: hidden; color: #fff; text-align: left; text-shadow: 0 1px 4px #000, 0 0 10px #000; pointer-events: none; }
+.player-bonus-title, .player-bonus-range, .player-bonus-state, .player-bonus-reward, .player-bonus-countdown { max-width: min(48%, 280px); }
 .player-bonus-title { max-width: 100%; overflow: hidden; font-size: clamp(15px, 4vw, 22px); font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }
 .player-bonus-range, .player-bonus-state { color: #fff; font-size: clamp(10px, 2.8vw, 13px); font-weight: 700; line-height: 1.2; }
 .player-bonus-reward, .player-bonus-countdown { color: #ffd16b; font-size: clamp(21px, 6vw, 34px); font-weight: 950; letter-spacing: -.5px; line-height: 1; }
-.player-bonus-copy button { min-height: 34px; margin-top: 4px; padding: 6px 13px; border: 1px solid #ffd16b; border-radius: 9px; background: #ffd16b; color: #17110a; font-size: 12px; font-weight: 850; text-shadow: none; }
-.player-bonus-copy button:hover:not(:disabled) { background: #ffe298; border-color: #ffe298; }
+.player-bonus-copy button { position: absolute; left: 50%; bottom: 12px; min-height: 36px; margin: 0; padding: 7px 18px; border: 1px solid color-mix(in srgb, var(--home-accent, #a73ad2) 75%, white); border-radius: 10px; background: linear-gradient(135deg, color-mix(in srgb, var(--home-accent, #a73ad2) 88%, white), color-mix(in srgb, var(--home-accent, #a73ad2) 70%, black)); color: #fff; font-size: 13px; font-weight: 850; text-shadow: 0 1px 3px #240d30; box-shadow: 0 4px 16px color-mix(in srgb, var(--home-accent, #a73ad2) 38%, transparent); transform: translateX(-50%); pointer-events: auto; }
+.player-bonus-copy button:hover:not(:disabled) { filter: brightness(1.12); }
 .player-bonus-copy button:disabled { opacity: .55; cursor: wait; }
 .user-app.page-bonuses .player-bonuses { margin-bottom: 12px; }
 .deposit-selected-bonus, .deposit-bonus-empty { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 12px; padding: 10px 12px; border: 1px solid #573267; border-radius: 10px; background: #17101d; }
