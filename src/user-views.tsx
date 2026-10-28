@@ -113,7 +113,8 @@ export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, use
   const { settings, contactAnimations } = useContent();
   const bannerUrl = homeBannerLink(settings, casinoUrl);
   const bannerImage = homeBannerImage(settings, settings.portal_theme);
-  const bannerStyle = homeBannerLayoutStyles(homeBannerLayout(settings, settings.portal_theme)) as CSSProperties;
+  const casinoBannerLayout = homeBannerLayout(settings, settings.portal_theme);
+  const bannerStyle = homeBannerLayoutStyles({ ...casinoBannerLayout, height: casinoBannerLayout.height * 2 }) as CSSProperties;
   const shareUrl = referralShareUrl(username ?? null, whatsappUrl ?? null);
   const shareMessage = referralShareMessage(username ?? null, whatsappUrl ?? null);
   const [referralImage, setReferralImage] = useState<File | null>(null);
@@ -377,7 +378,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     {feedback && <div className="request-feedback">{feedback}</div>}
     {depositRetrySeconds > 0 && <div className="deposit-retry-countdown" role="timer" aria-live="polite"><span>Podés volver a enviar en</span><strong>{depositRetryCountdown}</strong></div>}
     <button className="primary" disabled={busy || demo || withdrawalBlocked || withdrawalPartCount > 100 || pendingDeposit || compressing || depositRetrySeconds > 0 || (kind === 'deposit' && (!file || !bank))} aria-describedby={pendingDeposit ? 'deposit-pending-message' : undefined}>{compressing ? 'Optimizando…' : busy ? kind === 'deposit' ? 'Enviando solicitud…' : 'Enviando…' : depositRetrySeconds > 0 ? `Esperá ${depositRetryCountdown}` : kind === 'deposit' ? 'Solicitar carga' : 'Solicitar retiro'}</button>
-    {pendingDeposit && <p id="deposit-pending-message" className="deposit-pending-message" role="status">Tu carga ya está en proceso. Podrás solicitar otra cuando sea aprobada o rechazada.</p>}
+    {pendingDeposit && <p id="deposit-pending-message" className="deposit-pending-message" role="status">Tu carga ya está en proceso. Podrás solicitar otra cuando sea aprobada.</p>}
   </form>;
 }
 export function Conversation({ messages, userId, busy, disabled, open, onOpenChange, onSubmit }: { messages: Message[]; userId: string; busy: boolean; disabled: boolean; open: boolean; onOpenChange: (open: boolean) => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
