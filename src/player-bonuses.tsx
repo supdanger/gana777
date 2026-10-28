@@ -69,9 +69,11 @@ export function PlayerBonuses({ demo, onClaim }: { demo: boolean; onClaim: (id: 
       return <article className={`player-bonus-card${timed ? ' is-timed' : ''}`} style={homeBannerLayoutStyles(layout) as CSSProperties} key={offer.id} aria-label={offer.title}>
         {offer.image_path ? video ? <video className="player-bonus-media" src={mediaUrl ?? undefined} autoPlay muted loop playsInline preload="metadata" aria-label={offer.title} /> : <StorageImage path={offer.image_path} alt={offer.title} className="player-bonus-media" /> : <div className="player-bonus-placeholder" aria-hidden="true" />}
         <div className="player-bonus-copy">
-          <strong className="player-bonus-title">{offer.title}</strong>
-          <span className="player-bonus-range">Desde {money(offer.min_amount)} hasta {money(offer.max_amount)}</span>
-          <strong className="player-bonus-reward">{reward(offer)}</strong>
+          {!offer.image_path && <>
+            <strong className="player-bonus-title">{offer.title}</strong>
+            <span className="player-bonus-range">Desde {money(offer.min_amount)} hasta {money(offer.max_amount)}</span>
+            <strong className="player-bonus-reward">{reward(offer)}</strong>
+          </>}
           {timed && (!statusReady ? <span className="player-bonus-state">Consultando disponibilidad…</span> : status?.awaiting_credit ? <span className="player-bonus-state">Carga con bono en proceso</span> : remaining > 0 ? <><span className="player-bonus-state">Disponible nuevamente en</span><strong className="player-bonus-countdown" role="timer">{countdown(remaining)}</strong></> : <button type="button" disabled={!canClaim} onClick={() => onClaim(offer.id)}>Obtener</button>)}
           {!timed && <button type="button" onClick={() => onClaim(offer.id)}>Obtener</button>}
         </div>
