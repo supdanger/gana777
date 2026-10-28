@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { ImagePlus, RotateCcw } from 'lucide-react';
 import { InputError } from '../supabase/functions/_shared/validation';
 import { bannerImageExtension } from './home-banner';
 import { supabase } from './lib';
-import { cardSlots, defaultCardStyle, isCustomTheme, normalizeCardStyle, themeBase, type CardSlot, type PortalTheme, type ThemeDesign, type ThemeDesigns, type ThemeSettings } from './portal-theme-design';
+import { cardSlots, defaultCardStyle, defaultThemeCardImageLayout, isCustomTheme, normalizeCardStyle, normalizeThemeCardImageLayout, themeBase, type CardSlot, type PortalTheme, type ThemeDesign, type ThemeDesigns, type ThemeSettings } from './portal-theme-design';
 
 const builtInBackgrounds: Record<string, string | null> = {
   christmas: '/preview-assets/christmas-background.webp',
@@ -17,24 +17,36 @@ export function ThemeDesignAdmin({ theme, designs, demo, onSaved }: {
   const [draft, setDraft] = useState<ThemeDesign>(() => structuredClone(designs[theme] ?? {}));
   const [slot, setSlot] = useState<CardSlot>('deposit');
   const [file, setFile] = useState<File | null>(null);
+  const [cardImageFiles, setCardImageFiles] = useState<Partial<Record<'deposit' | 'withdrawal', File>>>({});
   const [preview, setPreview] = useState('');
+  const [cardImagePreview, setCardImagePreview] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const input = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { setDraft(structuredClone(designs[theme] ?? {})); setFile(null); setSaved(false); if (input.current) input.current.value = ''; }, [theme]);
+  useEffect(() => { setDraft(structuredClone(designs[theme] ?? {})); setFile(null); setCardImageFiles({}); setSaved(false); if (input.current) input.current.value = ''; }, [theme]);
   useEffect(() => {
     if (!file) { setPreview(''); return; }
     const url = URL.createObjectURL(file); setPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [file]);
+  const selectedCardImageFile = slot === 'deposit' || slot === 'withdrawal' ? cardImageFiles[slot] : undefined;
+  useEffect(() => {
+    if (!selectedCardImageFile) { setCardImagePreview(''); return; }
+    const url = URL.createObjectURL(selectedCardImageFile); setCardImagePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [selectedCardImageFile]);
 
   const base = themeBase(settings, theme);
   const selected = draft.cards?.[slot];
   const card = normalizeCardStyle(selected, defaultCardStyle(settings, theme));
   const storedBackground = draft.backgroundPath && supabase ? supabase.storage.from('app-assets').getPublicUrl(draft.backgroundPath).data.publicUrl : null;
   const background = preview || storedBackground || builtInBackgrounds[base] || null;
+  const selectedImagePath = slot === 'deposit' ? draft.depositPath : slot === 'withdrawal' ? draft.withdrawalPath : null;
+  const storedCardImage = selectedImagePath && supabase ? supabase.storage.from('app-assets').getPublicUrl(selectedImagePath).data.publicUrl : null;
+  const cardImage = cardImagePreview || storedCardImage;
+  const imageLayout = normalizeThemeCardImageLayout(slot === 'deposit' ? draft.depositImageLayout : slot === 'withdrawal' ? draft.withdrawalImageLayout : undefined);
 
   function setCard(next: typeof card) {
     setDraft(current => ({ ...current, cards: { ...current.cards, [slot]: next } }));
@@ -42,6 +54,12 @@ export function ThemeDesignAdmin({ theme, designs, demo, onSaved }: {
   }
   function resetCard() {
     setDraft(current => { const cards = { ...current.cards }; delete cards[slot]; return { ...current, cards }; });
+    setSaved(false);
+  }
+  function setImageLayout(next: typeof defaultThemeCardImageLayout) {
+    if (slot !== 'deposit' && slot !== 'withdrawal') return;
+    const key = slot === 'deposit' ? 'depositImageLayout' : 'withdrawalImageLayout';
+    setDraft(current => ({ ...current, [key]: next }));
     setSaved(false);
   }
 
@@ -66,10 +84,19 @@ export function ThemeDesignAdmin({ theme, designs, demo, onSaved }: {
         if (uploaded.error) throw new InputError('No pudimos subir el fondo. Revisá la migración 053 y los permisos.');
       }
       const nextDesign: ThemeDesign = { ...draft, name, backgroundPath };
+      for (const imageSlot of ['deposit', 'withdrawal'] as const) {
+        const imageFile = cardImageFiles[imageSlot];
+        if (!imageFile) continue;
+        const extension = await bannerImageExtension(imageFile);
+        const imagePath = `theme-card-images/${theme}/${imageSlot}-${crypto.randomUUID()}.${extension}`;
+        const uploaded = await supabase.storage.from('app-assets').upload(imagePath, imageFile, { contentType: imageFile.type, upsert: false });
+        if (uploaded.error) throw new InputError(`No pudimos subir la imagen de ${imageSlot === 'deposit' ? 'Cargar' : 'Retiros'}. Revisá la migración 053 y los permisos.`);
+        nextDesign[`${imageSlot}Path`] = imagePath;
+      }
       const next = { ...designs, [theme]: nextDesign };
       const result = await supabase.from('app_settings').update({ portal_theme_designs: next }).eq('id', true).select('portal_theme_designs').single();
       if (result.error) throw new InputError('No pudimos guardar el diseño. Revisá la migración 053 y tus permisos.');
-      onSaved(next); setDraft(nextDesign); setFile(null); if (input.current) input.current.value = '';
+      onSaved(next); setDraft(nextDesign); setFile(null); setCardImageFiles({}); if (input.current) input.current.value = '';
       setSaved(true);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'No pudimos guardar el diseño.'); }
     finally { setBusy(false); }
@@ -92,7 +119,7 @@ export function ThemeDesignAdmin({ theme, designs, demo, onSaved }: {
         <div className="theme-design-preview" style={background ? { backgroundImage: `url("${background}")`, backgroundPosition: `${draft.backgroundX ?? 50}% ${draft.backgroundY ?? 0}%`, backgroundSize: (draft.backgroundScale ?? 100) === 100 ? 'cover' : `${draft.backgroundScale}% auto` } : undefined}>
           <div className="theme-design-preview-header">Gana<span>777</span>bet.com</div>
           <div className="theme-design-preview-spacer" />
-          <div className="theme-design-preview-card" style={{ background: card.background, border: `${card.borderWidth}px solid ${card.borderColor}`, borderRadius: card.radius }}><strong>{cardSlots.find(item => item.id === slot)?.label}</strong><small>Vista previa de la tarjeta seleccionada</small></div>
+          <div className="theme-design-preview-card" style={{ position: 'relative', overflow: 'hidden', background: card.background, border: `${card.borderWidth}px solid ${card.borderColor}`, borderRadius: card.radius, aspectRatio: slot === 'deposit' || slot === 'withdrawal' ? '12 / 5' : undefined, minHeight: cardImage ? 0 : undefined }}>{cardImage ? <img src={cardImage} alt="" className="theme-design-preview-image" style={{ left: `calc(50% + ${imageLayout.x}%)`, top: `calc(50% + ${imageLayout.y}%)`, width: `${imageLayout.width}%`, height: `${imageLayout.height}%` } as CSSProperties} /> : <><strong>{cardSlots.find(item => item.id === slot)?.label}</strong><small>Vista previa de la tarjeta seleccionada</small></>}</div>
         </div>
       </div>
       <div className="theme-card-editor">
@@ -104,6 +131,18 @@ export function ThemeDesignAdmin({ theme, designs, demo, onSaved }: {
           <label>Grosor del borde <output>{card.borderWidth}px</output><input type="range" min="0" max="8" value={card.borderWidth} disabled={busy || demo} onChange={event => setCard({ ...card, borderWidth: Number(event.target.value) })} /></label>
           <label>Redondeo <output>{card.radius}px</output><input type="range" min="0" max="40" value={card.radius} disabled={busy || demo} onChange={event => setCard({ ...card, radius: Number(event.target.value) })} /></label>
         </div>
+        {(slot === 'deposit' || slot === 'withdrawal') && <div className="theme-card-image-editor">
+          <h4>Imagen de {slot === 'deposit' ? 'Cargar' : 'Retiros'}</h4>
+          <label className="theme-design-file"><ImagePlus size={17} />{selectedImagePath || selectedCardImageFile ? 'Cambiar imagen' : 'Subir imagen'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy || demo} onChange={event => { const nextFile = event.target.files?.[0]; if (nextFile) setCardImageFiles(current => ({ ...current, [slot]: nextFile })); setSaved(false); event.currentTarget.value = ''; }} /><small>JPG, PNG o WebP · hasta 5 MB. Tamaño recomendado: 720 × 300 px (relación 12:5). Se recorta para llenar la tarjeta sin deformarse.</small></label>
+          {(selectedImagePath || selectedCardImageFile) && <div className="theme-card-controls theme-card-image-layout">
+            <label>Posición horizontal <output>{imageLayout.x}%</output><input type="range" min="-100" max="100" value={imageLayout.x} disabled={busy || demo} onChange={event => setImageLayout({ ...imageLayout, x: Number(event.target.value) })} /></label>
+            <label>Posición vertical <output>{imageLayout.y}%</output><input type="range" min="-100" max="100" value={imageLayout.y} disabled={busy || demo} onChange={event => setImageLayout({ ...imageLayout, y: Number(event.target.value) })} /></label>
+            <label>Ancho de imagen <output>{imageLayout.width}%</output><input type="range" min="50" max="300" value={imageLayout.width} disabled={busy || demo} onChange={event => setImageLayout({ ...imageLayout, width: Number(event.target.value) })} /></label>
+            <label>Alto de imagen <output>{imageLayout.height}%</output><input type="range" min="50" max="300" value={imageLayout.height} disabled={busy || demo} onChange={event => setImageLayout({ ...imageLayout, height: Number(event.target.value) })} /></label>
+            <button className="theme-design-reset" type="button" disabled={busy || demo} onClick={() => setImageLayout(defaultThemeCardImageLayout)}><RotateCcw size={15} /> Centrar y ajustar a tarjeta</button>
+          </div>}
+          {(selectedImagePath || selectedCardImageFile) && <button className="theme-design-reset" type="button" disabled={busy || demo} onClick={() => { setDraft(current => ({ ...current, [`${slot}Path`]: null })); setCardImageFiles(current => ({ ...current, [slot]: undefined })); setSaved(false); }}><RotateCcw size={15} /> Quitar imagen y usar estilo del tema</button>}
+        </div>}
         {selected && <button className="theme-design-reset" type="button" disabled={busy || demo} onClick={resetCard}><RotateCcw size={15} /> Usar estilo original de esta tarjeta</button>}
       </div>
       <div className="theme-banner-actions"><button className="primary" type="submit" disabled={busy || demo}>{busy ? 'Guardando…' : 'Guardar fondo y tarjetas'}</button>{saved && <small role="status">Diseño guardado para este tema.</small>}</div>

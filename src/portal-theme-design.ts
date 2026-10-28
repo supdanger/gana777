@@ -19,6 +19,18 @@ export const cardSlots = [
 ] as const;
 export type CardSlot = typeof cardSlots[number]['id'];
 export type CardStyle = { background: string; borderColor: string; borderWidth: number; radius: number };
+export type ThemeCardImageLayout = { width: number; height: number; x: number; y: number };
+export const defaultThemeCardImageLayout: ThemeCardImageLayout = { width: 100, height: 100, x: 0, y: 0 };
+export function normalizeThemeCardImageLayout(value: unknown): ThemeCardImageLayout {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  const clamp = (candidate: unknown, fallback: number, min: number, max: number) => typeof candidate === 'number' && Number.isFinite(candidate) ? Math.round(Math.min(max, Math.max(min, candidate)) * 10) / 10 : fallback;
+  return {
+    width: clamp(source.width, 100, 50, 300),
+    height: clamp(source.height, 100, 50, 300),
+    x: clamp(source.x, 0, -100, 100),
+    y: clamp(source.y, 0, -100, 100),
+  };
+}
 export type ThemeDesign = {
   name?: string;
   baseTheme?: BuiltInTheme;
@@ -28,6 +40,10 @@ export type ThemeDesign = {
   backgroundScale?: number;
   bonusPath?: string | null;
   casinoPath?: string | null;
+  depositPath?: string | null;
+  withdrawalPath?: string | null;
+  depositImageLayout?: ThemeCardImageLayout;
+  withdrawalImageLayout?: ThemeCardImageLayout;
   logoPath?: string | null;
   cards?: Partial<Record<CardSlot, CardStyle>>;
 };
@@ -92,6 +108,17 @@ export function themeSurface(settings: ThemeSettings, publicUrl: (path: string) 
     style[`--theme-${id}-border`] = card.borderColor;
     style[`--theme-${id}-border-width`] = `${card.borderWidth}px`;
     style[`--theme-${id}-radius`] = `${card.radius}px`;
+  }
+  for (const id of ['deposit', 'withdrawal'] as const) {
+    const path = design?.[`${id}Path`];
+    const url = path ? publicUrl(path) : null;
+    if (!url) continue;
+    classes.push(`theme-card-${id}-image`);
+    const layout = normalizeThemeCardImageLayout(design?.[`${id}ImageLayout`]);
+    style[`--theme-${id}-image-width`] = `${layout.width}%`;
+    style[`--theme-${id}-image-height`] = `${layout.height}%`;
+    style[`--theme-${id}-image-x`] = `${layout.x}%`;
+    style[`--theme-${id}-image-y`] = `${layout.y}%`;
   }
   return { className: classes.join(' '), style: style as CSSProperties };
 }
