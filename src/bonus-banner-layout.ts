@@ -3,11 +3,11 @@ import { defaultHomeBannerLayout, normalizeHomeBannerLayout, type HomeBannerLayo
 export type BonusBannerLayout = HomeBannerLayout & { buttonX: number; buttonY: number; buttonScale: number; infoX: number; infoY: number; infoScale: number };
 
 const defaultHeights: Record<string, number> = {
-  base: 43, dark: 49, christmas: 50, 'new-year': 43, halloween: 60,
+  base: 43.5, dark: 43.5, christmas: 43.5, 'new-year': 43.5, halloween: 43.5,
 };
 
 export function defaultBonusBannerLayout(theme: HomeBannerTheme): BonusBannerLayout {
-  return { ...defaultHomeBannerLayout, height: defaultHeights[theme] ?? 43, radius: 12, buttonX: 0, buttonY: 0, buttonScale: 100, infoX: 43, infoY: -37, infoScale: 100 };
+  return { ...defaultHomeBannerLayout, height: defaultHeights[theme] ?? 43.5, radius: 12, buttonX: 0, buttonY: 0, buttonScale: 100, infoX: 43, infoY: -37, infoScale: 100 };
 }
 
 export function normalizeBonusBannerLayout(value: unknown, theme: HomeBannerTheme): BonusBannerLayout {
@@ -20,7 +20,7 @@ export function normalizeBonusBannerLayout(value: unknown, theme: HomeBannerThem
   const number = (key: 'buttonX' | 'buttonY' | 'buttonScale' | 'infoX' | 'infoY' | 'infoScale', fallback: number, min: number, max: number) => typeof source[key] === 'number' && Number.isFinite(source[key])
     ? Math.round(Math.min(max, Math.max(min, source[key] as number)) * 10) / 10 : fallback;
   return { ...safe, height: typeof height === 'number' && Number.isFinite(height)
-    ? Math.round(Math.min(80, Math.max(25, height)) * 10) / 10 : defaultHeights[theme] ?? 43,
+    ? Math.round(Math.min(80, Math.max(25, height)) * 10) / 10 : defaultHeights[theme] ?? 43.5,
     buttonX: number('buttonX', 0, -45, 45), buttonY: number('buttonY', 0, -30, 30), buttonScale: number('buttonScale', 100, 70, 150),
     infoX: number('infoX', 43, -45, 45), infoY: number('infoY', -37, -45, 45), infoScale: number('infoScale', 100, 60, 160) };
 }

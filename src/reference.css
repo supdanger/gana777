@@ -33,7 +33,7 @@
 .user-app .icon-circle { color: #7cd9ff; border: 1.5px solid #008bff; background: radial-gradient(circle, #02335966, #00152b); }
 .home-greeting .icon-circle { padding: 12px; border-color: #5799ff; }
 .home-greeting .icon-circle svg { fill: #8ddaff; stroke-width: 1.3; }
-.bonus-banner { aspect-ratio: 848 / 365; position: relative; overflow: hidden; isolation: isolate; border: 1px solid #008dff; border-radius: 13px; background: linear-gradient(120deg, #042b66, #002039); margin: 0 -3px 24px; }
+.bonus-banner { aspect-ratio: 1200 / 522; position: relative; overflow: hidden; isolation: isolate; border: 1px solid #008dff; border-radius: 13px; background: linear-gradient(120deg, #042b66, #002039); margin: 0 -3px 24px; }
 .bonus-copy { padding: 18px; max-width: 65%; }
 .bonus-copy strong { font-size: clamp(23px, 7vw, 34px); font-weight: 900; text-transform: uppercase; line-height: 1.05; color: #64dcff; }
 .bonus-copy p { font-size: 13px; line-height: 1.35; margin-top: 10px; }
@@ -886,7 +886,7 @@ body:has(.user-app.page-home) { min-height: 100svh; }
 .user-app.page-home .home-profile-button > svg { flex: 0 0 auto; }
 .user-app.page-home .home-welcome { margin: 0 0 12px; color: #f5f8fc; font-size: 24px; font-weight: 750; line-height: 1.2; letter-spacing: -.4px; overflow-wrap: anywhere; }
 .user-app.page-home .bonus-banner { width: calc(100% - 8px); margin: 0 auto 14px; }
-.user-app.page-home .bonus-banner.custom-bonus-media { aspect-ratio: 848 / 365; }
+.user-app.page-home .bonus-banner.custom-bonus-media { aspect-ratio: 1200 / 522; }
 .user-app.page-home .bonus-banner.custom-bonus-media .bonus-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .user-app.page-home .section-title { margin-bottom: 10px; padding-left: 11px; font-size: 24px; }
 .user-app.page-home .section-title::before { width: 3px; }
@@ -1308,7 +1308,7 @@ body:has(.user-app.theme-christmas), body:has(.user-login.theme-christmas) { bac
 .user-app.page-home .bonus-banner,
 .user-app.page-home .bonus-banner.image-banner,
 .user-app.theme-dark.page-home .dark-bonus-banner,
-.user-app.page-home.theme-christmas .christmas-bonus-banner { aspect-ratio: var(--home-banner-ratio, 848 / 365); border-radius: var(--home-banner-radius, 12px); }
+.user-app.page-home.theme-christmas .christmas-bonus-banner { aspect-ratio: var(--home-banner-ratio, 1200 / 522); border-radius: var(--home-banner-radius, 12px); }
 .home-bonus-carousel { position: relative; margin-bottom: 14px; }
 .user-app.page-home .home-bonus-carousel .bonus-banner { margin-bottom: 0; }
 .home-bonus-carousel-nav { position: absolute; z-index: 5; top: 50%; left: 4px; right: 4px; display: flex; align-items: center; justify-content: space-between; height: 44px; margin: 0; padding: 0; border: 0; transform: translateY(-50%); pointer-events: none; }

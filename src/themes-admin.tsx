@@ -184,7 +184,7 @@ export function ThemesAdmin({ demo }: { demo: boolean }) {
       {theme === 'dark' ? <p className="theme-banner-note">El loop dura 6 segundos: el panda tira una ficha y la vuelve a agarrar. Los textos quedan quietos. El banner «Ir al casino» conserva su configuración.</p> : <form onSubmit={event => void save(event)}>
         <label htmlFor="theme-bonus-media"><ImagePlus size={17} /> Imagen o video del banner</label>
         <input id="theme-bonus-media" ref={input} type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" disabled={busy || demo} onChange={event => { setFile(event.target.files?.[0] ?? null); setError(''); setNotice(''); }} />
-        <small><Video size={14} /> JPG, PNG, WebP, MP4 o WebM · máximo 20 MB. El video se reproduce sin sonido y en bucle.</small>
+        <small><Video size={14} /> Para encaje directo: imagen de 1200 × 522 px (relación 2,3:1). JPG, PNG, WebP, MP4 o WebM · máximo 20 MB. El video se reproduce sin sonido y en bucle.</small>
         <div className="theme-banner-actions"><button className="primary" type="submit" disabled={busy || demo || !file}>{busy ? 'Guardando…' : 'Guardar banner'}</button>{(currentPath || file) && <button type="button" disabled={busy || demo} onClick={() => void restore()}>Usar imagen incluida</button>}</div>
       </form>}
       <PortalBannersAdmin theme={theme} baseTheme={designs[theme]?.baseTheme ?? (theme === 'dark' || theme === 'christmas' || theme === 'new-year' || theme === 'halloween' ? theme : 'base')} demo={demo} />
