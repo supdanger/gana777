@@ -12,7 +12,10 @@ export function defaultBonusBannerLayout(theme: HomeBannerTheme): BonusBannerLay
 
 export function normalizeBonusBannerLayout(value: unknown, theme: HomeBannerTheme): BonusBannerLayout {
   const source = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
-  const safe = normalizeHomeBannerLayout({ ...source, height: defaultHomeBannerLayout.height }, defaultBonusBannerLayout(theme));
+  const defaults = defaultBonusBannerLayout(theme);
+  const safe = normalizeHomeBannerLayout({ ...source, height: defaultHomeBannerLayout.height }, {
+    ...defaultHomeBannerLayout, height: defaults.height, radius: defaults.radius,
+  });
   const height = source.height;
   const number = (key: 'buttonX' | 'buttonY' | 'buttonScale', fallback: number, min: number, max: number) => typeof source[key] === 'number' && Number.isFinite(source[key])
     ? Math.round(Math.min(max, Math.max(min, source[key] as number)) * 10) / 10 : fallback;
