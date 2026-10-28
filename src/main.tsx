@@ -42,6 +42,7 @@ import { PortalAdmin } from './portal-admin';
 import { AdminWithdrawals } from './admin-withdrawals';
 import { AdminChat, type ChatInboxRow } from './admin-chat';
 import { AdminExternalChat, type ExternalChatInboxRow } from './admin-external-chat';
+import { AdminExternalChatSettings } from './admin-external-chat-settings';
 import { DepositLeaderboard } from './deposit-leaderboard';
 import { AdminPlayerAccess } from './admin-player-access';
 import { PlatformAdmin } from './platform-admin';
@@ -999,6 +1000,7 @@ function App() {
       {adminApp && page === 'cashiers' && staffContext.superAdmin && <CashierAdmin demo={demo} busy={busy} action={action} />}
       {page === 'chat' && (adminApp ? <AdminChat inbox={chatInbox} selectedId={thread} demo={demo} onSelect={setThread} onChanged={() => setChatReload(value => value + 1)} /> : <Conversation messages={messages} userId={userId} busy={busy} disabled={demo} onSubmit={sendMessage} />)}
       {adminApp && page === 'external-chat' && <AdminExternalChat inbox={externalChatInbox} selectedId={externalThread} demo={demo} onSelect={setExternalThread} onChanged={() => setExternalChatReload(value => value + 1)} />}
+      {adminApp && page === 'external-chat-admin' && (demo || staffContext.superAdmin) && <AdminExternalChatSettings demo={demo} />}
     </>}
   </>;
   const staffAvatarUrl = staffContext.avatarPath && supabase ? supabase.storage.from('cashier-avatars').getPublicUrl(staffContext.avatarPath).data.publicUrl : null;

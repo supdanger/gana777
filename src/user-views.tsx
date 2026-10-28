@@ -23,8 +23,8 @@ import supportAvatarUrl from './assets/support-panda-avatar.png';
 import { PlayerAccessRequest } from './player-access';
 import { ChatImage, useChatImagePreview } from './chat-images';
 
-export type Page = 'home' | 'profile' | 'deposit' | 'withdrawal' | 'referrals' | 'wheel' | 'history' | 'users' | 'platform' | 'access-requests' | 'contacts' | 'portal' | 'themes' | 'bonuses' | 'accounts' | 'shifts' | 'chat' | 'external-chat' | 'cashiers' | 'announcements' | 'telegram';
-export const titles = { home: 'Inicio', profile: 'Mi perfil', deposit: 'Cargas', withdrawal: 'Retiros', referrals: 'Recomendados', wheel: 'Ruleta', history: 'Historial', users: 'Usuarios', platform: 'Platform', 'access-requests': 'Solicitudes', contacts: 'Contactos', portal: 'Portal', themes: 'Temas', bonuses: 'Bonos', accounts: 'Cuentas', shifts: 'Turnos', chat: 'Chat', 'external-chat': 'Chat externo', cashiers: 'Cajeros', announcements: 'Mensajes', telegram: 'Telegram' };
+export type Page = 'home' | 'profile' | 'deposit' | 'withdrawal' | 'referrals' | 'wheel' | 'history' | 'users' | 'platform' | 'access-requests' | 'contacts' | 'portal' | 'themes' | 'bonuses' | 'accounts' | 'shifts' | 'chat' | 'external-chat' | 'external-chat-admin' | 'cashiers' | 'announcements' | 'telegram';
+export const titles = { home: 'Inicio', profile: 'Mi perfil', deposit: 'Cargas', withdrawal: 'Retiros', referrals: 'Recomendados', wheel: 'Ruleta', history: 'Historial', users: 'Usuarios', platform: 'Platform', 'access-requests': 'Solicitudes', contacts: 'Contactos', portal: 'Portal', themes: 'Temas', bonuses: 'Bonos', accounts: 'Cuentas', shifts: 'Turnos', chat: 'Chat', 'external-chat': 'Chat externo', 'external-chat-admin': 'Admin', cashiers: 'Cajeros', announcements: 'Mensajes', telegram: 'Telegram' };
 export function Brand({ panel = false, homeHeader = false }: { panel?: boolean; homeHeader?: boolean }) {
   const { settings } = useContent();
   const name = panel ? 'GANA777 Panel' : 'GANA777';

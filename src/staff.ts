@@ -17,6 +17,7 @@ export function isStaffPermissionPage(page: Page): page is StaffPermissionPage {
 
 export function canOpenAdminPage(page: Page, permissions: StaffPermissions, superAdmin: boolean): boolean {
   if (page === 'external-chat') return superAdmin || permissions.chat;
+  if (page === 'external-chat-admin') return superAdmin;
   if (page === 'portal') return superAdmin || permissions.contacts;
   if (page === 'access-requests') return superAdmin || permissions.users;
   if (page === 'platform') return superAdmin || permissions.users;

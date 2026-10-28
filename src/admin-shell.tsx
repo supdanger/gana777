@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   ArrowDownToLine, ArrowUpFromLine, Clock3, Disc, Gift, History, Landmark,
-  LayoutDashboard, LogOut, Menu, MessagesSquare, MessageCircle, PhoneCall, UserCog, Users, X, PanelsTopLeft, UserRound, Layers3, BellRing, Palette,
+  LayoutDashboard, LogOut, Menu, MessagesSquare, MessageCircle, PhoneCall, UserCog, Users, X, PanelsTopLeft, UserRound, Layers3, BellRing, Palette, Settings2,
 } from 'lucide-react';
 import { Brand, titles, type Page } from './user-views';
 import { canOpenAdminPage, type StaffPermissions } from './staff';
@@ -32,7 +32,7 @@ const groups: Array<{ label: string; items: Array<{ page: Page; Icon: typeof Lay
     { page: 'accounts', Icon: Landmark },
     { page: 'telegram', Icon: BellRing },
   ] },
-  { label: 'Administración', items: [{ page: 'cashiers', Icon: UserCog }] },
+  { label: 'Administración', items: [{ page: 'cashiers', Icon: UserCog }, { page: 'external-chat-admin', Icon: Settings2 }] },
 ];
 
 function sectionLabel(page: Page): string {
