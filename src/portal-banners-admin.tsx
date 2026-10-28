@@ -13,7 +13,7 @@ const mediaTypes: Record<string, string> = {
 };
 const maxMediaSize = 20 * 1024 * 1024;
 const places: { id: PortalBannerPlace; title: string; hint: string }[] = [
-  { id: 'home', title: 'Más banners del inicio', hint: 'Se muestran debajo del banner de bonos, solo en este tema.' },
+  { id: 'home', title: 'Más banners del inicio', hint: 'Se agregan al carrusel de Inicio, después del banner principal. Usá Subir/Bajar para elegir el orden.' },
   { id: 'withdrawal', title: 'Banners de retiros', hint: 'La primera imagen queda dentro de la tarjeta de estado del retiro, y el texto queda encima. Solo en este tema.' },
 ];
 

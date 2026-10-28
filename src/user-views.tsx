@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { ArrowLeft, Camera, ChevronRight, Disc, Eye, EyeOff, FileText, Gift, Images, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserPlus, UserRound, X } from 'lucide-react';
-import { PortalBanners, StorageImage, useContent } from './content';
+import { StorageImage, useContent } from './content';
 import { HomeBonusCarousel } from './special-bonus-carousel';
 import { asBonusRule, bonusEnabled, moneyInputMaxLength, moneyInputPattern, percentText, readMoney } from '../supabase/functions/_shared/bonus-rule';
 import { creditAmounts } from './amounts';
@@ -182,7 +182,6 @@ export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, use
   return <>
     <h1 className="home-welcome">¡{greeting}, <span className="home-welcome-name">{name}!</span></h1>
     <HomeBonusCarousel onClaim={onClaimSpecialBonus} />
-    <PortalBanners place="home" />
     <h2 className="section-title">¿Qué querés hacer?</h2>
     <div className="quick-actions">
       {bannerUrl && bannerImage && <a className="action-card home-link-banner" style={bannerStyle} href={bannerUrl} target="_blank" rel="noopener noreferrer" aria-label={`${settings.home_banner_title} (abre en otra pestaña)`}>{bannerImage.startsWith('/') ? <img src={bannerImage} alt={settings.home_banner_title} draggable={false} decoding="async" /> : <StorageImage path={bannerImage} alt={settings.home_banner_title} />}</a>}

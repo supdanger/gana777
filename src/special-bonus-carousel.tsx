@@ -5,6 +5,7 @@ import { normalizeBonusBannerLayout, specialBonusDisplayLayout } from './bonus-b
 import { homeBannerLayoutStyles } from './home-banner';
 import { money, supabase } from './lib';
 import { themeBase } from './portal-theme-design';
+import { portalBannersFor } from './portal-banners';
 
 type Availability = { promotion_id: string; next_available_at: string | null; awaiting_credit: boolean; server_now: string };
 
@@ -17,12 +18,14 @@ export function HomeBonusCarousel({ onClaim }: { onClaim: (id: string) => void }
   const { promotions, settings } = useContent();
   const specials = promotions.filter(p => p.selectable && p.cooldown_hours > 0);
   const hasMainBanner = promotions.some(p => p.show_banner);
+  const homeBanners = portalBannersFor(settings.portal_banners, settings.portal_theme, 'home');
   const [slide, setSlide] = useState(0);
   const [availability, setAvailability] = useState<Record<string, Availability>>({});
   const [ready, setReady] = useState(!supabase);
   const [now, setNow] = useState(Date.now);
   const [clockOffset, setClockOffset] = useState(0);
-  const total = (hasMainBanner ? 1 : 0) + specials.length;
+  const mainCount = hasMainBanner ? 1 : 0;
+  const total = mainCount + homeBanners.length + specials.length;
   useEffect(() => { setSlide(value => Math.max(0, Math.min(value, total - 1))); }, [total]);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -56,7 +59,8 @@ export function HomeBonusCarousel({ onClaim }: { onClaim: (id: string) => void }
     const timer = window.setInterval(() => setSlide(value => (value + 1) % total), 8000);
     return () => window.clearInterval(timer);
   }, [total]);
-  const special = specials[slide - (hasMainBanner ? 1 : 0)] ?? null;
+  const homeBanner = homeBanners[slide - mainCount] ?? null;
+  const special = specials[slide - mainCount - homeBanners.length] ?? null;
   const status = special ? availability[special.id] : null;
   const remaining = status?.next_available_at ? new Date(status.next_available_at).getTime() - now - clockOffset : 0;
   const statusReady = ready && (!supabase || !!status);
@@ -72,7 +76,11 @@ export function HomeBonusCarousel({ onClaim }: { onClaim: (id: string) => void }
         <strong className="special-banner-reward" aria-label={`Bono de ${money(special.bonus_amount)}`}>+{money(special.bonus_amount)}</strong>
         {!statusReady ? <span className="special-banner-state">Consultando disponibilidad…</span> : status?.awaiting_credit ? <span className="special-banner-state">Carga con bono en proceso</span> : remaining > 0 ? <><span className="special-banner-state">Disponible nuevamente en</span><strong className="special-banner-countdown" role="timer">{countdown(remaining)}</strong></> : <button type="button" disabled={!canClaim} onClick={() => onClaim(special.id)}>Obtener bono</button>}
       </div>
+    </section> : homeBanner ? <section className="bonus-banner image-banner portal-home-carousel-banner" style={homeBannerLayoutStyles(homeBanner.layout) as CSSProperties} aria-label={`Banner del inicio ${slide - mainCount + 1}`}>
+      {/\.(mp4|webm)$/i.test(homeBanner.path)
+        ? <video className="bonus-image" src={supabase?.storage.from('app-assets').getPublicUrl(homeBanner.path).data.publicUrl} autoPlay muted loop playsInline preload="metadata" aria-label={`Banner del inicio ${slide - mainCount + 1}`} />
+        : <StorageImage path={homeBanner.path} alt={`Banner del inicio ${slide - mainCount + 1}`} className="bonus-image" />}
     </section> : <BonusBanner />}
-    {total > 1 && <nav className="home-bonus-carousel-nav" aria-label="Banners de bonos"><button type="button" aria-label="Banner anterior" onClick={() => setSlide(value => (value - 1 + total) % total)}><ChevronLeft size={30} strokeWidth={2.8} aria-hidden="true" /></button><button type="button" aria-label="Banner siguiente" onClick={() => setSlide(value => (value + 1) % total)}><ChevronRight size={30} strokeWidth={2.8} aria-hidden="true" /></button></nav>}
+    {total > 1 && <nav className="home-bonus-carousel-nav" aria-label="Banners del inicio"><button type="button" aria-label="Banner anterior" onClick={() => setSlide(value => (value - 1 + total) % total)}><ChevronLeft size={30} strokeWidth={2.8} aria-hidden="true" /></button><button type="button" aria-label="Banner siguiente" onClick={() => setSlide(value => (value + 1) % total)}><ChevronRight size={30} strokeWidth={2.8} aria-hidden="true" /></button></nav>}
   </div>;
 }
