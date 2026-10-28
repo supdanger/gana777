@@ -30,7 +30,8 @@ export function PlayerBonuses({ demo, onClaim }: { demo: boolean; onClaim: (id: 
   const [nextLoadNumber, setNextLoadNumber] = useState<number | null>(demo || !supabase ? 1 : null);
   const [loadNumberReady, setLoadNumberReady] = useState(demo || !supabase);
   const offers = promotions.filter(offer => offer.selectable && (offer.reward_type === 'free_spins' ? !!offer.reward_label : offer.bonus_mode === 'fixed' ? offer.bonus_amount > 0 : offer.bonus_percent > 0));
-  const timedOffers = offers.filter(offer => offer.cooldown_hours > 0);
+  const visibleOffers = offers.filter(offer => !loadNumberReady || nextLoadNumber === null || offer.load_number_to === null || nextLoadNumber <= offer.load_number_to);
+  const timedOffers = visibleOffers.filter(offer => offer.cooldown_hours > 0);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -76,7 +77,7 @@ export function PlayerBonuses({ demo, onClaim }: { demo: boolean; onClaim: (id: 
   }, [demo, timedOffers.length]);
 
   return <section className="player-bonuses" aria-label="Bonos disponibles">
-    {!offers.length ? <div className="player-bonuses-empty"><Gift size={28} /><strong>No hay bonos disponibles</strong><span>Cuando haya nuevas promociones, aparecerán acá.</span></div> : offers.map(offer => {
+    {!visibleOffers.length ? <div className="player-bonuses-empty"><Gift size={28} /><strong>No hay bonos disponibles</strong><span>Cuando haya nuevas promociones, aparecerán acá.</span></div> : visibleOffers.map(offer => {
       const timed = offer.cooldown_hours > 0;
       const loadEligible = nextLoadNumber !== null && nextLoadNumber >= offer.load_number_from
         && (offer.load_number_to === null || nextLoadNumber <= offer.load_number_to);

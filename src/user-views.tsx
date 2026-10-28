@@ -16,7 +16,7 @@ import { PortalInstall } from './portal-install';
 import { homeBannerImage, homeBannerLayout, homeBannerLayoutStyles, homeBannerLink } from './home-banner';
 import { portalBannersFor } from './portal-banners';
 import { headerLogoLayout, headerLogoStyle } from './header-logo-layout';
-import { themeBase, themeSurface } from './portal-theme-design';
+import { isImageCardSlot, themeBase, themeSurface } from './portal-theme-design';
 import { referralShareMessage, referralShareUrl } from './share-referral';
 import referralBannerUrl from './assets/home-casino-banner-v3.png';
 import { PlayerAccessRequest } from './player-access';
@@ -99,7 +99,7 @@ function playerGreeting() {
   const hour = Number(greetingHourFormatter.format(new Date()));
   return hour >= 6 && hour < 12 ? 'Buenos días' : hour >= 12 && hour < 20 ? 'Buenas tardes' : 'Buenas noches';
 }
-export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, username, casinoUrl, demo = false, userId = '' }: { name: string; navigate: (page: Page) => void; onClaimSpecialBonus: (id: string) => void; whatsappUrl?: string | null; username?: string | null; casinoUrl?: string | null; demo?: boolean; userId?: string }) {
+export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, username, casinoUrl, demo = false, userId = '', wheelEligible = false }: { name: string; navigate: (page: Page) => void; onClaimSpecialBonus: (id: string) => void; whatsappUrl?: string | null; username?: string | null; casinoUrl?: string | null; demo?: boolean; userId?: string; wheelEligible?: boolean }) {
   const { settings, contactAnimations } = useContent();
   const bannerUrl = homeBannerLink(settings, casinoUrl);
   const bannerImage = homeBannerImage(settings, settings.portal_theme);
@@ -153,7 +153,7 @@ export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, use
     return () => window.clearInterval(timer);
   }, [nextSpinAt, demo, userId]);
   useEffect(() => {
-    if (demo || !supabase || !userId || !settings.wheel_enabled) {
+    if (demo || !supabase || !userId || !settings.wheel_enabled || !wheelEligible) {
       setNextSpinAt(null);
       return;
     }
@@ -172,7 +172,7 @@ export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, use
       .subscribe();
     window.addEventListener('focus', load);
     return () => { alive = false; window.removeEventListener('focus', load); void db.removeChannel(channel); };
-  }, [demo, userId, settings.wheel_enabled]);
+  }, [demo, userId, settings.wheel_enabled, wheelEligible]);
   const contacts = [
     { name: 'WhatsApp', url: safeHttpsLink(whatsappUrl === undefined ? settings.whatsapp_url : whatsappUrl, ['wa.me', 'api.whatsapp.com']), mark: <WhatsAppMark />, className: 'whatsapp', animation: contactAnimations.whatsapp, visible: settings.show_whatsapp },
     { name: 'Recomendar', url: shareUrl, mark: <Send />, className: 'recommend', animation: null, visible: !!shareUrl && settings.show_whatsapp },
@@ -190,9 +190,9 @@ export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, use
         { id: 'withdrawal', title: 'Retiros', description: 'Solicitá tu retiro', Icon: Link2 },
         { id: 'bonuses', title: 'Bonos', description: 'Elegí tu bono antes de cargar', Icon: Gift },
         { id: 'wheel', title: 'Ruleta', description: 'Girás una vez por día', Icon: Disc },
-      ] as const).filter(action => action.id !== 'wheel' || settings.wheel_enabled).map(({ id, title, description, Icon }) => {
+      ] as const).filter(action => action.id !== 'wheel' || settings.wheel_enabled && wheelEligible).map(({ id, title, description, Icon }) => {
         const detail = id === 'wheel' && wheelWait ? wheelWait : description;
-        const cardImagePath = id === 'deposit' || id === 'withdrawal' || id === 'bonuses' ? settings.portal_theme_designs?.[settings.portal_theme]?.[`${id}Path`] : null;
+        const cardImagePath = isImageCardSlot(id) ? settings.portal_theme_designs?.[settings.portal_theme]?.[`${id}Path`] : null;
         return <button className="action-card" data-theme-card={id} key={id} aria-label={title} onClick={() => navigate(id)}>{cardImagePath ? <StorageImage path={cardImagePath} alt="" className="action-card-image" /> : <><span className="icon-circle"><Icon /></span><span><strong>{title}</strong><small className={id === 'wheel' && wheelWait ? 'wheel-home-wait' : undefined} role={id === 'wheel' && wheelWait ? 'timer' : undefined}>{detail}</small></span><ChevronRight /></>}</button>;
       })}
     </div>
@@ -406,6 +406,43 @@ export function Conversation({ messages, userId, busy, disabled, open, onOpenCha
     window.addEventListener('orientationchange', alignToPortal);
     return () => { observer?.disconnect(); window.removeEventListener('resize', alignToPortal); window.removeEventListener('orientationchange', alignToPortal); };
   }, []);
+  useEffect(() => {
+    const root = widget.current;
+    if (!root) return;
+    let frame = 0;
+    const portal = root.closest('.user-app');
+    const alignToWheel = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        if (!root.closest('.user-app.page-home')) { root.style.removeProperty('bottom'); return; }
+        const wheelCard = root.closest('.user-app')?.querySelector<HTMLElement>('.action-card[data-theme-card="wheel"]');
+        if (!wheelCard) { root.style.bottom = 'max(108px, calc(env(safe-area-inset-bottom) + 88px))'; return; }
+        const rect = wheelCard.getBoundingClientRect();
+        if (rect.bottom <= 0 || rect.top >= window.innerHeight) { root.style.bottom = 'max(108px, calc(env(safe-area-inset-bottom) + 88px))'; return; }
+        const launcherHeight = 50;
+        const desiredTop = rect.bottom + 30;
+        const visibleTop = Math.min(desiredTop, window.innerHeight - launcherHeight);
+        root.style.bottom = `${Math.max(0, window.innerHeight - visibleTop - launcherHeight)}px`;
+      });
+    };
+    const mutationObserver = portal && typeof MutationObserver !== 'undefined' ? new MutationObserver(alignToWheel) : null;
+    if (portal && mutationObserver) mutationObserver.observe(portal, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true });
+    const resizeObserver = portal && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(alignToWheel) : null;
+    if (portal && resizeObserver) resizeObserver.observe(portal);
+    alignToWheel();
+    window.addEventListener('resize', alignToWheel, { passive: true });
+    window.addEventListener('scroll', alignToWheel, { passive: true });
+    window.visualViewport?.addEventListener('resize', alignToWheel, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      mutationObserver?.disconnect();
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', alignToWheel);
+      window.removeEventListener('scroll', alignToWheel);
+      window.visualViewport?.removeEventListener('resize', alignToWheel);
+      root.style.removeProperty('bottom');
+    };
+  }, []);
   useEffect(() => { if (open && log.current && nearBottom.current) log.current.scrollTop = log.current.scrollHeight; }, [messages, open]);
   useEffect(() => { if (open) messageInput.current?.focus(); }, [open]);
   useEffect(() => {
@@ -439,6 +476,6 @@ export function Conversation({ messages, userId, busy, disabled, open, onOpenCha
       </section>
       <form className="composer chat-composer" onSubmit={onSubmit} onReset={() => setImage(null)}>{imagePreview && <div className="chat-image-preview"><img src={imagePreview} alt="Imagen seleccionada" /><span>{image?.name}</span><button type="button" aria-label="Quitar imagen" onClick={() => { setImage(null); if (imageInput.current) imageInput.current.value = ''; }}><Trash2 size={16} /></button></div>}<input ref={imageInput} className="chat-file-input" name="image" type="file" accept="image/*" disabled={busy || disabled} onChange={event => setImage(event.target.files?.[0] ?? null)} /><button type="button" className="chat-gallery-button" aria-label="Adjuntar imagen de la galería" disabled={busy || disabled} onClick={() => imageInput.current?.click()}><Images size={20} /></button><input ref={messageInput} className="player-chat-message" name="message" aria-label="Mensaje" placeholder="Escribí un mensaje…" maxLength={2000} autoComplete="off" enterKeyHint="send" required={!image} disabled={busy || disabled} /><button className="send" aria-label="Enviar mensaje" disabled={busy || disabled}><Send size={21} /></button></form>
     </section>
-    <button ref={launcher} className="player-chat-launcher" type="button" aria-label={open ? 'Cerrar chat de soporte' : 'Abrir chat de soporte'} aria-expanded={open} onClick={() => onOpenChange(!open)}><MessageCircle size={26} /></button>
+    <button ref={launcher} className="player-chat-launcher" type="button" aria-label={open ? 'Cerrar chat de soporte' : 'Abrir chat de soporte'} aria-expanded={open} onClick={() => onOpenChange(!open)}><MessageCircle size={22} /><span>CHAT</span></button>
   </div>;
 }

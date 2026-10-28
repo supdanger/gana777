@@ -98,6 +98,8 @@ function App() {
   const [loading, setLoading] = useState(!!supabase);
   const [demo, setDemo] = useState(false);
   const [page, setPage] = useState<Page>('home');
+  const [wheelEligible, setWheelEligible] = useState(false);
+  const [wheelEligibilityReady, setWheelEligibilityReady] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
@@ -172,6 +174,7 @@ function App() {
 
   function navigate(nextPage: Page) {
     if (!adminApp && nextPage === 'chat') { setPage('home'); setChatBubbleOpen(true); return; }
+    if (nextPage !== 'home') setChatBubbleOpen(false);
     setPage(nextPage); if (nextPage !== 'deposit') setSelectedBonusId(''); setSelectedDepositId(null); setApprovedDeposit(null); setError(''); setNotice('');
   }
   useEffect(() => {
@@ -186,7 +189,7 @@ function App() {
         window.history.replaceState(null, '', window.location.pathname);
         return;
       }
-      if (view === 'wheel' && !settings.wheel_enabled) {
+      if (view === 'wheel' && (!settings.wheel_enabled || wheelEligibilityReady && !wheelEligible)) {
         navigate('home');
         window.history.replaceState(null, '', window.location.pathname);
         return;
@@ -203,11 +206,38 @@ function App() {
     };
     navigator.serviceWorker?.addEventListener('message', onMessage);
     return () => navigator.serviceWorker?.removeEventListener('message', onMessage);
-  }, [session?.user.id, settings.wheel_enabled]);
+  }, [session?.user.id, settings.wheel_enabled, wheelEligibilityReady, wheelEligible]);
   useEffect(() => {
-    if (adminApp || settings.wheel_enabled || page !== 'wheel') return;
+    if (adminApp) return;
+    if (demo) { setWheelEligible(true); setWheelEligibilityReady(true); return; }
+    const userId = session?.user.id;
+    if (!userId || !settings.wheel_enabled || !supabase) {
+      setWheelEligible(false);
+      setWheelEligibilityReady(true);
+      return;
+    }
+    const db = supabase;
+    let alive = true;
+    const refresh = async () => {
+      const { data, error } = await db.rpc('player_wheel_eligible');
+      if (!alive) return;
+      if (!error) setWheelEligible(data === true);
+      setWheelEligibilityReady(true);
+    };
+    setWheelEligible(false);
+    setWheelEligibilityReady(false);
+    void refresh();
+    const poll = window.setInterval(() => void refresh(), 60000);
+    const channel = db.channel(`wheel-eligibility-${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests', filter: `user_id=eq.${userId}` }, () => void refresh())
+      .subscribe();
+    window.addEventListener('focus', refresh);
+    return () => { alive = false; window.clearInterval(poll); window.removeEventListener('focus', refresh); void db.removeChannel(channel); };
+  }, [demo, session?.user.id, settings.wheel_enabled]);
+  useEffect(() => {
+    if (adminApp || page !== 'wheel' || !wheelEligibilityReady || settings.wheel_enabled && wheelEligible) return;
     navigate('home');
-  }, [page, settings.wheel_enabled]);
+  }, [page, settings.wheel_enabled, wheelEligibilityReady, wheelEligible]);
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [page, depositPage]);
   useEffect(() => {
     if (page !== 'profile' || !profileHistoryTarget) return;
@@ -953,7 +983,7 @@ function App() {
       {(adminApp || (page !== 'deposit' && page !== 'withdrawal')) && feedback}
       {!adminApp && page === 'profile' && <UserProfile name={name} busy={busy} logout={() => void logout()} />}
       {!adminApp && !demo && session && <PlayerNotifications key={session.user.id} userId={session.user.id} settingsPage={page === 'home' || page === 'profile' ? page : null} onOpenChat={() => navigate('chat')} onOpenWheel={() => navigate('wheel')} />}
-      {page === 'home' && (adminApp ? <><div className="welcome"><h1><span>Resumen del turno</span></h1></div>{!demo && !staffContext.superAdmin && !sacStation ? <p className="shift-note">Elegí el SAC de esta computadora en Cargas para ver sus pendientes.</p> : null}<div className="stats">{(['deposit', 'withdrawal'] as const).map(kind => <section className="card" key={kind}><p>{kind === 'deposit' ? 'Cargas pendientes' : 'Retiros pendientes'}</p><h1>{kind === 'deposit' ? pendingCounts.deposit : pendingCounts.withdrawal}</h1></section>)}</div>{bonusBoard()}<DepositLeaderboard demo={demo} requests={requests} reloadKey={leaderboardReload} /></> : <UserHome name={name} navigate={navigate} onClaimSpecialBonus={id => { setSelectedBonusId(id); navigate('deposit'); }} whatsappUrl={demo ? undefined : playerWhatsAppUrl} username={demo ? null : playerUsername} casinoUrl={demo ? null : playerCasinoUrl} demo={demo} userId={demo ? '' : userId} />)}
+      {page === 'home' && (adminApp ? <><div className="welcome"><h1><span>Resumen del turno</span></h1></div>{!demo && !staffContext.superAdmin && !sacStation ? <p className="shift-note">Elegí el SAC de esta computadora en Cargas para ver sus pendientes.</p> : null}<div className="stats">{(['deposit', 'withdrawal'] as const).map(kind => <section className="card" key={kind}><p>{kind === 'deposit' ? 'Cargas pendientes' : 'Retiros pendientes'}</p><h1>{kind === 'deposit' ? pendingCounts.deposit : pendingCounts.withdrawal}</h1></section>)}</div>{bonusBoard()}<DepositLeaderboard demo={demo} requests={requests} reloadKey={leaderboardReload} /></> : <UserHome name={name} navigate={navigate} onClaimSpecialBonus={id => { setSelectedBonusId(id); navigate('deposit'); }} whatsappUrl={demo ? undefined : playerWhatsAppUrl} username={demo ? null : playerUsername} casinoUrl={demo ? null : playerCasinoUrl} demo={demo} userId={demo ? '' : userId} wheelEligible={demo || wheelEligible} />)}
       {!adminApp && page === 'bonuses' && <PlayerBonuses demo={demo} onClaim={id => { setSelectedBonusId(id); navigate('deposit'); }} />}
       {!adminApp && page === 'profile' && <>{history('deposit')}{history('withdrawal')}<ReferralBonusHistory userId={userId} demo={demo} /></>}
       {(page === 'deposit' || page === 'withdrawal') && !adminApp && <RequestForm key={`${page}:${selectedBonusId}`} kind={page} requests={requests.filter(r => r.user_id === userId)} bank={bank} bankOperation={bankOperation} retryAt={page === 'deposit' ? depositRetryAt : 0} initialBonusId={page === 'deposit' ? selectedBonusId : ''} busy={busy} demo={demo} feedback={feedback} onSubmit={submitRequest} onCopy={(text, label) => void action(async () => { await navigator.clipboard.writeText(text); setNotice(`${label} copiado.`); })} onBrowseBonuses={() => navigate('bonuses')} onOpenWithdrawalHistory={() => { setUserHistoryOpen(old => ({ ...old, withdrawal: true })); setProfileHistoryTarget('withdrawal'); navigate('profile'); }} />}
@@ -1015,7 +1045,7 @@ function App() {
       {adminApp && page === 'bonuses' && <BonusAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'referrals' && <ReferralRewardsAdmin demo={demo} busy={busy} action={action} userId={userId} superAdmin={demo || staffContext.superAdmin} />}
       {adminApp && page === 'wheel' && <WheelAdmin demo={demo} busy={busy} action={action} userId={userId} superAdmin={demo || staffContext.superAdmin} canEditPrizes={demo || staffContext.superAdmin || staffContext.permissions.bonuses} />}
-      {!adminApp && page === 'wheel' && settings.wheel_enabled && <UserWheel demo={demo} userId={userId} />}
+      {!adminApp && page === 'wheel' && settings.wheel_enabled && wheelEligibilityReady && wheelEligible && <UserWheel demo={demo} userId={userId} />}
       {adminApp && page === 'accounts' && <AccountAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'shifts' && <ShiftAdmin demo={demo} busy={busy} action={action} station={sacStation} onStation={chooseSac} />}
       {adminApp && page === 'cashiers' && staffContext.superAdmin && <CashierAdmin demo={demo} busy={busy} action={action} />}
@@ -1030,7 +1060,7 @@ function App() {
   return <div className={`app user-app page-${page} ${surface.className}`} style={surface.style}>
     <UserHeader page={page} navigate={navigate} name={name} />
     {content}
-    {session && !demo && page !== 'bonuses' && <Conversation messages={messages} userId={userId} busy={busy} disabled={false} open={chatBubbleOpen} onOpenChange={setChatBubbleOpen} onSubmit={sendMessage} />}
+    {session && !demo && page === 'home' && <Conversation messages={messages} userId={userId} busy={busy} disabled={false} open={chatBubbleOpen} onOpenChange={setChatBubbleOpen} onSubmit={sendMessage} />}
   </div>;
 }
 createRoot(document.getElementById('root')!).render(<React.StrictMode><ContentProvider><App /></ContentProvider></React.StrictMode>);

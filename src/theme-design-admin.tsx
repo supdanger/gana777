@@ -3,7 +3,7 @@ import { ImagePlus, RotateCcw } from 'lucide-react';
 import { InputError } from '../supabase/functions/_shared/validation';
 import { bannerImageExtension } from './home-banner';
 import { supabase } from './lib';
-import { cardSlots, defaultCardStyle, defaultThemeCardImageLayout, isCustomTheme, normalizeCardStyle, normalizeThemeCardImageLayout, themeBase, type CardSlot, type PortalTheme, type ThemeDesign, type ThemeDesigns, type ThemeSettings } from './portal-theme-design';
+import { cardSlots, defaultCardStyle, defaultThemeCardImageLayout, imageCardSlots, isCustomTheme, isImageCardSlot, normalizeCardStyle, normalizeThemeCardImageLayout, themeBase, type CardSlot, type ImageCardSlot, type PortalTheme, type ThemeDesign, type ThemeDesigns, type ThemeSettings } from './portal-theme-design';
 
 const builtInBackgrounds: Record<string, string | null> = {
   christmas: '/preview-assets/christmas-background.webp',
@@ -17,7 +17,7 @@ export function ThemeDesignAdmin({ theme, designs, demo, onSaved }: {
   const [draft, setDraft] = useState<ThemeDesign>(() => structuredClone(designs[theme] ?? {}));
   const [slot, setSlot] = useState<CardSlot>('deposit');
   const [file, setFile] = useState<File | null>(null);
-  const [cardImageFiles, setCardImageFiles] = useState<Partial<Record<'deposit' | 'withdrawal' | 'bonuses', File>>>({});
+  const [cardImageFiles, setCardImageFiles] = useState<Partial<Record<ImageCardSlot, File>>>({});
   const [preview, setPreview] = useState('');
   const [cardImagePreview, setCardImagePreview] = useState('');
   const [busy, setBusy] = useState(false);
@@ -31,7 +31,7 @@ export function ThemeDesignAdmin({ theme, designs, demo, onSaved }: {
     const url = URL.createObjectURL(file); setPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [file]);
-  const selectedCardImageFile = slot === 'deposit' || slot === 'withdrawal' || slot === 'bonuses' ? cardImageFiles[slot] : undefined;
+  const selectedCardImageFile = isImageCardSlot(slot) ? cardImageFiles[slot] : undefined;
   useEffect(() => {
     if (!selectedCardImageFile) { setCardImagePreview(''); return; }
     const url = URL.createObjectURL(selectedCardImageFile); setCardImagePreview(url);
@@ -43,10 +43,10 @@ export function ThemeDesignAdmin({ theme, designs, demo, onSaved }: {
   const card = normalizeCardStyle(selected, defaultCardStyle(settings, theme));
   const storedBackground = draft.backgroundPath && supabase ? supabase.storage.from('app-assets').getPublicUrl(draft.backgroundPath).data.publicUrl : null;
   const background = preview || storedBackground || builtInBackgrounds[base] || null;
-  const selectedImagePath = slot === 'deposit' || slot === 'withdrawal' || slot === 'bonuses' ? draft[`${slot}Path`] : null;
+  const selectedImagePath = isImageCardSlot(slot) ? draft[`${slot}Path`] : null;
   const storedCardImage = selectedImagePath && supabase ? supabase.storage.from('app-assets').getPublicUrl(selectedImagePath).data.publicUrl : null;
   const cardImage = cardImagePreview || storedCardImage;
-  const imageLayout = normalizeThemeCardImageLayout(slot === 'deposit' || slot === 'withdrawal' || slot === 'bonuses' ? draft[`${slot}ImageLayout`] : undefined);
+  const imageLayout = normalizeThemeCardImageLayout(isImageCardSlot(slot) ? draft[`${slot}ImageLayout`] : undefined);
 
   function setCard(next: typeof card) {
     setDraft(current => ({ ...current, cards: { ...current.cards, [slot]: next } }));
@@ -57,8 +57,8 @@ export function ThemeDesignAdmin({ theme, designs, demo, onSaved }: {
     setSaved(false);
   }
   function setImageLayout(next: typeof defaultThemeCardImageLayout) {
-    if (slot !== 'deposit' && slot !== 'withdrawal' && slot !== 'bonuses') return;
-    const key = `${slot}ImageLayout` as 'depositImageLayout' | 'withdrawalImageLayout' | 'bonusesImageLayout';
+    if (!isImageCardSlot(slot)) return;
+    const key = `${slot}ImageLayout` as `${ImageCardSlot}ImageLayout`;
     setDraft(current => ({ ...current, [key]: next }));
     setSaved(false);
   }
@@ -84,13 +84,13 @@ export function ThemeDesignAdmin({ theme, designs, demo, onSaved }: {
         if (uploaded.error) throw new InputError('No pudimos subir el fondo. Revisá la migración 053 y los permisos.');
       }
       const nextDesign: ThemeDesign = { ...draft, name, backgroundPath };
-      for (const imageSlot of ['deposit', 'withdrawal', 'bonuses'] as const) {
+      for (const imageSlot of imageCardSlots) {
         const imageFile = cardImageFiles[imageSlot];
         if (!imageFile) continue;
         const extension = await bannerImageExtension(imageFile);
         const imagePath = `theme-card-images/${theme}/${imageSlot}-${crypto.randomUUID()}.${extension}`;
         const uploaded = await supabase.storage.from('app-assets').upload(imagePath, imageFile, { contentType: imageFile.type, upsert: false });
-        if (uploaded.error) throw new InputError(`No pudimos subir la imagen de ${imageSlot === 'deposit' ? 'Cargar' : imageSlot === 'withdrawal' ? 'Retiros' : 'Bonos'}. Revisá la migración 053 y los permisos.`);
+        if (uploaded.error) throw new InputError(`No pudimos subir la imagen de ${imageSlot === 'deposit' ? 'Cargar' : imageSlot === 'withdrawal' ? 'Retiros' : imageSlot === 'bonuses' ? 'Bonos' : 'Ruleta'}. Revisá la migración 053 y los permisos.`);
         nextDesign[`${imageSlot}Path`] = imagePath;
       }
       const next = { ...designs, [theme]: nextDesign };
@@ -119,7 +119,7 @@ export function ThemeDesignAdmin({ theme, designs, demo, onSaved }: {
         <div className="theme-design-preview" style={background ? { backgroundImage: `url("${background}")`, backgroundPosition: `${draft.backgroundX ?? 50}% ${draft.backgroundY ?? 0}%`, backgroundSize: (draft.backgroundScale ?? 100) === 100 ? 'cover' : `${draft.backgroundScale}% auto` } : undefined}>
           <div className="theme-design-preview-header">Gana<span>777</span>bet.com</div>
           <div className="theme-design-preview-spacer" />
-          <div className="theme-design-preview-card" style={{ position: 'relative', overflow: 'hidden', background: card.background, border: `${card.borderWidth}px solid ${card.borderColor}`, borderRadius: card.radius, aspectRatio: slot === 'deposit' || slot === 'withdrawal' || slot === 'bonuses' ? '12 / 5' : undefined, minHeight: cardImage ? 0 : undefined }}>{cardImage ? <img src={cardImage} alt="" className="theme-design-preview-image" style={{ left: `calc(50% + ${imageLayout.x}%)`, top: `calc(50% + ${imageLayout.y}%)`, width: `${imageLayout.width}%`, height: `${imageLayout.height}%` } as CSSProperties} /> : <><strong>{cardSlots.find(item => item.id === slot)?.label}</strong><small>Vista previa de la tarjeta seleccionada</small></>}</div>
+          <div className="theme-design-preview-card" style={{ position: 'relative', overflow: 'hidden', background: card.background, border: `${card.borderWidth}px solid ${card.borderColor}`, borderRadius: card.radius, aspectRatio: isImageCardSlot(slot) ? '12 / 5' : undefined, minHeight: cardImage ? 0 : undefined }}>{cardImage ? <img src={cardImage} alt="" className="theme-design-preview-image" style={{ left: `calc(50% + ${imageLayout.x}%)`, top: `calc(50% + ${imageLayout.y}%)`, width: `${imageLayout.width}%`, height: `${imageLayout.height}%` } as CSSProperties} /> : <><strong>{cardSlots.find(item => item.id === slot)?.label}</strong><small>Vista previa de la tarjeta seleccionada</small></>}</div>
         </div>
       </div>
       <div className="theme-card-editor">
@@ -131,8 +131,8 @@ export function ThemeDesignAdmin({ theme, designs, demo, onSaved }: {
           <label>Grosor del borde <output>{card.borderWidth}px</output><input type="range" min="0" max="8" value={card.borderWidth} disabled={busy || demo} onChange={event => setCard({ ...card, borderWidth: Number(event.target.value) })} /></label>
           <label>Redondeo <output>{card.radius}px</output><input type="range" min="0" max="40" value={card.radius} disabled={busy || demo} onChange={event => setCard({ ...card, radius: Number(event.target.value) })} /></label>
         </div>
-        {(slot === 'deposit' || slot === 'withdrawal' || slot === 'bonuses') && <div className="theme-card-image-editor">
-          <h4>Imagen de {slot === 'deposit' ? 'Cargar' : slot === 'withdrawal' ? 'Retiros' : 'Bonos'}</h4>
+        {isImageCardSlot(slot) && <div className="theme-card-image-editor">
+          <h4>Imagen de {slot === 'deposit' ? 'Cargar' : slot === 'withdrawal' ? 'Retiros' : slot === 'bonuses' ? 'Bonos' : 'Ruleta'}</h4>
           <label className="theme-design-file"><ImagePlus size={17} />{selectedImagePath || selectedCardImageFile ? 'Cambiar imagen' : 'Subir imagen'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy || demo} onChange={event => { const nextFile = event.target.files?.[0]; if (nextFile) setCardImageFiles(current => ({ ...current, [slot]: nextFile })); setSaved(false); event.currentTarget.value = ''; }} /><small>JPG, PNG o WebP · hasta 5 MB. Tamaño recomendado: 720 × 300 px (relación 12:5). Se recorta para llenar la tarjeta sin deformarse.</small></label>
           <div className="theme-card-live-preview">
             <strong>Vista previa en vivo</strong>

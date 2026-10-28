@@ -14,11 +14,15 @@ export const cardSlots = [
   { id: 'deposit', label: 'Cargar' },
   { id: 'withdrawal', label: 'Retiros' },
   { id: 'bonuses', label: 'Bonos' },
+  { id: 'wheel', label: 'Ruleta' },
   { id: 'chat', label: 'Chat' },
   { id: 'general', label: 'Otras tarjetas' },
   { id: 'install', label: 'Instalar' },
 ] as const;
 export type CardSlot = typeof cardSlots[number]['id'];
+export const imageCardSlots = ['deposit', 'withdrawal', 'bonuses', 'wheel'] as const;
+export type ImageCardSlot = typeof imageCardSlots[number];
+export const isImageCardSlot = (slot: CardSlot): slot is ImageCardSlot => (imageCardSlots as readonly string[]).includes(slot);
 export type CardStyle = { background: string; borderColor: string; borderWidth: number; radius: number };
 export type ThemeCardImageLayout = { width: number; height: number; x: number; y: number };
 export const defaultThemeCardImageLayout: ThemeCardImageLayout = { width: 100, height: 100, x: 0, y: 0 };
@@ -44,9 +48,11 @@ export type ThemeDesign = {
   depositPath?: string | null;
   withdrawalPath?: string | null;
   bonusesPath?: string | null;
+  wheelPath?: string | null;
   depositImageLayout?: ThemeCardImageLayout;
   withdrawalImageLayout?: ThemeCardImageLayout;
   bonusesImageLayout?: ThemeCardImageLayout;
+  wheelImageLayout?: ThemeCardImageLayout;
   logoPath?: string | null;
   cards?: Partial<Record<CardSlot, CardStyle>>;
 };
@@ -112,7 +118,7 @@ export function themeSurface(settings: ThemeSettings, publicUrl: (path: string) 
     style[`--theme-${id}-border-width`] = `${card.borderWidth}px`;
     style[`--theme-${id}-radius`] = `${card.radius}px`;
   }
-  for (const id of ['deposit', 'withdrawal', 'bonuses'] as const) {
+  for (const id of imageCardSlots) {
     const path = design?.[`${id}Path`];
     const url = path ? publicUrl(path) : null;
     if (!url) continue;

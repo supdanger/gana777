@@ -235,6 +235,7 @@ a.social.instagram:hover { border-color: #ff8ab8; }
 .icon-input input { margin: 0; min-height: 60px; padding: 18px 44px 18px 62px; background: #031523; border: 1px solid #286283; border-radius: 14px; color: #fff; box-shadow: inset 0 2px 8px #0005; }
 .login .icon-input input::placeholder { color: #91aabe; opacity: 1; }
 .login .icon-input:focus-within input { border-color: #61dff7; box-shadow: 0 0 0 3px #36cfff20, inset 0 2px 8px #0005; }
+.login .icon-input input:focus-visible, .user-login .icon-input input:focus-visible { outline: none; }
 .login .icon-input input { background: #000; }
 .login .icon-input input:-webkit-autofill { -webkit-text-fill-color: #fff; caret-color: #fff; -webkit-box-shadow: 0 0 0 1000px #000 inset; }
 .login .icon-input.password input:-webkit-autofill { -webkit-box-shadow: 0 0 0 1000px #000 inset; }
@@ -1067,7 +1068,12 @@ body:has(.user-login) { min-height: 100svh; }
 .user-app.page-home:has(.home-link-banner) .action-card strong { font-size: 19px; margin-bottom: 2px; }
 .user-app.page-home:has(.home-link-banner) .action-card small { font-size: 14px; }
 .user-app.page-home .action-card.home-link-banner { grid-column: 1 / -1; }
-.user-app.page-home .action-card[data-theme-card="wheel"] { grid-column: 1 / -1; }
+.user-app.page-home .action-card[data-theme-card="wheel"] { grid-column: auto; min-height: 0; aspect-ratio: 12 / 5; gap: 7px; padding: 8px; }
+.user-app.page-home .action-card[data-theme-card="wheel"] .icon-circle { width: 34px; height: 34px; }
+.user-app.page-home .action-card[data-theme-card="wheel"] .icon-circle svg { width: 20px; height: 20px; }
+.user-app.page-home .action-card[data-theme-card="wheel"] strong { margin-bottom: 3px; font-size: 16px; }
+.user-app.page-home .action-card[data-theme-card="wheel"] small { font-size: 11px; line-height: 1.15; }
+.user-app.page-home .action-card[data-theme-card="wheel"] > svg { width: 15px; height: 15px; }
 .user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]):not([data-theme-card="bonuses"]) { min-height: 84px; gap: 8px; padding: 8px 9px; }
 .user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]):not([data-theme-card="bonuses"]) .icon-circle { width: 36px; height: 36px; }
 .user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]):not([data-theme-card="bonuses"]) .icon-circle svg { width: 21px; height: 21px; }
@@ -1429,17 +1435,23 @@ body:has(.user-app.theme-halloween), body:has(.user-login.theme-halloween) { bac
 .user-app.theme-card-casino-custom .home-link-banner { background: var(--theme-casino-background) !important; border: var(--theme-casino-border-width) solid var(--theme-casino-border) !important; border-radius: var(--theme-casino-radius) !important; }
 .user-app.theme-card-deposit-custom .action-card[data-theme-card='deposit'] { background: var(--theme-deposit-background) !important; border: var(--theme-deposit-border-width) solid var(--theme-deposit-border) !important; border-radius: var(--theme-deposit-radius) !important; }
 .user-app.theme-card-withdrawal-custom .action-card[data-theme-card='withdrawal'] { background: var(--theme-withdrawal-background) !important; border: var(--theme-withdrawal-border-width) solid var(--theme-withdrawal-border) !important; border-radius: var(--theme-withdrawal-radius) !important; }
+.user-app.theme-card-wheel-custom .action-card[data-theme-card='wheel'] { background: var(--theme-wheel-background) !important; border: var(--theme-wheel-border-width) solid var(--theme-wheel-border) !important; border-radius: var(--theme-wheel-radius) !important; }
 .user-app.theme-card-deposit-image .action-card[data-theme-card='deposit'],
 .user-app.theme-card-withdrawal-image .action-card[data-theme-card='withdrawal'],
-.user-app.theme-card-bonuses-image .action-card[data-theme-card='bonuses'] { background-position: center; background-size: cover; background-repeat: no-repeat; }
+.user-app.theme-card-bonuses-image .action-card[data-theme-card='bonuses'],
+.user-app.theme-card-wheel-image .action-card[data-theme-card='wheel'] { background-position: center; background-size: cover; background-repeat: no-repeat; }
 .user-app.theme-card-deposit-image .action-card[data-theme-card='deposit'] .action-card-image,
-.user-app.theme-card-withdrawal-image .action-card[data-theme-card='withdrawal'] .action-card-image { position: absolute; z-index: 0; left: 50%; top: 50%; display: block; width: 100%; height: 100%; max-width: none; object-fit: cover; transform: translate(-50%, -50%); pointer-events: none; }
+.user-app.theme-card-withdrawal-image .action-card[data-theme-card='withdrawal'] .action-card-image,
+.user-app.theme-card-bonuses-image .action-card[data-theme-card='bonuses'] .action-card-image,
+.user-app.theme-card-wheel-image .action-card[data-theme-card='wheel'] .action-card-image { position: absolute; z-index: 0; left: 50%; top: 50%; display: block; width: 100%; height: 100%; max-width: none; object-fit: cover; transform: translate(-50%, -50%); pointer-events: none; }
 .user-app.theme-card-deposit-image .action-card[data-theme-card='deposit'] .action-card-image { left: calc(50% + var(--theme-deposit-image-x, 0%)); top: calc(50% + var(--theme-deposit-image-y, 0%)); width: var(--theme-deposit-image-width, 100%); height: var(--theme-deposit-image-height, 100%); }
 .user-app.theme-card-withdrawal-image .action-card[data-theme-card='withdrawal'] .action-card-image { left: calc(50% + var(--theme-withdrawal-image-x, 0%)); top: calc(50% + var(--theme-withdrawal-image-y, 0%)); width: var(--theme-withdrawal-image-width, 100%); height: var(--theme-withdrawal-image-height, 100%); }
 .user-app.theme-card-bonuses-image .action-card[data-theme-card='bonuses'] .action-card-image { left: calc(50% + var(--theme-bonuses-image-x, 0%)); top: calc(50% + var(--theme-bonuses-image-y, 0%)); width: var(--theme-bonuses-image-width, 100%); height: var(--theme-bonuses-image-height, 100%); }
+.user-app.theme-card-wheel-image .action-card[data-theme-card='wheel'] .action-card-image { left: calc(50% + var(--theme-wheel-image-x, 0%)); top: calc(50% + var(--theme-wheel-image-y, 0%)); width: var(--theme-wheel-image-width, 100%); height: var(--theme-wheel-image-height, 100%); }
 .user-app.page-home:has(.home-link-banner):is(.theme-card-deposit-image, .theme-card-withdrawal-image) .action-card:not(.home-link-banner):not([data-theme-card='wheel']):not([data-theme-card='bonuses']),
 .user-app.page-home:not(:has(.home-link-banner)):is(.theme-card-deposit-image, .theme-card-withdrawal-image) .action-card:not([data-theme-card='wheel']):not([data-theme-card='bonuses']) { min-height: 0; aspect-ratio: 12 / 5; padding: 0; }
 .user-app.page-home.theme-card-bonuses-image .action-card[data-theme-card='bonuses'] { min-height: 0; aspect-ratio: 12 / 5; padding: 0; }
+.user-app.page-home.theme-card-wheel-image .action-card[data-theme-card='wheel'] { min-height: 0; aspect-ratio: 12 / 5; padding: 0; }
 .user-app.page-home .action-card[data-theme-card='bonuses'] { border-color: var(--home-accent, #a73ad2); background: color-mix(in srgb, var(--home-accent, #a73ad2) 12%, #08090d); }
 .user-app.page-home .action-card[data-theme-card='bonuses'] .icon-circle { border-color: var(--home-accent, #a73ad2); color: var(--home-accent, #a73ad2); }
 .user-app.page-home .action-card[data-theme-card='bonuses']:hover { border-color: color-mix(in srgb, var(--home-accent, #a73ad2) 80%, white); }
@@ -1517,10 +1529,12 @@ html.player-portal :is(img, video) {
 .player-chat-widget { position: fixed; z-index: 2147482000; right: max(18px, env(safe-area-inset-right)); bottom: max(42px, calc(env(safe-area-inset-bottom) + 24px)); width: 0; height: 0; color: #f8f3ff; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; pointer-events: none; }
 .player-chat-widget *, .player-chat-widget *::before, .player-chat-widget *::after { box-sizing: border-box; }
 .player-chat-widget button { font-family: inherit; }
-.player-chat-launcher { position: absolute; right: 0; bottom: 0; display: grid; place-items: center; width: 62px; height: 62px; padding: 0; border: 1px solid #dc8dff; border-radius: 50%; background: linear-gradient(145deg, #b43df0, #7412bd); color: #fff; box-shadow: 0 10px 28px #19072899, 0 0 0 5px #a52eea20; cursor: pointer; pointer-events: auto; transition: transform .18s ease, box-shadow .18s ease; }
+.player-chat-launcher { position: absolute; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; gap: 8px; width: 108px; height: 50px; min-height: 50px; padding: 0 13px; border: 1px solid #dc8dff; border-radius: 17px; background: linear-gradient(145deg, #b43df0, #7412bd); color: #fff; box-shadow: 0 10px 28px #19072899, 0 0 0 5px #a52eea20; cursor: pointer; pointer-events: auto; font-size: 12px; font-weight: 900; letter-spacing: .1em; }
+.player-chat-launcher svg { flex: 0 0 auto; }
+.player-chat-launcher span { line-height: 1; }
 .player-chat-launcher:hover { transform: translateY(-2px); border-color: #edc5ff; background: linear-gradient(145deg, #bd51f1, #811dc4); box-shadow: 0 14px 34px #190728bb, 0 0 0 7px #a52eea2c; }
 .player-chat-launcher:focus-visible, .player-chat-close:focus-visible, .player-chat-panel button:focus-visible { outline: 2px solid #edc5ff; outline-offset: 3px; }
-.player-chat-panel { position: absolute; right: 0; bottom: 78px; display: flex; flex-direction: column; width: min(430px, calc(100vw - 28px)); height: min(620px, calc(100dvh - 108px)); overflow: hidden; border: 1px solid #572b70; border-radius: 21px; background: #08060a; box-shadow: 0 22px 70px #000b, 0 0 24px #8d27bb18; pointer-events: auto; }
+.player-chat-panel { position: absolute; right: 0; bottom: 66px; display: flex; flex-direction: column; width: min(430px, calc(100vw - 28px)); height: min(620px, calc(100dvh - 96px)); overflow: hidden; border: 1px solid #572b70; border-radius: 21px; background: #08060a; box-shadow: 0 22px 70px #000b, 0 0 24px #8d27bb18; pointer-events: auto; }
 .player-chat-panel[hidden] { display: none; }
 .player-chat-head { position: relative; display: flex; align-items: center; gap: 12px; flex: 0 0 auto; min-height: 82px; margin: 0; padding: 13px 15px; border-bottom: 1px solid #392046; background: linear-gradient(125deg, #21102d, #160d20 66%, #100a16); }
 .player-chat-avatar { display: block; flex: 0 0 48px; width: 48px; height: 48px; border: 1px solid #a942d2; border-radius: 50%; background: #170e20; object-fit: cover; box-shadow: 0 0 0 4px #a52eea18, 0 5px 14px #09040e88; }
@@ -1554,7 +1568,7 @@ html.player-portal :is(img, video) {
 .player-chat-panel .chat-composer button:disabled { opacity: .5; cursor: not-allowed; }
 @media (max-width: 480px) {
   .player-chat-widget { right: max(12px, env(safe-area-inset-right)); bottom: max(36px, calc(env(safe-area-inset-bottom) + 20px)); }
-  .player-chat-panel { right: -2px; bottom: 76px; width: calc(100vw - 24px); height: min(600px, calc(100dvh - 96px)); border-radius: 19px; }
+  .player-chat-panel { right: -2px; bottom: 66px; width: calc(100vw - 24px); height: min(600px, calc(100dvh - 86px)); border-radius: 19px; }
 }
 @media (max-width: 700px) {
   .player-chat-widget.is-open { inset: 0 !important; right: 0 !important; bottom: 0 !important; width: 100vw; height: 100vh; height: 100dvh; }
