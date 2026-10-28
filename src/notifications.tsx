@@ -226,7 +226,7 @@ export function PlayerNotifications({ userId, settingsPage, onOpenChat, onOpenWh
   }
 
   const visible = notifications.filter(item => !item.read_at);
-  const showSettings = settingsPage === 'home' || settingsPage === 'profile' && enabled;
+  const showSettings = settingsPage === (enabled ? 'profile' : 'home');
   if (!visible.length && !showSettings) return null;
   return <section className="player-notifications" aria-label="Notificaciones">
     {showSettings && <div className="player-notification-settings"><button type="button" className="player-notification-disclosure" aria-expanded={notificationsOpen} aria-controls="player-notification-list" onClick={() => setNotificationsOpen(open => !open)}><span className="player-notifications-heading"><Bell size={19} /><h2>Avisos en este dispositivo</h2>{visible.length > 0 && <span className="player-notification-count">{visible.length}</span>}<ChevronDown className="player-notification-chevron" size={17} /></span><span className="player-notification-description">{enabled ? 'Activados para la cuenta que uses en esta app.' : foregroundOnly ? 'Podés ver los avisos dentro de Gana777. Los avisos del sistema necesitan conexión.' : wanted ? 'Los avisos del sistema están desconectados. Tocá el interruptor para reintentar.' : 'Recibí avisos de cargas, retiros y mensajes de soporte.'}</span></button><button type="button" className="player-notification-switch" role="switch" aria-label="Avisos en este dispositivo" aria-checked={enabled} disabled={busy || !supported} onClick={() => void (enabled ? deactivate() : activate())}><span /></button></div>}
