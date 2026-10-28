@@ -70,6 +70,11 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .theme-card-image-editor .theme-design-file { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 8px; color: #d8eafa; font-size: 12px; }
 .theme-card-image-editor .theme-design-file input { grid-column: 1 / -1; width: 100%; margin: 0; padding: 8px; border: 1px solid #42617b; border-radius: 8px; background: #0b2030; color: #d7eafa; }
 .theme-card-image-editor .theme-design-file small { grid-column: 1 / -1; color: #9fb8cd; font-size: 11px; line-height: 1.4; }
+.theme-card-live-preview { display: grid; gap: 7px; }
+.theme-card-live-preview > strong { color: #dceaf5; font-size: 11px; }
+.theme-card-live-preview-frame { position: relative; width: 100%; max-width: 500px; aspect-ratio: 12 / 5; overflow: hidden; background: #070a10; box-shadow: 0 5px 15px #0005; }
+.theme-card-live-preview-frame img { position: absolute; max-width: none; object-fit: cover; transform: translate(-50%, -50%); pointer-events: none; }
+.theme-card-live-preview-frame span { position: absolute; inset: 0; display: grid; place-items: center; padding: 12px; color: #8198aa; font-size: 12px; text-align: center; }
 .theme-card-image-editor .theme-card-image-layout { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
 .theme-card-image-editor .theme-card-image-layout label { display: grid; grid-template-columns: 1fr auto; gap: 6px; color: #d8eafa; font-size: 11px; }
 .theme-card-image-editor .theme-card-image-layout input[type='range'] { grid-column: 1 / -1; width: 100%; accent-color: #c04af0; }

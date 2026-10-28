@@ -134,6 +134,12 @@ export function ThemeDesignAdmin({ theme, designs, demo, onSaved }: {
         {(slot === 'deposit' || slot === 'withdrawal') && <div className="theme-card-image-editor">
           <h4>Imagen de {slot === 'deposit' ? 'Cargar' : 'Retiros'}</h4>
           <label className="theme-design-file"><ImagePlus size={17} />{selectedImagePath || selectedCardImageFile ? 'Cambiar imagen' : 'Subir imagen'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy || demo} onChange={event => { const nextFile = event.target.files?.[0]; if (nextFile) setCardImageFiles(current => ({ ...current, [slot]: nextFile })); setSaved(false); event.currentTarget.value = ''; }} /><small>JPG, PNG o WebP · hasta 5 MB. Tamaño recomendado: 720 × 300 px (relación 12:5). Se recorta para llenar la tarjeta sin deformarse.</small></label>
+          <div className="theme-card-live-preview">
+            <strong>Vista previa en vivo</strong>
+            <div className="theme-card-live-preview-frame" style={{ border: `${card.borderWidth}px solid ${card.borderColor}`, borderRadius: card.radius }}>
+              {cardImage ? <img src={cardImage} alt="" style={{ left: `calc(50% + ${imageLayout.x}%)`, top: `calc(50% + ${imageLayout.y}%)`, width: `${imageLayout.width}%`, height: `${imageLayout.height}%` } as CSSProperties} /> : <span>Subí una imagen para ver cómo queda la tarjeta</span>}
+            </div>
+          </div>
           {(selectedImagePath || selectedCardImageFile) && <div className="theme-card-controls theme-card-image-layout">
             <label>Posición horizontal <output>{imageLayout.x}%</output><input type="range" min="-100" max="100" value={imageLayout.x} disabled={busy || demo} onChange={event => setImageLayout({ ...imageLayout, x: Number(event.target.value) })} /></label>
             <label>Posición vertical <output>{imageLayout.y}%</output><input type="range" min="-100" max="100" value={imageLayout.y} disabled={busy || demo} onChange={event => setImageLayout({ ...imageLayout, y: Number(event.target.value) })} /></label>
