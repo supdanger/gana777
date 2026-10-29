@@ -64,6 +64,9 @@
     .home-actions-title{margin:0 0 1px;color:#ead8f2;font-size:13px;font-weight:800;text-align:center}
     .home-action{display:flex;width:100%;align-items:center;gap:11px;min-height:62px;padding:10px 12px;border:1px solid #543267;border-radius:14px;background:linear-gradient(135deg,#211429,#100c14);color:#f6edfa;text-decoration:none;text-align:left;cursor:pointer;font:inherit;box-shadow:0 6px 16px #0005;transition:border-color .16s ease,background .16s ease,transform .16s ease}
     .home-action:hover{transform:translateY(-1px);border-color:#b24bd0;background:linear-gradient(135deg,#2d1738,#170f1d)}
+    .home-action.charge-image{flex:0 0 auto;min-height:0;aspect-ratio:1933/813;padding:0;overflow:hidden;border:0;border-radius:12px;background:transparent;box-shadow:none}
+    .home-action.charge-image img{display:block;width:100%;height:100%;object-fit:contain}
+    .home-action.charge-image:hover{border-color:transparent;background:transparent;box-shadow:none;filter:brightness(1.08)}
     .home-action:focus-visible,.chat-back:focus-visible{outline:2px solid #edc5ff;outline-offset:3px}
     .home-action-mark{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border:1px solid #8542a0;border-radius:12px;background:#291633;color:#dfa9f3;box-shadow:inset 0 1px #ffffff12}
     .home-action-mark svg{width:20px;height:20px}
@@ -124,7 +127,7 @@
     </header>
     <div class="home-actions" aria-label="Elegí una opción">
       <p class="home-actions-title">¿Qué querés hacer?</p>
-      <a class="home-action" href="https://gana777bet.online/" target="_blank" rel="noopener noreferrer"><span class="home-action-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10h18M5 10v10m14-10v10M3 20h18M4 6h16l2 4H2l2-4Z"/><path d="M12 2v5m-2-3 2-2 2 2"/></svg></span><span class="home-action-copy"><strong>Cargas</strong><small>Ir a gana777bet.online para cargar</small></span><svg class="home-action-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a>
+      <a class="home-action charge-image" href="https://gana777bet.online/" target="_blank" rel="noopener noreferrer" aria-label="Ir a cargar en gana777bet.online"><img src="/carga-chat-transparent.png" alt="IR A CARGAR" decoding="async" /></a>
       <button class="home-action chat-option" type="button"><span class="home-action-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.2 11.2a7.9 7.9 0 0 1-.8 3.6 8.1 8.1 0 0 1-7.3 4.5 8 8 0 0 1-3.6-.8L3 20l1.5-5.2a8 8 0 0 1-.8-3.6 8.1 8.1 0 0 1 4.5-7.3 8 8 0 0 1 3.6-.8h.5a8.1 8.1 0 0 1 7.8 7.6z"/></svg></span><span class="home-action-copy"><strong>Chat</strong><small>Escribinos y recibí respuesta por acá</small></span><svg class="home-action-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
       <p class="home-actions-hint">Podés arrastrar el botón CHAT para moverlo de lugar.</p>
     </div>
