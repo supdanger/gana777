@@ -127,7 +127,7 @@
     </header>
     <div class="home-actions" aria-label="Elegí una opción">
       <p class="home-actions-title">¿Qué querés hacer?</p>
-      <a class="home-action charge-image" href="https://gana777bet.online/" target="_blank" rel="noopener noreferrer" aria-label="Ir a cargar en gana777bet.online"><img src="/carga-chat-transparent.png" alt="IR A CARGAR" decoding="async" /></a>
+      <a class="home-action charge-image" href="https://gana777bet.online/" target="_blank" rel="noopener noreferrer" aria-label="Ir a cargar en gana777bet.online"><img src="https://gana777bet.online/carga-chat-transparent.png" alt="IR A CARGAR" decoding="async" /></a>
       <button class="home-action chat-option" type="button"><span class="home-action-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.2 11.2a7.9 7.9 0 0 1-.8 3.6 8.1 8.1 0 0 1-7.3 4.5 8 8 0 0 1-3.6-.8L3 20l1.5-5.2a8 8 0 0 1-.8-3.6 8.1 8.1 0 0 1 4.5-7.3 8 8 0 0 1 3.6-.8h.5a8.1 8.1 0 0 1 7.8 7.6z"/></svg></span><span class="home-action-copy"><strong>Chat</strong><small>Escribinos y recibí respuesta por acá</small></span><svg class="home-action-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
       <p class="home-actions-hint">Podés arrastrar el botón CHAT para moverlo de lugar.</p>
     </div>
