@@ -46,7 +46,7 @@
     .launcher svg{flex:0 0 auto;width:22px;height:22px}
     .panel{position:absolute;right:0;bottom:66px;display:none;flex-direction:column;width:min(390px,calc(100vw - 28px));height:min(560px,calc(100vh - 96px));overflow:hidden;border:1px solid #572b70;border-radius:21px;background:#050407;box-shadow:0 22px 70px #000b,0 0 24px #8d27bb18}
     .panel.open{display:flex;animation:chat-in .2s cubic-bezier(.2,.8,.2,1)}
-    .panel.menu-mode{height:auto;max-height:calc(100vh - 96px)}
+    .panel.menu-mode{width:min(280px,calc(100vw - 36px));height:auto;max-height:calc(100vh - 96px)}
     @keyframes chat-in{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
     .head{position:relative;display:flex;align-items:center;gap:12px;min-height:82px;padding:15px 16px;background:linear-gradient(125deg,#21102d,#160d20 66%,#100a16);border-bottom:1px solid #392046}
     .support-avatar{display:block;flex:0 0 50px;width:50px;height:50px;border:1px solid #a942d2;border-radius:50%;background:#170e20;object-fit:cover;box-shadow:0 0 0 4px #a52eea18,0 5px 14px #09040e88}
@@ -59,15 +59,24 @@
     .close{position:absolute;top:14px;right:13px;display:grid;place-items:center;width:34px;height:34px;border:1px solid transparent;border-radius:10px;background:transparent;color:#c8b3d2;cursor:pointer;transition:background .16s ease,color .16s ease,border-color .16s ease}
     .close:hover{border-color:#563765;background:#281732;color:#fff}
     .close svg{width:18px;height:18px}
-    .panel.menu-mode .home-actions{flex:0 0 auto;gap:10px;padding:16px 16px 13px;background:radial-gradient(ellipse at 50% 0,#35134766,transparent 60%),#08060a}
+    .panel.menu-mode .head{min-height:0;gap:8px;padding:10px 12px}
+    .panel.menu-mode .support-avatar{flex-basis:38px;width:38px;height:38px}
+    .panel.menu-mode .identity{padding-right:24px}
+    .panel.menu-mode .identity strong{font-size:12px}
+    .panel.menu-mode .identity-brand{font-size:13px}
+    .panel.menu-mode .identity small{margin-top:2px;font-size:10px}
+    .panel.menu-mode .close{top:8px;right:8px;width:28px;height:28px}
+    .panel.menu-mode .home-actions{flex:0 0 auto;gap:8px;padding:10px 12px 8px;background:radial-gradient(ellipse at 50% 0,#35134766,transparent 60%),#08060a}
+    .panel.menu-mode .home-actions-title{margin:0;font-size:12px}
+    .panel.menu-mode .home-actions-hint{margin:0;font-size:9px;line-height:1.35}
     .home-actions{display:flex;flex:1;flex-direction:column;justify-content:center;gap:13px;padding:24px 18px;background:radial-gradient(ellipse at 50% 0,#35134766,transparent 60%),#08060a}
     .home-actions-title{margin:0 0 1px;color:#ead8f2;font-size:13px;font-weight:800;text-align:center}
     .home-action{display:flex;width:100%;align-items:center;gap:11px;min-height:62px;padding:10px 12px;border:1px solid #543267;border-radius:14px;background:linear-gradient(135deg,#211429,#100c14);color:#f6edfa;text-decoration:none;text-align:left;cursor:pointer;font:inherit;box-shadow:0 6px 16px #0005;transition:border-color .16s ease,background .16s ease,transform .16s ease}
     .home-action:hover{transform:translateY(-1px);border-color:#b24bd0;background:linear-gradient(135deg,#2d1738,#170f1d)}
-    .home-action.charge-image{flex:0 0 auto;align-self:center;width:65%;min-height:0;aspect-ratio:1933/813;padding:0;overflow:hidden;border:2px solid #d7a4ef;border-radius:14px;background:#120916;box-shadow:0 0 0 1px #6a3484,0 8px 18px #0007}
+    .home-action.charge-image{flex:0 0 auto;align-self:stretch;width:100%;min-height:0;aspect-ratio:1933/813;padding:0;overflow:hidden;border:2px solid #d7a4ef;border-radius:14px;background:#120916;box-shadow:0 0 0 1px #6a3484,0 8px 18px #0007}
     .home-action.charge-image img{display:block;width:100%;height:100%;object-fit:contain}
     .home-action.charge-image:hover{border-color:#f0c8ff;background:#120916;box-shadow:0 0 0 1px #a85ad4,0 8px 18px #0007;filter:brightness(1.08)}
-    .home-action.chat-art{flex:0 0 auto;align-self:center;width:65%;min-height:0;aspect-ratio:1100/465;gap:0;padding:0;overflow:hidden;border:2px solid #d7a4ef;border-radius:14px;background:#120916;box-shadow:0 0 0 1px #6a3484,0 8px 18px #0007}
+    .home-action.chat-art{flex:0 0 auto;align-self:stretch;width:100%;min-height:0;aspect-ratio:1100/465;gap:0;padding:0;overflow:hidden;border:2px solid #d7a4ef;border-radius:14px;background:#120916;box-shadow:0 0 0 1px #6a3484,0 8px 18px #0007}
     .home-action.chat-art img{display:block;width:100%;height:100%;object-fit:contain}
     .home-action.chat-art:hover{transform:translateY(-1px);border-color:#f0c8ff;background:#120916;box-shadow:0 0 0 1px #a85ad4,0 8px 18px #0007;filter:brightness(1.08)}
     .home-action:focus-visible,.chat-back:focus-visible{outline:2px solid #edc5ff;outline-offset:3px}
@@ -118,7 +127,7 @@
     .composer button svg{width:20px;height:20px}
     .panel.align-left{right:auto;left:-108px}
     .panel.align-below{bottom:auto;top:66px}
-    @media(max-width:480px){.panel{width:calc(100vw - 24px);height:min(580px,calc(100vh - 156px));height:min(580px,calc(100dvh - 156px));border-radius:19px}.panel.menu-mode{height:auto;max-height:calc(100dvh - 156px);border-radius:17px}}
+    @media(max-width:480px){.panel{width:calc(100vw - 24px);height:min(580px,calc(100vh - 156px));height:min(580px,calc(100dvh - 156px));border-radius:19px}.panel.menu-mode{width:min(280px,calc(100vw - 36px));height:auto;max-height:calc(100dvh - 156px);border-radius:17px}}
     @media(prefers-reduced-motion:reduce){.panel.open,.bubble{animation:none}.launcher,.close,.composer textarea,.composer button{transition:none}}
   </style>
   <button class="launcher" type="button" aria-label="Abrir opciones de cargas y chat; arrastrá para mover" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.2 11.2a7.9 7.9 0 0 1-.8 3.6 8.1 8.1 0 0 1-7.3 4.5 8 8 0 0 1-3.6-.8L3 20l1.5-5.2a8 8 0 0 1-.8-3.6 8.1 8.1 0 0 1 4.5-7.3 8 8 0 0 1 3.6-.8h.5a8.1 8.1 0 0 1 7.8 7.6z"/><path d="M8.8 11h.01M12 11h.01M15.2 11h.01" stroke-width="2.5"/></svg><span>CHAT</span></button>
