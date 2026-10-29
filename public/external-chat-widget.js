@@ -46,6 +46,7 @@
     .launcher svg{flex:0 0 auto;width:22px;height:22px}
     .panel{position:absolute;right:0;bottom:66px;display:none;flex-direction:column;width:min(390px,calc(100vw - 28px));height:min(560px,calc(100vh - 96px));overflow:hidden;border:1px solid #572b70;border-radius:21px;background:#050407;box-shadow:0 22px 70px #000b,0 0 24px #8d27bb18}
     .panel.open{display:flex;animation:chat-in .2s cubic-bezier(.2,.8,.2,1)}
+    .panel.menu-mode{height:auto;max-height:calc(100vh - 96px)}
     @keyframes chat-in{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
     .head{position:relative;display:flex;align-items:center;gap:12px;min-height:82px;padding:15px 16px;background:linear-gradient(125deg,#21102d,#160d20 66%,#100a16);border-bottom:1px solid #392046}
     .support-avatar{display:block;flex:0 0 50px;width:50px;height:50px;border:1px solid #a942d2;border-radius:50%;background:#170e20;object-fit:cover;box-shadow:0 0 0 4px #a52eea18,0 5px 14px #09040e88}
@@ -58,18 +59,19 @@
     .close{position:absolute;top:14px;right:13px;display:grid;place-items:center;width:34px;height:34px;border:1px solid transparent;border-radius:10px;background:transparent;color:#c8b3d2;cursor:pointer;transition:background .16s ease,color .16s ease,border-color .16s ease}
     .close:hover{border-color:#563765;background:#281732;color:#fff}
     .close svg{width:18px;height:18px}
+    .panel.menu-mode .home-actions{flex:0 0 auto;gap:10px;padding:16px 16px 13px;background:radial-gradient(ellipse at 50% 0,#35134766,transparent 60%),#08060a}
     .home-actions{display:flex;flex:1;flex-direction:column;justify-content:center;gap:13px;padding:24px 18px;background:radial-gradient(ellipse at 50% 0,#35134766,transparent 60%),#08060a}
-    .home-actions-title{margin:0 0 2px;color:#ead8f2;font-size:13px;font-weight:750;text-align:center}
-    .home-action{display:flex;width:100%;align-items:center;gap:12px;min-height:68px;padding:12px 14px;border:1px solid #543267;border-radius:15px;background:linear-gradient(135deg,#1d1224,#100c14);color:#f6edfa;text-decoration:none;text-align:left;cursor:pointer;font:inherit;box-shadow:0 7px 18px #0005;transition:border-color .16s ease,background .16s ease,transform .16s ease}
+    .home-actions-title{margin:0 0 1px;color:#ead8f2;font-size:13px;font-weight:800;text-align:center}
+    .home-action{display:flex;width:100%;align-items:center;gap:11px;min-height:62px;padding:10px 12px;border:1px solid #543267;border-radius:14px;background:linear-gradient(135deg,#211429,#100c14);color:#f6edfa;text-decoration:none;text-align:left;cursor:pointer;font:inherit;box-shadow:0 6px 16px #0005;transition:border-color .16s ease,background .16s ease,transform .16s ease}
     .home-action:hover{transform:translateY(-1px);border-color:#b24bd0;background:linear-gradient(135deg,#2d1738,#170f1d)}
     .home-action:focus-visible,.chat-back:focus-visible{outline:2px solid #edc5ff;outline-offset:3px}
-    .home-action-mark{display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;border:1px solid #8542a0;border-radius:12px;background:#291633;color:#dfa9f3}
+    .home-action-mark{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border:1px solid #8542a0;border-radius:12px;background:#291633;color:#dfa9f3;box-shadow:inset 0 1px #ffffff12}
     .home-action-mark svg{width:20px;height:20px}
     .home-action-copy{display:grid;gap:4px;flex:1}
     .home-action-copy strong{font-size:14px;font-weight:850}
     .home-action-copy small{color:#b8a5c3;font-size:11px;line-height:1.35}
     .home-action-arrow{width:17px;height:17px;color:#bd71d6}
-    .home-actions-hint{margin:2px 0 0;color:#9d8aa8;font-size:10px;text-align:center}
+    .home-actions-hint{margin:1px 0 0;color:#9d8aa8;font-size:10px;text-align:center}
     .chat-view{display:none;min-height:0;flex:1;flex-direction:column}
     .chat-view.open{display:flex}
     .chat-back{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;min-height:34px;margin:8px 12px 0;padding:5px 9px;border:1px solid #442a50;border-radius:9px;background:#140e19;color:#ddc4e9;font-size:11px;font-weight:750;cursor:pointer}
@@ -110,7 +112,7 @@
     .composer button svg{width:20px;height:20px}
     .panel.align-left{right:auto;left:-108px}
     .panel.align-below{bottom:auto;top:66px}
-    @media(max-width:480px){.panel{width:calc(100vw - 24px);height:min(580px,calc(100vh - 156px));height:min(580px,calc(100dvh - 156px));border-radius:19px}}
+    @media(max-width:480px){.panel{width:calc(100vw - 24px);height:min(580px,calc(100vh - 156px));height:min(580px,calc(100dvh - 156px));border-radius:19px}.panel.menu-mode{height:auto;max-height:calc(100dvh - 156px);border-radius:17px}}
     @media(prefers-reduced-motion:reduce){.panel.open,.bubble{animation:none}.launcher,.close,.composer textarea,.composer button{transition:none}}
   </style>
   <button class="launcher" type="button" aria-label="Abrir opciones de cargas y chat; arrastrá para mover" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.2 11.2a7.9 7.9 0 0 1-.8 3.6 8.1 8.1 0 0 1-7.3 4.5 8 8 0 0 1-3.6-.8L3 20l1.5-5.2a8 8 0 0 1-.8-3.6 8.1 8.1 0 0 1 4.5-7.3 8 8 0 0 1 3.6-.8h.5a8.1 8.1 0 0 1 7.8 7.6z"/><path d="M8.8 11h.01M12 11h.01M15.2 11h.01" stroke-width="2.5"/></svg><span>CHAT</span></button>
@@ -297,11 +299,13 @@
 
   function showHome() {
     homeActions.style.display = 'flex';
+    panel.classList.add('menu-mode');
     chatView.classList.remove('open');
     if (timer) { clearInterval(timer); timer = null; }
   }
   function showChat() {
     homeActions.style.display = 'none';
+    panel.classList.remove('menu-mode');
     chatView.classList.add('open');
     input.focus();
     void ensureSession().then(refresh).catch(function (error) { status.textContent = error.message || 'El chat no está disponible en este momento.'; });
