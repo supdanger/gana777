@@ -67,9 +67,9 @@
     .home-action.charge-image{flex:0 0 auto;align-self:center;width:65%;min-height:0;aspect-ratio:1933/813;padding:0;overflow:hidden;border:2px solid #d7a4ef;border-radius:14px;background:#120916;box-shadow:0 0 0 1px #6a3484,0 8px 18px #0007}
     .home-action.charge-image img{display:block;width:100%;height:100%;object-fit:contain}
     .home-action.charge-image:hover{border-color:#f0c8ff;background:#120916;box-shadow:0 0 0 1px #a85ad4,0 8px 18px #0007;filter:brightness(1.08)}
-    .home-action.chat-art{flex:0 0 auto;align-self:center;width:65%;min-height:0;gap:0;padding:0;overflow:hidden;border:0;border-radius:16px;background:transparent;box-shadow:none}
-    .home-action.chat-art img{display:block;width:100%;height:auto}
-    .home-action.chat-art:hover{transform:translateY(-1px);border-color:transparent;background:transparent;box-shadow:none;filter:brightness(1.08)}
+    .home-action.chat-art{flex:0 0 auto;align-self:center;width:65%;min-height:0;aspect-ratio:1100/465;gap:0;padding:0;overflow:hidden;border:2px solid #d7a4ef;border-radius:14px;background:#120916;box-shadow:0 0 0 1px #6a3484,0 8px 18px #0007}
+    .home-action.chat-art img{display:block;width:100%;height:100%;object-fit:contain}
+    .home-action.chat-art:hover{transform:translateY(-1px);border-color:#f0c8ff;background:#120916;box-shadow:0 0 0 1px #a85ad4,0 8px 18px #0007;filter:brightness(1.08)}
     .home-action:focus-visible,.chat-back:focus-visible{outline:2px solid #edc5ff;outline-offset:3px}
     .home-action-mark{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border:1px solid #8542a0;border-radius:12px;background:#291633;color:#dfa9f3;box-shadow:inset 0 1px #ffffff12}
     .home-action-mark svg{width:20px;height:20px}
