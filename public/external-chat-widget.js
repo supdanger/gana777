@@ -51,6 +51,11 @@
     .close{position:absolute;top:14px;right:13px;display:grid;place-items:center;width:34px;height:34px;border:1px solid transparent;border-radius:10px;background:transparent;color:#c8b3d2;cursor:pointer;transition:background .16s ease,color .16s ease,border-color .16s ease}
     .close:hover{border-color:#563765;background:#281732;color:#fff}
     .close svg{width:18px;height:18px}
+    .site-link-row{display:flex;justify-content:center;padding:0 14px 10px;background:linear-gradient(125deg,#21102d,#160d20 66%,#100a16)}
+    .site-link{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:34px;padding:7px 13px;border:1px solid #8140a0;border-radius:10px;background:linear-gradient(135deg,#31173e,#1c1025);color:#f3dafa;text-decoration:none;font-size:11px;font-weight:800;letter-spacing:.015em;box-shadow:0 3px 12px #08030d55;transition:border-color .16s ease,background .16s ease,transform .16s ease}
+    .site-link:hover{border-color:#d070ed;background:linear-gradient(135deg,#482057,#271333);transform:translateY(-1px)}
+    .site-link:focus-visible{outline:2px solid #edc5ff;outline-offset:3px}
+    .site-link svg{width:14px;height:14px}
     .log{display:flex;flex:1;flex-direction:column;gap:12px;overflow:auto;padding:18px 15px 16px;background:#050407;scrollbar-color:#563267 transparent;scrollbar-width:thin}
     .welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;min-height:180px;padding:26px 22px;text-align:center}
     .welcome-mark{display:grid;place-items:center;width:48px;height:48px;margin-bottom:14px;border:1px solid #63357a;border-radius:16px;background:linear-gradient(145deg,#281537,#150d1d);color:#d27bfa}
@@ -95,6 +100,7 @@
       <div class="identity"><strong><span>Soporte</span><span class="identity-brand"><span>Gana</span><span class="identity-brand-777">777</span><span class="identity-brand-domain">bet.com</span></span></strong><small>Atención al cliente</small></div>
       <button class="close" type="button" aria-label="Cerrar chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
     </header>
+    <div class="site-link-row"><a class="site-link" href="https://gana777bet.online/" target="_blank" rel="noopener noreferrer" aria-label="Ir a cargar en gana777bet.online en una pestaña nueva">Cargar<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6"/></svg></a></div>
     <div class="log" role="log" aria-live="polite"></div>
     <div class="status" role="status"></div>
     <div class="image-preview" aria-live="polite"><img alt="Vista previa de la imagen"/><span></span><button type="button" aria-label="Quitar imagen">Quitar</button></div>
