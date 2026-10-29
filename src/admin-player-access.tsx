@@ -22,6 +22,13 @@ export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy:
   const [filter, setFilter] = useState<'setup' | 'all'>('setup');
   const [search, setSearch] = useState('');
   const [threadError, setThreadError] = useState('');
+  const [manualCreateOpen, setManualCreateOpen] = useState(false);
+  const [manualUsername, setManualUsername] = useState('');
+  const [manualPassword, setManualPassword] = useState('');
+  const [manualCasinoUrl, setManualCasinoUrl] = useState('');
+  const [manualShowPassword, setManualShowPassword] = useState(false);
+  const [manualError, setManualError] = useState('');
+  const [manualSuccess, setManualSuccess] = useState('');
   const [playerUsername, setPlayerUsername] = useState('');
   const [password, setPassword] = useState('');
   const [casinoUrl, setCasinoUrl] = useState('');
@@ -94,6 +101,28 @@ export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy:
       setMessages(result.messages as AccessMessage[]); setCasinoUrl(typeof result.casino_url === 'string' ? result.casino_url : ''); await refresh();
     });
   }
+  async function createManualPlayer(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setManualError(''); setManualSuccess('');
+    const finalUsername = manualUsername.trim().replace(/^@/, '').toLowerCase();
+    const link = safeHttpsLink(manualCasinoUrl.trim());
+    if (!/^[a-z0-9][a-z0-9._-]{2,31}$/.test(finalUsername)) { setManualError('El usuario debe tener de 3 a 32 caracteres: letras, números, punto, guion o guion bajo.'); return; }
+    if (manualPassword.length < 8 || manualPassword.length > 72) { setManualError('La contraseña debe tener entre 8 y 72 caracteres.'); return; }
+    if (!link) { setManualError('Ingresá una URL personal HTTPS válida.'); return; }
+    if (!window.confirm(`¿Crear el usuario @${finalUsername} con esta contraseña y enlace personal?`)) return;
+    await action(async () => {
+      try {
+        await invokeAdminPlayerAccess({ action: 'admin-create-manual', username: finalUsername, password: manualPassword, casino_url: link });
+        setManualSuccess(`Se creó @${finalUsername} y quedó configurado su enlace personal.`);
+        setManualCreateOpen(false); setManualUsername(''); setManualPassword(''); setManualCasinoUrl(''); setManualShowPassword(false);
+        await refresh().catch(error => setThreadError(error instanceof Error ? error.message : 'El usuario se creó, pero no pudimos actualizar la bandeja.'));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'No pudimos crear el usuario.';
+        setManualError(message);
+        throw error;
+      }
+    });
+  }
   async function closeRequest() {
     if (!selected || !window.confirm(`¿Cerrar la solicitud de @${selected.username} sin crear la cuenta?`)) return;
     await action(async () => {
@@ -104,8 +133,9 @@ export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy:
   }
 
   return <section className="access-admin" aria-label="Solicitudes para crear usuarios">
-    <div className="access-admin-heading"><div><h1>Solicitudes</h1><p>Revisá las solicitudes y creá los accesos manualmente.</p></div><button type="button" disabled={loading || busy || demo} onClick={() => { setLoading(true); void refresh().catch(error => setThreadError(error instanceof Error ? error.message : 'No pudimos actualizar.')).finally(() => setLoading(false)); }}><RefreshCw size={16} />Actualizar</button></div>
+    <div className="access-admin-heading"><div><h1>Solicitudes</h1><p>Revisá solicitudes o creá un jugador y su acceso manualmente.</p></div><div className="access-admin-heading-actions"><button type="button" className="access-admin-manual-button" disabled={busy || demo} onClick={() => { setManualCreateOpen(true); setSelectedId(''); setManualError(''); setManualSuccess(''); setThreadError(''); }}><UserRound size={16} />Crear usuario</button><button type="button" disabled={loading || busy || demo} onClick={() => { setLoading(true); void refresh().catch(error => setThreadError(error instanceof Error ? error.message : 'No pudimos actualizar.')).finally(() => setLoading(false)); }}><RefreshCw size={16} />Actualizar</button></div></div>
     {demo && <p className="access-admin-note">La vista previa no carga solicitudes reales.</p>}
+    {manualSuccess && <p className="access-admin-success" role="status">{manualSuccess}</p>}
     {threadError && <p className="access-admin-error" role="alert">{threadError}</p>}
     <div className="access-admin-layout">
       <aside className="access-admin-inbox">
@@ -113,11 +143,21 @@ export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy:
         <label><span className="sr-only">Buscar solicitud</span><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar usuario o recomendado" /></label>
         <div className="access-admin-filters"><button type="button" className={filter === 'setup' ? 'active' : ''} onClick={() => setFilter('setup')}>Por configurar</button><button type="button" className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>Todas</button></div>
         <div className="access-admin-list">
-          {loading ? <p>Cargando solicitudes…</p> : visible.length ? visible.map(item => <button type="button" key={item.id} className={`access-admin-item${selectedId === item.id ? ' active' : ''}`} onClick={() => { setSelectedId(item.id); setThreadError(''); }}><span className="access-admin-avatar"><UserRound size={18} /></span><span><strong>@{item.username}</strong><small>{requestPreview(item)}</small></span><time>{date(item.created_at)}</time><i className={`access-status-dot ${item.status}`} /></button>) : <p>{search ? 'No encontramos coincidencias.' : filter === 'setup' ? 'No hay accesos por configurar.' : 'Todavía no hay solicitudes.'}</p>}
+          {loading ? <p>Cargando solicitudes…</p> : visible.length ? visible.map(item => <button type="button" key={item.id} className={`access-admin-item${selectedId === item.id ? ' active' : ''}`} onClick={() => { setSelectedId(item.id); setManualCreateOpen(false); setThreadError(''); }}><span className="access-admin-avatar"><UserRound size={18} /></span><span><strong>@{item.username}</strong><small>{requestPreview(item)}</small></span><time>{date(item.created_at)}</time><i className={`access-status-dot ${item.status}`} /></button>) : <p>{search ? 'No encontramos coincidencias.' : filter === 'setup' ? 'No hay accesos por configurar.' : 'Todavía no hay solicitudes.'}</p>}
         </div>
       </aside>
       <section className="access-admin-thread" aria-label={selected ? `Solicitud de ${selected.username}` : 'Elegí una solicitud'}>
-        {selected ? <>
+        {manualCreateOpen ? <>
+          <header><span className="access-admin-avatar"><UserRound size={20} /></span><div><strong>Crear usuario manualmente</strong><small>Creá el acceso sin esperar una solicitud.</small></div></header>
+          <form className="access-admin-manual-form" onSubmit={event => void createManualPlayer(event)}>
+            <p>Definí el usuario, la contraseña y el enlace personal que abrirá su casino.</p>
+            <label>Nombre de usuario<input value={manualUsername} onChange={event => setManualUsername(event.target.value.toLowerCase())} minLength={3} maxLength={32} pattern="[a-zA-Z0-9._-]+" autoCapitalize="none" autoComplete="username" placeholder="Ej.: juanito777" required /><small>De 3 a 32 caracteres, sin espacios.</small></label>
+            <label>Contraseña definitiva<span className="access-admin-password"><input type={manualShowPassword ? 'text' : 'password'} value={manualPassword} onChange={event => setManualPassword(event.target.value)} minLength={8} maxLength={72} autoComplete="new-password" placeholder="Mínimo 8 caracteres" required /><button type="button" onClick={() => setManualShowPassword(value => !value)} aria-label={manualShowPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}>{manualShowPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span></label>
+            <label>URL personal del casino<input type="url" value={manualCasinoUrl} onChange={event => setManualCasinoUrl(event.target.value)} placeholder="https://casino.ejemplo.com/acceso/…" maxLength={2048} required /><small>Este enlace quedará asignado solamente a este jugador.</small></label>
+            {manualError && <p className="access-admin-error" role="alert">{manualError}</p>}
+            <div className="access-admin-manual-actions"><button type="submit" disabled={busy || demo || !manualUsername || !manualPassword || !manualCasinoUrl}><CheckCircle2 size={16} />Crear usuario</button><button type="button" disabled={busy} onClick={() => { setManualCreateOpen(false); setManualError(''); }}>Cancelar</button></div>
+          </form>
+        </> : selected ? <>
           <header><span className="access-admin-avatar"><UserRound size={20} /></span><div><strong>@{selected.username}</strong><small>{selected.referral_code ? `Código recomendado: @${selected.referral_code}` : 'Sin código de recomendado'} · {selected.status === 'pending' ? 'Pendiente' : selected.status === 'approved' ? 'Acceso creado' : 'Cerrada'}</small></div></header>
           {!!selected.same_ip_usernames?.length && <p className="access-admin-network-note" role="status">Aviso interno: comparte IP con @{selected.same_ip_usernames.join(', @')}. Esto no impide crear el usuario.</p>}
           <div className="access-admin-messages" ref={log} role="log" aria-live="polite">{messages.map(message => <article key={message.id} className={`access-admin-message${message.sender === 'admin' ? ' from-admin' : ''}`}><p>{message.body}</p><time>{date(message.created_at)}</time></article>)}</div>

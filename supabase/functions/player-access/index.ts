@@ -200,6 +200,47 @@ Deno.serve(async request => {
       return json({ ok: true, pending_count: count ?? 0 });
     }
 
+    if (action === 'admin-create-manual') {
+      const { server } = await requireStaff(request);
+      const playerUsername = username(payload.username);
+      const playerPassword = password(payload.password);
+      const playerCasinoUrl = casinoUrl(payload.casino_url);
+      const [existingProfile, usedLink] = await Promise.all([
+        server.from('user_profiles').select('user_id').eq('username', playerUsername).maybeSingle(),
+        server.from('player_casino_links').select('user_id').eq('url', playerCasinoUrl).maybeSingle(),
+      ]);
+      if (existingProfile.error || usedLink.error) throw new HttpError(500, 'No pudimos comprobar el usuario y el enlace. Revisá que esté aplicada la migración 032.');
+      if (existingProfile.data) throw new HttpError(409, 'Ese nombre de usuario ya existe.');
+      if (usedLink.data) throw new HttpError(409, 'Esa URL personal ya está asignada a otro jugador.');
+
+      const email = `${playerUsername}@players.gana777.internal`;
+      const { data: created, error: createError } = await server.auth.admin.createUser({
+        email, password: playerPassword, email_confirm: true,
+        user_metadata: { display_name: playerUsername, username: playerUsername, player: true },
+      });
+      if (createError || !created.user) {
+        if (/already|registered|exists/i.test(createError?.message ?? '')) throw new HttpError(409, 'Ese nombre de usuario ya existe.');
+        throw new HttpError(500, 'No pudimos crear el usuario.');
+      }
+
+      const { error: profileError } = await server.from('user_profiles').update({
+        username: playerUsername, display_name: playerUsername, account_origin: 'platform', updated_at: new Date().toISOString(),
+      }).eq('user_id', created.user.id);
+      if (profileError) {
+        await server.auth.admin.deleteUser(created.user.id);
+        if (profileError.code === '23505') throw new HttpError(409, 'Ese nombre de usuario ya existe.');
+        throw new HttpError(500, 'No pudimos guardar el perfil. No se creó el usuario.');
+      }
+
+      const { error: linkError } = await server.from('player_casino_links').insert({ user_id: created.user.id, url: playerCasinoUrl });
+      if (linkError) {
+        await server.auth.admin.deleteUser(created.user.id);
+        if (linkError.code === '23505') throw new HttpError(409, 'Esa URL personal ya está asignada a otro jugador.');
+        throw new HttpError(500, 'No pudimos guardar el enlace personal. No se creó el usuario.');
+      }
+      return json({ ok: true, user_id: created.user.id, username: playerUsername });
+    }
+
     if (action === 'admin-list') {
       const { server } = await requireStaff(request);
       const flaggedInbox = await server.from('player_access_request_inbox').select('id,username,referral_code,status,player_user_id,created_at,updated_at,last_sender,last_body,last_message_at,ip_blocked,matched_username').order('created_at', { ascending: false }).limit(200);

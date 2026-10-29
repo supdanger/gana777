@@ -1461,7 +1461,10 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .access-admin-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .access-admin-heading h1 { margin: 0; background: linear-gradient(145deg, #38ffff, #00adfa 45%, #0651ff); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 .access-admin-heading p { margin: 4px 0 0; color: var(--panel-muted); font-size: 13px; }
-.access-admin-heading > button { min-height: 40px; padding: 8px 11px; border-color: var(--panel-border); background: #0b1d2a; font-size: 12px; }
+.access-admin-heading-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.access-admin-heading-actions > button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; padding: 8px 11px; border-color: var(--panel-border); background: #0b1d2a; font-size: 12px; }
+.access-admin-heading-actions > button.access-admin-manual-button { border-color: #8140a0; background: linear-gradient(110deg, #311744, #1b1025); color: #e7c7f4; }
+.access-admin-success { margin: 0; padding: 10px 12px; border: 1px solid #28775d; border-radius: 9px; background: #102b25; color: #a2edc8; font-size: 12px; }
 .access-admin-note, .access-admin-error { margin: 0; padding: 10px 12px; border-radius: 9px; background: #0d2231; color: var(--panel-muted); font-size: 12px; }
 .access-admin-error { border: 1px solid #754457; background: #301924; color: #ffc1d0; }
 .access-admin-layout { display: grid; grid-template-columns: minmax(270px, 340px) minmax(0, 1fr); min-height: 560px; overflow: hidden; border: 1px solid var(--panel-border); border-radius: 14px; background: #0a1922; }
@@ -1497,6 +1500,17 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .access-admin-thread > header > div { display: grid; min-width: 0; gap: 4px; }
 .access-admin-thread > header strong { color: #eff6fa; font-size: 14px; }
 .access-admin-thread > header small { color: var(--panel-muted); font-size: 10px; }
+.access-admin-manual-form { display: grid; align-content: start; gap: 15px; width: min(100%, 650px); margin: auto; padding: 24px; }
+.access-admin-manual-form > p { margin: 0 0 3px; color: var(--panel-muted); font-size: 12px; line-height: 1.5; }
+.access-admin-manual-form > label { display: grid; gap: 6px; min-width: 0; color: #c5d8e3; font-size: 12px; font-weight: 700; }
+.access-admin-manual-form > label > input,
+.access-admin-manual-form .access-admin-password input { width: 100%; min-width: 0; min-height: 44px; margin: 0; padding: 10px 12px; font-size: 13px; }
+.access-admin-manual-form > label > small { color: var(--panel-muted); font-size: 10px; font-weight: 400; line-height: 1.4; }
+.access-admin-manual-form .access-admin-password { display: flex; }
+.access-admin-manual-form .access-admin-password button { top: 3px; right: 3px; width: 38px; height: 38px; color: #a9d7ed; }
+.access-admin-manual-actions { display: flex; flex-wrap: wrap; gap: 9px; padding-top: 13px; border-top: 1px solid var(--panel-border-soft); }
+.access-admin-manual-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 42px; padding: 9px 13px; border-color: #287d66; background: #10392f; color: #a1efd0; font-size: 12px; font-weight: 750; }
+.access-admin-manual-actions button + button { border-color: #3b5362; background: #101f29; color: #b7c9d4; }
 .access-admin-messages { display: flex; flex: 1; flex-direction: column; gap: 12px; min-height: 290px; max-height: 55vh; overflow: auto; padding: 16px; }
 .access-admin-message { align-self: flex-start; max-width: min(88%, 520px); }
 .access-admin-message.from-admin { align-self: flex-end; }
@@ -1630,6 +1644,9 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
   .platform-admin-list { max-height: 230px; }
 }
 @media (max-width: 760px) {
+  .access-admin-heading { align-items: flex-start; flex-wrap: wrap; }
+  .access-admin-heading-actions { width: 100%; justify-content: flex-start; }
+  .access-admin-manual-form { padding: 17px; }
   .platform-detail-grid, .platform-detail-form { grid-template-columns: minmax(0,1fr); }
   .platform-detail-form > button, .platform-inline-actions, .platform-link-form label, .platform-detail-wide { grid-column: auto; }
   .platform-tab-content { padding: 12px; }
