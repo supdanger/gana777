@@ -64,9 +64,9 @@
     .home-actions-title{margin:0 0 1px;color:#ead8f2;font-size:13px;font-weight:800;text-align:center}
     .home-action{display:flex;width:100%;align-items:center;gap:11px;min-height:62px;padding:10px 12px;border:1px solid #543267;border-radius:14px;background:linear-gradient(135deg,#211429,#100c14);color:#f6edfa;text-decoration:none;text-align:left;cursor:pointer;font:inherit;box-shadow:0 6px 16px #0005;transition:border-color .16s ease,background .16s ease,transform .16s ease}
     .home-action:hover{transform:translateY(-1px);border-color:#b24bd0;background:linear-gradient(135deg,#2d1738,#170f1d)}
-    .home-action.charge-image{flex:0 0 auto;min-height:0;aspect-ratio:1933/813;padding:0;overflow:hidden;border:0;border-radius:12px;background:transparent;box-shadow:none}
+    .home-action.charge-image{flex:0 0 auto;align-self:center;width:65%;min-height:0;aspect-ratio:1933/813;padding:0;overflow:hidden;border:2px solid #d7a4ef;border-radius:14px;background:#120916;box-shadow:0 0 0 1px #6a3484,0 8px 18px #0007}
     .home-action.charge-image img{display:block;width:100%;height:100%;object-fit:contain}
-    .home-action.charge-image:hover{border-color:transparent;background:transparent;box-shadow:none;filter:brightness(1.08)}
+    .home-action.charge-image:hover{border-color:#f0c8ff;background:#120916;box-shadow:0 0 0 1px #a85ad4,0 8px 18px #0007;filter:brightness(1.08)}
     .home-action:focus-visible,.chat-back:focus-visible{outline:2px solid #edc5ff;outline-offset:3px}
     .home-action-mark{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border:1px solid #8542a0;border-radius:12px;background:#291633;color:#dfa9f3;box-shadow:inset 0 1px #ffffff12}
     .home-action-mark svg{width:20px;height:20px}
