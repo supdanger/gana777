@@ -67,6 +67,9 @@
     .home-action.charge-image{flex:0 0 auto;align-self:center;width:65%;min-height:0;aspect-ratio:1933/813;padding:0;overflow:hidden;border:2px solid #d7a4ef;border-radius:14px;background:#120916;box-shadow:0 0 0 1px #6a3484,0 8px 18px #0007}
     .home-action.charge-image img{display:block;width:100%;height:100%;object-fit:contain}
     .home-action.charge-image:hover{border-color:#f0c8ff;background:#120916;box-shadow:0 0 0 1px #a85ad4,0 8px 18px #0007;filter:brightness(1.08)}
+    .home-action.chat-art{flex:0 0 auto;align-self:center;width:65%;min-height:0;gap:0;padding:0;overflow:hidden;border:0;border-radius:16px;background:transparent;box-shadow:none}
+    .home-action.chat-art img{display:block;width:100%;height:auto}
+    .home-action.chat-art:hover{transform:translateY(-1px);border-color:transparent;background:transparent;box-shadow:none;filter:brightness(1.08)}
     .home-action:focus-visible,.chat-back:focus-visible{outline:2px solid #edc5ff;outline-offset:3px}
     .home-action-mark{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border:1px solid #8542a0;border-radius:12px;background:#291633;color:#dfa9f3;box-shadow:inset 0 1px #ffffff12}
     .home-action-mark svg{width:20px;height:20px}
@@ -128,7 +131,7 @@
     <div class="home-actions" aria-label="Elegí una opción">
       <p class="home-actions-title">¿Qué querés hacer?</p>
       <a class="home-action charge-image" href="https://gana777bet.online/" target="_blank" rel="noopener noreferrer" aria-label="Ir a cargar en gana777bet.online"><img src="https://gana777bet.online/carga-chat-transparent.png" alt="IR A CARGAR" decoding="async" /></a>
-      <button class="home-action chat-option" type="button"><span class="home-action-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.2 11.2a7.9 7.9 0 0 1-.8 3.6 8.1 8.1 0 0 1-7.3 4.5 8 8 0 0 1-3.6-.8L3 20l1.5-5.2a8 8 0 0 1-.8-3.6 8.1 8.1 0 0 1 4.5-7.3 8 8 0 0 1 3.6-.8h.5a8.1 8.1 0 0 1 7.8 7.6z"/></svg></span><span class="home-action-copy"><strong>Chat</strong><small>Escribinos y recibí respuesta por acá</small></span><svg class="home-action-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+      <button class="home-action chat-art chat-option" type="button" aria-label="Abrir el chat de soporte"><img src="https://gana777bet.online/chat-soporte-transparent.png" alt="CHAT SOPORTE" decoding="async" /></button>
       <p class="home-actions-hint">Podés arrastrar el botón CHAT para moverlo de lugar.</p>
     </div>
     <div class="chat-view"><button class="chat-back" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6M9 12h11"/></svg>Volver a opciones</button>
