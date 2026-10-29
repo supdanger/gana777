@@ -111,15 +111,14 @@ export function PlayerAccessRequest({ onBack }: { onBack: () => void }) {
   }
 
   return <section className="card player-access-card">
-    <header><div><h2>{thread ? `Solicitud de @${thread.username}` : 'Crear usuario'}</h2><p>{thread ? 'Conversá con el equipo de GANA777 desde este dispositivo.' : 'Elegí tu nombre de usuario y, si tenés, agregá el código de quien te recomendó.'}</p></div><button type="button" className="player-access-back" onClick={onBack} aria-label="Volver al ingreso"><ArrowLeft size={18} /></button></header>
+    <header className="player-access-heading"><span className="player-access-heading-icon"><UserRound size={21} /></span><div><small className="player-access-eyebrow">{thread ? 'SEGUIMIENTO' : 'SOLICITUD DE ACCESO'}</small><h2>{thread ? `Solicitud de @${thread.username}` : 'Crear tu usuario'}</h2><p>{thread ? 'Hablá con el equipo de Gana777 desde este dispositivo.' : 'Elegí un nombre para iniciar tu solicitud.'}</p></div><button type="button" className="player-access-back" onClick={onBack} aria-label="Volver al ingreso"><ArrowLeft size={18} /></button></header>
     {!thread ? <form className="player-access-form" onSubmit={event => void createRequest(event)}>
-      <label>Nombre de usuario<div className="player-access-name"><UserRound size={18} /><input name="username" value={username} onChange={event => setUsername(event.target.value.toLowerCase())} minLength={3} maxLength={32} pattern="[a-zA-Z0-9._-]+" autoCapitalize="none" autoComplete="username" placeholder="Ej.: jackpot777" required /><button type="button" onClick={() => setUsername(generatedName())}><Dices size={17} />Generar</button></div></label>
-      <label>Código de recomendado <span>(opcional)</span><input name="referral_code" maxLength={33} autoCapitalize="none" spellCheck={false} placeholder="Nombre de usuario de quien te recomendó" /></label>
+      <div className="player-access-step"><span>1</span><div><strong>Tus datos</strong><small>Nombre de usuario y referido opcional</small></div><b>1 paso</b></div>
+      <label>Nombre de usuario<div className="player-access-name"><UserRound size={18} /><input name="username" value={username} onChange={event => setUsername(event.target.value.toLowerCase())} minLength={3} maxLength={32} pattern="[a-zA-Z0-9._-]+" autoCapitalize="none" autoComplete="username" placeholder="Ej.: jackpot777" required /><button type="button" onClick={() => setUsername(generatedName())}><Dices size={17} />Generar</button></div><small className="player-access-field-hint">Usá de 3 a 32 letras, números, puntos o guiones.</small></label>
+      <label>Código de recomendado <span>· opcional</span><input name="referral_code" maxLength={33} autoCapitalize="none" spellCheck={false} placeholder="Usuario de quien te recomendó" /><small className="player-access-field-hint">Si nadie te invitó, podés dejarlo vacío.</small></label>
       <label className="player-access-honeypot" aria-hidden="true">Dejar vacío<input name="website" tabIndex={-1} autoComplete="off" /></label>
       {error && <p className="player-access-error" role="alert">{error}</p>}
-      <button className="primary" disabled={busy || restoring}>{restoring ? 'Cargando…' : busy ? 'Enviando solicitud…' : 'Solicitar usuario'}</button>
-      <small>No envíes documentos ni datos bancarios por este chat.</small>
-      <small>La cuenta se crea manualmente después de revisar tu solicitud. Podés solicitar usuarios desde una red compartida.</small>
+      <button className="primary" disabled={busy || restoring}>{restoring ? 'Cargando…' : busy ? 'Enviando solicitud…' : 'Enviar solicitud'}</button>
     </form> : <>
       <div className="player-access-status"><strong>{thread.status === 'approved' ? 'Usuario creado' : thread.status === 'rejected' ? 'Solicitud cerrada' : 'Esperando al equipo'}</strong><span>Usuario solicitado: @{thread.username}</span>{thread.referral_code && <small>Recomendado por @{thread.referral_code}</small>}</div>
       <div className="player-access-messages" ref={log} role="log" aria-live="polite">

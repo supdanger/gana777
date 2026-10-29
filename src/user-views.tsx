@@ -35,9 +35,9 @@ export function Brand({ panel = false, homeHeader = false }: { panel?: boolean; 
 export function SectionHeading({ icon, title, description }: { icon: ReactNode; title: string; description?: string }) {
   return <div className="section-heading"><span className="icon-circle">{icon}</span><div><h2>{title}</h2>{description && <p>{description}</p>}</div></div>;
 }
-export function LoginView({ admin, busy, configured, feedback, onLogin, onDemo, onHelp, retryAt, siteKey }: {
+export function LoginView({ admin, busy, configured, feedback, onLogin, onDemo, retryAt, siteKey }: {
   admin: boolean; busy: boolean; configured: boolean; feedback: ReactNode; retryAt: number; siteKey: string;
-  onLogin: (event: FormEvent<HTMLFormElement>, captchaToken: string | null) => Promise<void>; onDemo: () => void; onHelp: () => void;
+  onLogin: (event: FormEvent<HTMLFormElement>, captchaToken: string | null) => Promise<void>; onDemo: () => void;
 }) {
   const [visible, setVisible] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
@@ -60,7 +60,7 @@ export function LoginView({ admin, busy, configured, feedback, onLogin, onDemo, 
   const surface = themeSurface(settings, path => supabase?.storage.from('app-assets').getPublicUrl(path).data.publicUrl ?? null);
   return <main className={`login ${admin ? 'admin-login' : `user-login ${surface.className}`}`} style={admin ? undefined : surface.style}>
     {admin && <Brand panel />}
-    {admin ? <p className="eyebrow">PANEL DE ADMINISTRACIÓN</p> : <div className={`login-character ${settings.login_image_path === 'brand/panda-login-transparent.png' ? 'transparent-character' : settings.login_image_layout === 'reference' ? 'reference-character' : ''}`}><StorageImage path={settings.login_image_path} fallbackPath="brand/panda-login-transparent.png" alt="Panda GANA777 con gorra y campera azul" /></div>}
+    {admin ? <p className="eyebrow">PANEL DE ADMINISTRACIÓN</p> : <div className={`login-character ${settings.login_image_path === 'brand/panda-login-transparent.png' || settings.login_image_path === 'brand/panda-login-bright.png' ? 'transparent-character' : settings.login_image_layout === 'reference' ? 'reference-character' : ''}`}><StorageImage path={settings.login_image_path} fallbackPath="brand/panda-login-transparent.png" alt="Panda GANA777 con gorra y campera morada" /></div>}
     {!admin && requestingAccess ? <PlayerAccessRequest onBack={() => setRequestingAccess(false)} /> : <><section className="card login-card">{!admin && <span className="brand login-domain-brand">gana777bet.com</span>}<h1>Bienvenido</h1>{admin && <p>Ingresá a tu cuenta</p>}
       <form onSubmit={submit}>
         {admin && <label htmlFor="email">Usuario o correo electrónico</label>}
@@ -71,7 +71,6 @@ export function LoginView({ admin, busy, configured, feedback, onLogin, onDemo, 
         {feedback}{retrySeconds > 0 && <p className="login-retry" role="status">Podés volver a intentar en {retrySeconds} segundos.</p>}
         <button className="primary" disabled={busy || retrySeconds > 0 || (!!siteKey && !captchaToken)}>{busy ? 'Ingresando…' : retrySeconds > 0 ? 'Esperá para reintentar' : 'Ingresar'}</button>
       </form>
-      {safeHttpsLink(settings.help_url) ? <a className="help-link" href={safeHttpsLink(settings.help_url)!} target="_blank" rel="noopener noreferrer">¿Necesitás ayuda?</a> : <button className="help-link" onClick={onHelp}>¿Necesitás ayuda?</button>}
     </section>{!admin && <button type="button" className="player-access-open" onClick={() => setRequestingAccess(true)}><span className="player-access-icon"><UserPlus size={22} aria-hidden="true" /></span><span className="player-access-copy"><strong>Crear usuario</strong><small>¿Primera vez? Solicitá tu acceso</small></span><ChevronRight className="player-access-arrow" size={20} aria-hidden="true" /></button>}</>}
     {!admin && <PortalInstall />}
     {(!configured || import.meta.env.DEV) && <button className="text-button" onClick={onDemo}>Explorar vista previa</button>}

@@ -175,6 +175,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
 // Local fallbacks keep the core character assets available before Storage responds.
 const previewFiles: Record<string, string> = {
   'brand/panda-login-transparent.png': pandaLogin,
+  'brand/panda-login-bright.png': pandaLogin,
   'avatars/panda-user-avatar.png': pandaAvatar,
 };
 export function StorageImage({ path, alt, className = '', fallbackPath }: { path: string; alt: string; className?: string; fallbackPath?: string }) {

@@ -809,7 +809,7 @@ function App() {
   const feedback = <>{error && <div role="alert" className="alert error">{error}</div>}{notice && <div role="status" className="alert">{notice}</div>}</>;
   if (!adminApp && (!initialReady || initialError)) return <PortalBootScreen error={initialError} onRetry={retryInitialLoad} />;
   if (loading) return <main className="login"><Brand panel={adminApp} /><p>Cargando tu cuenta…</p></main>;
-  if (!session && !demo) return <LoginView admin={adminApp} busy={busy} retryAt={loginRetryAt} siteKey={turnstileSiteKey} configured={!!supabase} feedback={<>{configError && <div role="alert" className="alert error">{configError}</div>}{feedback}</>} onLogin={login} onDemo={startDemo} onHelp={() => setNotice('Si no podés ingresar, comunicate con el soporte que te proporcionó tu cuenta.')} />;
+  if (!session && !demo) return <LoginView admin={adminApp} busy={busy} retryAt={loginRetryAt} siteKey={turnstileSiteKey} configured={!!supabase} feedback={<>{configError && <div role="alert" className="alert error">{configError}</div>}{feedback}</>} onLogin={login} onDemo={startDemo} />;
 
   function history(kind?: RequestRow['kind']) {
     const adminHistory = adminApp && page === 'history' && kind === undefined;
