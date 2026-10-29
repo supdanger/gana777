@@ -5,7 +5,8 @@ import { ArrowUpRight, CalendarClock, Check, CheckCircle2, ChevronRight, Clock, 
 import { canonicalMoney, percentText, readMoney } from '../supabase/functions/_shared/bonus-rule';
 import { adminApp, supabase, configError, turnstileSiteKey, REQUEST_COLUMNS, REQUEST_COLUMNS_LEGACY, money, date, statusLabel, type RequestRow, type WithdrawalPart, type Message, type Bank, type BankOperationStatus } from './lib';
 import { DEPOSIT_PAGE_SIZE, depositWindow } from './deposit-page';
-import { bonusCounters, type BonusCounter } from './bonus-counters';
+import { bonusCounters } from './bonus-counters';
+import { BonusCounterAdmin } from './bonus-counter-admin';
 import { loginFailure, readLoginRetryAt, saveLoginRetryAt } from './login-security';
 import { assertFormFields, InputError, parseAmount, parseAlias, parseCbu, parseHolder, parseMessage, parseUuid, validateReceipt } from '../supabase/functions/_shared/validation';
 import { publicError } from './security';
@@ -142,7 +143,6 @@ function App() {
   const [leaderboardReload, setLeaderboardReload] = useState(0);
   const [pendingDepositCount, setPendingDepositCount] = useState(0);
   const [pendingWithdrawalCount, setPendingWithdrawalCount] = useState(0);
-  const [liveBonusCounters, setLiveBonusCounters] = useState<BonusCounter[]>([]);
   const [approvedDeposit, setApprovedDeposit] = useState<RequestRow | null>(null);
   const [reviewAmount, setReviewAmount] = useState('');
   const [reviewGrantBonus, setReviewGrantBonus] = useState(true);
@@ -357,7 +357,7 @@ function App() {
     });
     const { data } = supabase.auth.onAuthStateChange((_event, value) => {
       setSession(value);
-      if (!value) { setChatBubbleOpen(false); setRequests([]); setWithdrawalParts([]); setPartPreview(null); setMessages([]); setChatInbox([]); setExternalChatInbox([]); setExternalThread(''); setAccessRequestCount(0); setBank(null); setBankOperation(null); setIsAdmin(false); setStaffReady(false); setStaffContext({ superAdmin: false, username: '', displayName: '', avatarPath: null, permissions: noStaffPermissions }); setThread(''); setDepositRows([]); setDepositTotal(0); setDepositPage(0); setPendingDepositCount(0); setPendingWithdrawalCount(0); setLiveBonusCounters([]); setPlayerWhatsAppUrl(null); setPlayerUsername(null); setPlayerCasinoUrl(null); }
+      if (!value) { setChatBubbleOpen(false); setRequests([]); setWithdrawalParts([]); setPartPreview(null); setMessages([]); setChatInbox([]); setExternalChatInbox([]); setExternalThread(''); setAccessRequestCount(0); setBank(null); setBankOperation(null); setIsAdmin(false); setStaffReady(false); setStaffContext({ superAdmin: false, username: '', displayName: '', avatarPath: null, permissions: noStaffPermissions }); setThread(''); setDepositRows([]); setDepositTotal(0); setDepositPage(0); setPendingDepositCount(0); setPendingWithdrawalCount(0); setPlayerWhatsAppUrl(null); setPlayerUsername(null); setPlayerCasinoUrl(null); }
     });
     return () => { alive = false; data.subscription.unsubscribe(); };
   }, []);
@@ -431,18 +431,6 @@ function App() {
         if (depositCount.error) { setError(publicError(depositCount.error)); return; }
         setPendingDepositCount(depositCount.count ?? 0);
         setPendingWithdrawalCount(pendingWithdrawals.count ?? 0);
-        let bonus = await db.from('deposit_bonus_totals').select('bonus_percent,bonus_amount,title,loads,bonus_total');
-        if (missingBonusAmount(bonus.error)) bonus = await db.from('deposit_bonus_totals').select('bonus_percent,title,loads,bonus_total');
-        if (!bonus.error) setLiveBonusCounters((bonus.data ?? []).map(row => {
-          const percent = Number(row.bonus_percent) || 0;
-          const fixed = Number('bonus_amount' in row ? row.bonus_amount : 0) || 0;
-          return {
-            key: percent > 0 ? `p:${percent}:${row.title}` : fixed > 0 ? `f:${fixed}:${row.title}` : 'none',
-            title: row.title,
-            loads: Number(row.loads) || 0,
-            bonusTotal: Number(row.bonus_total) || 0,
-          };
-        }));
       }
     }
     void refresh();
@@ -1005,16 +993,7 @@ function App() {
     </section>;
   }
   function bonusBoard() {
-    const counters = demo ? bonusCounters(requests) : liveBonusCounters;
-    const totalLoads = counters.reduce((sum, item) => sum + item.loads, 0);
-    const withoutBonus = counters.find(item => item.key === 'none')?.loads ?? 0;
-    return <section className="bonus-counters" aria-label="Contadores de bonos">
-      <h2>Contadores de bonos</h2>
-      <div className="bonus-counter-grid">
-        {counters.map(item => <article className="card" key={item.key}><p>{item.title}</p><strong>{item.loads}</strong><small>{item.key === 'none' ? 'Sin monto extra' : money(item.bonusTotal)}</small></article>)}
-        <article className="card"><p>Total cargas</p><strong>{totalLoads}</strong><small>Sin bono: {withoutBonus}</small></article>
-      </div>
-    </section>;
+    return <BonusCounterAdmin demo={demo} demoCounters={demo ? bonusCounters(requests.filter(row => row.status === 'approved')) : []} />;
   }
   const displayName: unknown = session?.user.user_metadata?.display_name;
   const name = (typeof displayName === 'string' ? displayName.trim().slice(0, 80) : '') || session?.user.email?.split('@')[0] || 'bienvenido';

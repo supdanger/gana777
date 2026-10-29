@@ -1883,3 +1883,29 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .admin-shell .admin-chat .admin-chat-placeholder { color: #c35ae2; }
 .admin-shell .admin-chat .admin-chat-unanswered { background: #d85ef0; box-shadow: 0 0 10px #d85ef088; }
 .admin-shell .admin-chat .admin-chat-messages .message.mine p { border-color: #86399c; background: #4a1c5a; }
+.admin-shell .bonus-shift-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
+.admin-shell .bonus-shift-heading h2 { margin: 0; color: #eddaf5; }
+.admin-shell .bonus-shift-heading p { margin: 5px 0 0; color: #b5a1bf; font-size: 12px; }
+.admin-shell .bonus-shift-close { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; padding: 8px 12px; border: 1px solid #8742a0; border-radius: 10px; background: linear-gradient(110deg, #321a3d, #21132a); color: #f0d9f7; font-weight: 750; }
+.admin-shell .bonus-shift-close:hover:not(:disabled) { border-color: #c35ae2; background: #3b2048; }
+.admin-shell .bonus-shift-close:disabled { opacity: .55; cursor: wait; }
+.admin-shell .bonus-shift-loading, .admin-shell .bonus-shift-history-empty { color: #b5a1bf; font-size: 13px; }
+.admin-shell .bonus-total-awarded { border-color: #9a53b3; background: linear-gradient(145deg, #291532, #100b15); box-shadow: inset 0 0 22px #a93bc114; }
+.admin-shell .bonus-total-awarded strong { color: #e2a8f5; }
+.admin-shell .bonus-shift-history { margin-top: 14px; border: 1px solid #493653; border-radius: 12px; background: #0d0a10; color: #e8dbee; }
+.admin-shell .bonus-shift-history > summary { display: flex; align-items: center; gap: 8px; padding: 12px 14px; color: #e5c8f0; font-weight: 800; cursor: pointer; list-style: none; }
+.admin-shell .bonus-shift-history > summary::-webkit-details-marker { display: none; }
+.admin-shell .bonus-shift-history > summary span { margin-left: auto; color: #bb77d0; }
+.admin-shell .bonus-shift-history-list { display: grid; gap: 8px; padding: 0 10px 10px; }
+.admin-shell .bonus-shift-report { overflow: hidden; border: 1px solid #38263f; border-radius: 9px; background: #100c14; }
+.admin-shell .bonus-shift-report > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; cursor: pointer; list-style: none; }
+.admin-shell .bonus-shift-report > summary::-webkit-details-marker { display: none; }
+.admin-shell .bonus-shift-report > summary span, .admin-shell .bonus-shift-report > summary strong, .admin-shell .bonus-shift-report > summary small { display: block; }
+.admin-shell .bonus-shift-report > summary strong { color: #f4e8fa; font-size: 13px; }
+.admin-shell .bonus-shift-report > summary small { margin-top: 4px; color: #a98eb4; font-size: 11px; }
+.admin-shell .bonus-shift-report > summary b { color: #dda4ef; white-space: nowrap; }
+.admin-shell .bonus-shift-report > div { padding: 0 12px 8px; border-top: 1px solid #302238; }
+.admin-shell .bonus-shift-report > div p { display: flex; justify-content: space-between; gap: 12px; margin: 8px 0; color: #cbbbd4; font-size: 12px; }
+.admin-shell .bonus-shift-report > div p strong { color: #ead8f1; text-align: right; }
+.admin-shell .bonus-shift-report > div .bonus-shift-report-total { padding-top: 8px; border-top: 1px solid #493653; color: #f2dcf9; font-weight: 800; }
+@media (max-width: 560px) { .admin-shell .bonus-shift-heading { align-items: flex-start; flex-direction: column; } .admin-shell .bonus-shift-close { width: 100%; } }
