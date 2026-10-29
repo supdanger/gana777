@@ -1769,3 +1769,117 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .telegram-history-list > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 9px 0; border-top: 1px solid #39566b; }
 .telegram-history-list span { color: #75caff; font-size: 12px; font-weight: 800; }
 .telegram-history-list small { grid-column: 1 / -1; color: #b5c9d8; }
+
+/* Identidad morada del panel: deja atrás los acentos celestes del tema anterior. */
+.admin-shell {
+  --panel-bg: #0b0810;
+  --panel-surface: #15111b;
+  --panel-surface-raised: #1c1524;
+  --panel-surface-soft: #110d17;
+  --panel-border: #493653;
+  --panel-border-soft: #35263f;
+  --panel-text: #f7f1fb;
+  --panel-muted: #c0b2ca;
+  --panel-subtle: #95829f;
+  --panel-blue: #b83be4;
+  background: radial-gradient(ellipse at 72% -8%, #56206a4d 0, transparent 36%), linear-gradient(145deg, #0b0810 0%, #100b16 54%, #0b0810 100%);
+}
+.admin-sidebar { border-right-color: #33233d; background: linear-gradient(180deg, #17101d 0%, #100b15 52%, #0b0810 100%); scrollbar-color: #493653 transparent; }
+.admin-sidebar-brand { border-bottom-color: #35263f; }
+.admin-sidebar-brand .brand span { background: linear-gradient(145deg, #f3c86a 0%, #d984ee 24%, #bd43e7 57%, #7f23a8 100%); background-clip: text; -webkit-background-clip: text; }
+.admin-sidebar-brand .brand-role { color: #d0b5db; }
+.admin-nav-group h2 { color: #8f759c; }
+.admin-navigation .admin-nav-group button { color: #cbbbd4; }
+.admin-navigation .admin-nav-group button::before { background: #c34be9; box-shadow: 0 0 13px #bf43e755; }
+.admin-navigation .admin-nav-group button:hover { border-color: #563d62; background: #21162a; color: #fff; }
+.admin-navigation .admin-nav-group button.active { border-color: #744188; background: linear-gradient(100deg, #311b3d, #21142a); color: #f6e9fb; }
+.admin-navigation .admin-nav-group button.active::before { background: #d06aed; box-shadow: 0 0 12px #d06aed66; }
+.admin-navigation button svg { color: #c98fdd; }
+.admin-nav-count { border-color: #493653; background: #17111d; color: #b59fc0; }
+.admin-nav-count.has-pending { border-color: #e24b63; background: linear-gradient(180deg, #cf2e4a, #8c1830); color: #fff; }
+.admin-topbar { border-bottom-color: #35263f; background: #100b16ed; }
+.admin-topbar small, .admin-topbar .admin-staff-identity small { color: #a98cb5; }
+.admin-staff-identity { border-color: #473450; background: #1b1322; }
+.admin-staff-avatar { border-color: #824499; background: #311c3c; color: #e0b5ed; }
+.admin-content .welcome::before, .account-heading > div::before { background: #bc42e5; }
+.admin-content .welcome h1 span,
+.themes-admin .page-title h1,
+.cashier-admin h1,
+.player-admin h1,
+.contact-admin h1 { background: linear-gradient(110deg, #f2cb70 0%, #d179ec 28%, #b638dc 68%, #8e2ab3 100%); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.admin-shell .brand span { background: linear-gradient(145deg, #f3c86a 0%, #d984ee 24%, #bd43e7 57%, #7f23a8 100%); background-clip: text; -webkit-background-clip: text; }
+.admin-content input:focus, .admin-content select:focus, .admin-content textarea:focus { border-color: #bf4be5; box-shadow: 0 0 0 3px #b83be42b; }
+.admin-content input[type='checkbox'], .admin-content input[type='radio'], .admin-content input[type='range'] { accent-color: #bd45e2; }
+.admin-content .primary,
+.admin-content .cashier-create-submit, .admin-content .principal-create > button,
+.admin-content .bonus-form-actions button:first-child, .admin-content .account-form-actions button:first-child,
+.admin-content .contact-link-form button {
+  border-color: #a739cd; background: linear-gradient(110deg, #8b27ad, #672080); color: #fff;
+  box-shadow: 0 8px 20px #8f25b52b, inset 0 1px #ffffff20;
+}
+.admin-content .primary:hover:not(:disabled),
+.admin-content .cashier-create-submit:hover:not(:disabled), .admin-content .principal-create > button:hover:not(:disabled),
+.admin-content .bonus-form-actions button:first-child:hover:not(:disabled), .admin-content .account-form-actions button:first-child:hover:not(:disabled),
+.admin-content .contact-link-form button:hover:not(:disabled) { border-color: #d16aeb; background: linear-gradient(110deg, #a936cb, #792b98); }
+.admin-content .player-avatar, .admin-content .principal-icon, .admin-content .cashier-avatar, .admin-content .request-avatar,
+.admin-content .access-admin-avatar, .admin-content .admin-chat-avatar { border-color: #76418c; background: #2b1935; color: #dbadf0; }
+.admin-content .player-form-title > svg { border-color: #76418c; background: #2b1935; color: #dbadf0; }
+.admin-content .shift-tabs button.active { border-color: #9a4bb1; background: #291833; box-shadow: inset 0 2px #bc48df; }
+.admin-content .bonus-create .bonus-mode label.selected { border-color: #a442c4; background: #291734; }
+.admin-content .admin-chat-filters button.active, .admin-content .access-admin-filters button.active,
+.admin-content .platform-detail-tabs button.active { border-color: #8c479f; background: #2a1834; color: #f2dafa; }
+.admin-content .admin-chat-item.active { background: #291a32; box-shadow: inset 3px 0 #c34be9; }
+.admin-content .admin-chat-avatar, .admin-content .access-admin-avatar { color: #dfb1ee; }
+.admin-content .admin-chat-unanswered { background: #d85ef0; box-shadow: 0 0 10px #d85ef088; }
+.admin-content .access-admin-manual-button { border-color: #84429b; background: linear-gradient(110deg, #30183a, #1c1124); color: #edcef7; }
+.admin-content .access-admin-manual-actions button:first-child { border-color: #7b3d91; background: #2a1734; color: #ead0f3; }
+.admin-content .platform-admin-toolbar > span svg, .admin-content .telegram-route-heading svg,
+.admin-content .announcement-editor h2 svg, .admin-content .announcement-list h2 svg { color: #ca65e4; }
+.admin-content .admin-chat-composer button:not(.admin-chat-image-button), .admin-content .external-chat-copy { border-color: #a33bc5; background: #70208c; color: #fff; }
+.admin-content .admin-chat-composer button:not(.admin-chat-image-button):hover, .admin-content .external-chat-copy:hover { border-color: #d16aeb; background: #8a2ca8; }
+.admin-content .admin-chat-item.active, .admin-content .access-admin-item.active { background: #291a32; }
+.admin-content .load-request-button:hover { border-color: #75448b; }
+.theme-section, .theme-design-editor, .theme-banner-editor { border-color: #493653; background-color: #110d17; }
+.theme-current-label, .theme-design-reset, .theme-create input, .theme-create select, .theme-design-editor input[type='text'],
+.theme-design-fields input[type='file'], .theme-card-slots button, .theme-card-image-editor .theme-design-file input { border-color: #513c5d; background-color: #17111d; color: #eadcf0; }
+.theme-design-fields label:not(.theme-design-file) input, .theme-card-controls input[type='range'], .theme-card-image-editor .theme-card-image-layout input[type='range'] { accent-color: #bc45e2; }
+.theme-design-fields output, .theme-card-controls output, .theme-card-image-editor .theme-card-image-layout output { color: #dda6ef; }
+.cashier-permissions input:checked { border-color: #b744d6; background: #7b2696; }
+.cashier-permissions input:checked::before { background: #f1d7f7; }
+.cashier-create-submit, .cashier-card, .player-create, .player-card, .contact-settings-card, .principal-create, .principal-card,
+.bonus-create, .bonus-offer, .account-create, .account-offer { border-color: var(--panel-border); }
+.cashier-access-grid button.enabled { border-color: #75418b; background: #271832; color: #e4c2f0; }
+.player-edit-form, .player-password-form { background: #120d18; }
+.admin-content .announcement-days label.selected { border-color: #a442c4; background: #291734; color: #f5e9fa; }
+.admin-content .announcement-editor input:focus-visible, .admin-content .announcement-editor textarea:focus-visible,
+.admin-content .admin-chat-composer textarea:focus-visible { outline-color: #cf5bea; }
+.admin-content .sac-phone-index { background: #291734; color: #ddb1ec; }
+.admin-content .sac-phone-fold-toggle:hover { background: #1b1322; }
+.admin-content .sac-phone-choose { border-left-color: #493653; background: #17111d; color: #e2d5e9; }
+.admin-content .sac-phone-choose:hover:not(:disabled) { border-left-color: #8c479f; background: #281832; }
+.request-route { color: #db9bed; }
+.admin-shell .access-admin-heading h1 { background: linear-gradient(110deg, #f2cb70 0%, #d179ec 28%, #b638dc 68%, #8e2ab3 100%); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.admin-shell .access-admin-layout,
+.admin-shell .access-admin-inbox,
+.admin-shell .access-admin-thread,
+.admin-shell .access-admin-list { background: #050507; }
+.admin-shell .access-admin-empty > svg { color: #c35ae2; }
+.admin-shell .admin-chat .admin-chat-layout,
+.admin-shell .admin-chat .admin-chat-inbox,
+.admin-shell .admin-chat .admin-chat-list,
+.admin-shell .admin-chat .admin-chat-thread,
+.admin-shell .admin-chat .admin-chat-thread-header,
+.admin-shell .admin-chat .admin-chat-actions,
+.admin-shell .admin-chat .admin-chat-messages,
+.admin-shell .admin-chat .admin-chat-composer { background: #050507; }
+.admin-shell .admin-chat .admin-chat-search { color: #c58bd8; }
+.admin-shell .admin-chat .admin-chat-search input,
+.admin-shell .admin-chat .admin-chat-composer textarea { border-color: #493653; background: #100c13; }
+.admin-shell .admin-chat .admin-chat-filters { border-bottom-color: #35263f; }
+.admin-shell .admin-chat .admin-chat-item { border-bottom-color: #2d2234; }
+.admin-shell .admin-chat .admin-chat-item:hover { background: #17111c; }
+.admin-shell .admin-chat .admin-chat-item.active { background: #21152a; box-shadow: inset 3px 0 #c34be9; }
+.admin-shell .admin-chat .admin-chat-avatar,
+.admin-shell .admin-chat .admin-chat-placeholder { color: #c35ae2; }
+.admin-shell .admin-chat .admin-chat-unanswered { background: #d85ef0; box-shadow: 0 0 10px #d85ef088; }
+.admin-shell .admin-chat .admin-chat-messages .message.mine p { border-color: #86399c; background: #4a1c5a; }
