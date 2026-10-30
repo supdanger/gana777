@@ -158,6 +158,8 @@
   var homeActions = root.querySelector('.home-actions');
   var chatView = root.querySelector('.chat-view');
   var chatOption = root.querySelector('.chat-option');
+  var chargeOption = root.querySelector('.charge-image');
+  var chatEnabled = true;
   var chatBack = root.querySelector('.chat-back');
   var log = root.querySelector('.log');
   var form = root.querySelector('.composer');
@@ -330,6 +332,7 @@
     if (timer) { clearInterval(timer); timer = null; }
   }
   function showChat() {
+    if (!chatEnabled) return;
     homeActions.style.display = 'none';
     panel.classList.remove('menu-mode');
     chatView.classList.add('open');
@@ -346,7 +349,7 @@
   chatOption.addEventListener('click', showChat);
   chatBack.addEventListener('click', showHome);
   form.addEventListener('submit', async function (event) {
-    event.preventDefault(); var body = input.value.trim(); if ((!body && !selectedImage) || busy) return;
+    event.preventDefault(); if (!chatEnabled) return; var body = input.value.trim(); if ((!body && !selectedImage) || busy) return;
     busy = true; send.disabled = true; status.textContent = '';
     try { await ensureSession(); var attachment = selectedImage ? await prepareImage(selectedImage) : null; var data = await call('send', { body: body, attachment: attachment }); input.value = ''; clearImage(); mergeLinked(data); }
     catch (error) { status.textContent = error.message || 'No pudimos enviar el mensaje.'; }
@@ -357,6 +360,10 @@
     try {
       var data = await call('status');
       var enabled = data.enabled === true;
+      chatEnabled = data.chat_enabled !== false;
+      chatOption.style.display = chatEnabled ? '' : 'none';
+      chargeOption.style.display = data.charge_enabled !== false ? '' : 'none';
+      if (!chatEnabled && chatView.classList.contains('open')) showHome();
       if (!enabled && isOpen) setOpen(false);
       host.style.display = enabled ? 'block' : 'none';
     } catch (_) {

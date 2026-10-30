@@ -78,10 +78,10 @@ async function readMessages(thread: Thread) {
   }))].sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id)).slice(-100);
 }
 
-async function isChatEnabled(db: ReturnType<typeof service>) {
-  const { data, error } = await db.from('app_settings').select('external_chat_enabled').eq('id', true).single();
+async function bubbleSettings(db: ReturnType<typeof service>) {
+  const { data, error } = await db.from('app_settings').select('external_chat_enabled,external_chat_option_enabled,external_charge_option_enabled').eq('id', true).single();
   if (error || !data) throw new HttpError(503, 'No pudimos consultar la disponibilidad del chat.');
-  return data.external_chat_enabled === true;
+  return { enabled: data.external_chat_enabled === true && (data.external_chat_option_enabled || data.external_charge_option_enabled), chat_enabled: data.external_chat_option_enabled === true, charge_enabled: data.external_charge_option_enabled === true };
 }
 
 Deno.serve(async request => {
@@ -101,8 +101,9 @@ Deno.serve(async request => {
     const action = input?.action;
     const db = service();
 
-    if (action === 'status') return jsonResponse({ enabled: await isChatEnabled(db) }, 200, origin);
-    if (!await isChatEnabled(db)) throw new HttpError(503, 'El chat de soporte está pausado en este momento.');
+    const settings = await bubbleSettings(db);
+    if (action === 'status') return jsonResponse(settings, 200, origin);
+    if (!settings.enabled || !settings.chat_enabled) throw new HttpError(503, 'El chat de soporte está pausado en este momento.');
 
     if (action === 'start') {
       let thread: Thread | null = null;

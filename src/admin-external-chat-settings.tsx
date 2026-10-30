@@ -4,6 +4,7 @@ import { supabase } from './lib';
 
 export function AdminExternalChatSettings({ demo }: { demo: boolean }) {
   const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [options, setOptions] = useState<{ chat: boolean; charge: boolean } | null>(null);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [copied, setCopied] = useState(false);
@@ -16,10 +17,11 @@ export function AdminExternalChatSettings({ demo }: { demo: boolean }) {
   useEffect(() => {
     if (!supabase || demo) { setEnabled(null); return; }
     let alive = true;
-    void supabase.from('app_settings').select('external_chat_enabled').eq('id', true).single().then(({ data, error }) => {
+    void supabase.from('app_settings').select('external_chat_enabled,external_chat_option_enabled,external_charge_option_enabled').eq('id', true).single().then(({ data, error }) => {
       if (!alive) return;
       if (error || !data) { setFeedback('No pudimos cargar el estado del chat.'); return; }
       setEnabled(data.external_chat_enabled);
+      setOptions({ chat: data.external_chat_option_enabled, charge: data.external_charge_option_enabled });
     });
     return () => { alive = false; };
   }, [demo]);
@@ -32,6 +34,17 @@ export function AdminExternalChatSettings({ demo }: { demo: boolean }) {
     if (error || typeof data !== 'boolean') { setFeedback('No pudimos cambiar el estado del chat. Intentá nuevamente.'); return; }
     setEnabled(data);
     setFeedback(data ? 'El chat ya está activo en la plataforma.' : 'El chat quedó pausado y se ocultará en la plataforma.');
+  }
+
+  async function toggleOption(key: 'chat' | 'charge') {
+    if (!supabase || !options || saving || demo) return;
+    const next = { ...options, [key]: !options[key] };
+    setSaving(true); setFeedback('');
+    const { error } = await supabase.rpc('set_external_bubble_options', { p_chat: next.chat, p_charge: next.charge });
+    setSaving(false);
+    if (error) { setFeedback('No pudimos guardar las opciones. Intentá nuevamente.'); return; }
+    setOptions(next);
+    setFeedback('Opciones guardadas. La burbuja se actualiza en hasta 15 segundos.');
   }
 
   async function copyCode() {
@@ -47,6 +60,12 @@ export function AdminExternalChatSettings({ demo }: { demo: boolean }) {
       <div className="external-chat-control-copy"><strong>Burbuja en la plataforma</strong><p>{enabled === null ? 'Estado no disponible' : enabled ? 'Activa y visible para los visitantes.' : 'Pausada y oculta para los visitantes.'}</p></div>
       <button type="button" className={`external-chat-toggle${enabled ? ' is-active' : ''}`} role="switch" aria-checked={enabled === true} disabled={demo || enabled === null || saving} onClick={() => void toggle()}><span className="external-chat-toggle-knob" /><span>{saving ? 'Guardando…' : enabled ? 'Activa' : 'Pausada'}</span><Power size={15} /></button>
       {feedback && <small className="external-chat-control-feedback" role="status">{feedback}</small>}
+    </article>
+    <article className="card"><h2>Opciones de la burbuja</h2><p>Activá Chat, Cargas o ambas. Si apagás las dos, la burbuja se oculta. El interruptor general también debe estar activo.</p>
+      {(['chat', 'charge'] as const).map(key => <div className="external-chat-control" key={key}>
+        <div className="external-chat-control-copy"><strong>{key === 'chat' ? 'Chat de soporte' : 'Cargas'}</strong><p>{key === 'chat' ? 'Permite conversar con soporte desde la burbuja.' : 'Muestra el acceso a gana777bet.online para cargar.'}</p></div>
+        <button type="button" className={`external-chat-toggle${options?.[key] ? ' is-active' : ''}`} role="switch" aria-label={key === 'chat' ? 'Chat de soporte' : 'Cargas'} aria-checked={options?.[key] === true} disabled={demo || !options || saving} onClick={() => void toggleOption(key)}><span className="external-chat-toggle-knob" /><span>{options?.[key] ? 'Activo' : 'Pausado'}</span><Power size={15} /></button>
+      </div>)}
     </article>
     <article className="card external-chat-install"><div><strong>Código para integrar la burbuja</strong><p>Copialo y pasáselo al equipo de la plataforma para que lo agregue al HTML de gana777bet.com.</p></div><textarea aria-label="Código de instalación del chat" readOnly value={integrationCode || 'Configurá la URL y la clave pública de Supabase para generar el código.'} rows={3} /><button type="button" className="external-chat-copy" disabled={!integrationCode} onClick={() => void copyCode()}>{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? 'Copiado' : 'Copiar código'}</button><small>La clave incluida es pública para el navegador; no contiene credenciales administrativas.</small></article>
   </section>;
