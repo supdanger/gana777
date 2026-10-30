@@ -1559,6 +1559,15 @@ body:has(.user-app.theme-halloween), body:has(.user-login.theme-halloween) { bac
 .deposit-bonus-empty > div span { color: #d4bfdf; font-size: 12px; line-height: 1.35; }
 .deposit-bonus-empty button { display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: center; gap: 8px; border-color: #d58aff; background: linear-gradient(120deg, #a62bd4, #70208c); color: #fff; font-size: 14px; font-weight: 900; box-shadow: 0 4px 15px #9b32c866; }
 .deposit-bonus-empty .deposit-bonus-image-button { position: relative; width: 100%; min-height: 0; aspect-ratio: 4 / 1; padding: 0; overflow: hidden; border: 0; border-radius: 9px; background: #100b15; box-shadow: 0 4px 15px #9b32c866; }
+.user-app.page-deposit .deposit-bonus-prompt { margin-bottom: 12px; padding: 8px; border-color: #704087; background: #100b15; }
+.user-app.page-deposit .deposit-bonus-prompt .deposit-bonus-empty,
+.user-app.page-deposit .deposit-bonus-prompt .deposit-selected-bonus { margin: 0; }
+.user-app.page-deposit .deposit-amount { margin-top: 0; border: 1px solid #8a36ad; background: linear-gradient(145deg, #17101d, #0b0a10 72%); box-shadow: 0 0 18px #922ac52b, inset 0 1px #d58aff18; }
+.user-app.page-deposit .deposit-amount .amount-label { display: block; color: #f0caff; font-size: 15px; font-weight: 900; letter-spacing: .035em; }
+.user-app.page-deposit .deposit-amount .amount-input { border-color: #a642cb; background: linear-gradient(110deg, #25142e, #1a1022); box-shadow: inset 0 2px 10px #0008, 0 0 0 2px #a642cb22; }
+.user-app.page-deposit .deposit-amount .amount-input input { background: transparent; }
+.user-app.page-deposit .deposit-amount .amount-input:focus-within { outline-color: #d47af2; box-shadow: 0 0 0 3px #a642cb44, inset 0 2px 10px #0008; }
+.user-app.page-deposit .deposit-amount .amount-minimum-note { color: #e3c3ef; font-weight: 700; }
 .deposit-bonus-empty:has(.deposit-bonus-image-button) { display: block; aspect-ratio: 4 / 1; padding: 0; border: 0; background: transparent; box-shadow: none; }
 .deposit-bonus-empty:has(.deposit-bonus-image-button) .deposit-bonus-image-button { aspect-ratio: auto; height: 100%; min-height: 0; border: 1px solid #a12eea; border-radius: 12px; }
 .deposit-bonus-image-button img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; max-height: none; object-fit: cover; object-position: center; }
