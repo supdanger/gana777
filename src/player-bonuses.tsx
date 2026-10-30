@@ -87,21 +87,22 @@ export function PlayerBonuses({ demo, onClaim }: { demo: boolean; onClaim: (id: 
       const status = availability[offer.id];
       const remaining = status?.next_available_at ? Date.parse(status.next_available_at) - now - clockOffset : 0;
       const statusReady = !timed || (ready && (!supabase || demo || !!status));
+      const waiting = offer.reward_type === 'free_spins' && !!offer.daily_reset_time && statusReady && !status?.awaiting_credit && remaining > 0;
       const canClaim = loadEligible && (!timed || (statusReady && !status?.awaiting_credit && remaining <= 0));
       const layout = specialBonusDisplayLayout(normalizeBonusBannerLayout(offer.banner_layout, themeBase(settings)));
       const video = !!offer.image_path && /\.(mp4|webm)$/i.test(offer.image_path);
       const mediaUrl = offer.image_path && video ? supabase?.storage.from('app-assets').getPublicUrl(offer.image_path).data.publicUrl : null;
       const buttonLayout = normalizeBonusBannerLayout(offer.banner_layout, themeBase(settings));
-      return <article className={`player-bonus-card${timed ? ' is-timed' : ''}`} style={{ ...homeBannerLayoutStyles(layout), ...bonusButtonLayoutStyles(buttonLayout) } as CSSProperties} key={offer.id} aria-label={offer.title}>
+      return <article className={`player-bonus-card${timed ? ' is-timed' : ''}${waiting ? ' is-waiting' : ''}`} style={{ ...homeBannerLayoutStyles(layout), ...bonusButtonLayoutStyles(buttonLayout) } as CSSProperties} key={offer.id} aria-label={offer.title}>
         {offer.image_path ? video ? <video className="player-bonus-media" src={mediaUrl ?? undefined} autoPlay muted loop playsInline preload="metadata" aria-label={offer.title} /> : <StorageImage path={offer.image_path} alt={offer.title} className="player-bonus-media" /> : <div className="player-bonus-placeholder" aria-hidden="true" />}
-        <div className="player-bonus-copy">
+        <div className={`player-bonus-copy${waiting ? ' is-waiting' : ''}`}>
           {!offer.image_path && <>
             <strong className="player-bonus-title">{offer.title}</strong>
             <span className="player-bonus-range">Desde {money(offer.min_amount)} hasta {money(offer.max_amount)}</span>
             <strong className="player-bonus-reward">{reward(offer)}</strong>
           </>}
           {!loadEligible && <span className="player-bonus-state">{!loadNumberReady ? 'Verificando tu número de carga…' : nextLoadNumber === null ? 'No pudimos verificar tu número de carga. Recargá la página.' : `Este bono aplica en ${loadWindowText}. Tu próxima carga es la n.º ${nextLoadNumber}.`}</span>}
-          {loadEligible && timed && (!statusReady ? <span className="player-bonus-state">Consultando disponibilidad…</span> : status?.awaiting_credit ? <span className="player-bonus-state">Carga con bono en proceso</span> : remaining > 0 ? <><span className="player-bonus-state">Disponible nuevamente en</span><strong className="player-bonus-countdown" role="timer">{countdown(remaining)}</strong>{offer.daily_reset_time && <span className="player-bonus-state">Se habilita a las {offer.daily_reset_time.slice(0,5)} (hora de Paraguay)</span>}</> : <button type="button" disabled={!canClaim} onClick={() => onClaim(offer.id)}>Obtener</button>)}
+          {loadEligible && timed && (!statusReady ? <span className="player-bonus-state">Consultando disponibilidad…</span> : status?.awaiting_credit ? <span className="player-bonus-state">Carga con bono en proceso</span> : remaining > 0 ? <><span className="player-bonus-state">Disponible nuevamente en</span><strong className="player-bonus-countdown" role="timer">{countdown(remaining)}</strong></> : <button type="button" disabled={!canClaim} onClick={() => onClaim(offer.id)}>Obtener</button>)}
           {loadEligible && !timed && <button type="button" disabled={!canClaim} onClick={() => onClaim(offer.id)}>Obtener</button>}
         </div>
         <button type="button" className="player-bonus-info-button" aria-label={`Ver información de ${offer.title}`} title={`Información de ${offer.title}`} onClick={() => setRulesOffer(offer)}><Info size={18} aria-hidden="true" /></button>
