@@ -25,12 +25,13 @@ export type BonusOffer = {
   cooldown_hours: number;
   daily_reset_time: string | null;
   image_path: string | null;
+  deposit_image_path: string | null;
   banner_layout: BonusBannerLayout;
   active: boolean;
   sort_order: number;
 };
 
-const offerColumns = 'id,title,reward_type,reward_label,rules_text,bonus_mode,bonus_percent,bonus_amount,min_amount,max_amount,load_number_from,load_number_to,cooldown_hours,daily_reset_time,image_path,banner_layout,active,sort_order';
+const offerColumns = 'id,title,reward_type,reward_label,rules_text,bonus_mode,bonus_percent,bonus_amount,min_amount,max_amount,load_number_from,load_number_to,cooldown_hours,daily_reset_time,image_path,deposit_image_path,banner_layout,active,sort_order';
 const previewNotice = 'La vista previa no guarda los bonos. Entrá con la cuenta de administrador para que el usuario pueda elegirlos al cargar.';
 
 function persistError(error: { code?: string; message?: string }): Error {
@@ -53,8 +54,8 @@ function persistError(error: { code?: string; message?: string }): Error {
   return error instanceof Error ? error : new Error(message || 'No se pudo guardar el bono.');
 }
 
-function offerFromRow(row: { id: string; title: string; reward_type?: string | null; reward_label?: string | null; rules_text?: string | null; active: boolean; bonus_mode?: string | null; bonus_percent?: number | null; bonus_amount?: number | null; min_amount?: number | null; max_amount?: number | null; load_number_from?: number | null; load_number_to?: number | null; cooldown_hours?: number | null; daily_reset_time?: string | null; image_path?: string | null; banner_layout?: unknown; sort_order?: number | null }, theme: ReturnType<typeof themeBase>): BonusOffer {
-  return { id: row.id, title: row.title, reward_type: row.reward_type === 'free_spins' ? 'free_spins' : 'cash', reward_label: row.reward_label ?? '', rules_text: row.rules_text ?? '', active: row.active, ...asBonusRule(row), load_number_from: Number(row.load_number_from) || 1, load_number_to: row.load_number_to == null ? null : Number(row.load_number_to), cooldown_hours: Number(row.cooldown_hours) || 0, daily_reset_time: row.daily_reset_time ?? null, image_path: row.image_path ?? null, banner_layout: normalizeBonusBannerLayout(row.banner_layout, theme), sort_order: Number(row.sort_order) || 0 };
+function offerFromRow(row: { id: string; title: string; reward_type?: string | null; reward_label?: string | null; rules_text?: string | null; active: boolean; bonus_mode?: string | null; bonus_percent?: number | null; bonus_amount?: number | null; min_amount?: number | null; max_amount?: number | null; load_number_from?: number | null; load_number_to?: number | null; cooldown_hours?: number | null; daily_reset_time?: string | null; image_path?: string | null; deposit_image_path?: string | null; banner_layout?: unknown; sort_order?: number | null }, theme: ReturnType<typeof themeBase>): BonusOffer {
+  return { id: row.id, title: row.title, reward_type: row.reward_type === 'free_spins' ? 'free_spins' : 'cash', reward_label: row.reward_label ?? '', rules_text: row.rules_text ?? '', active: row.active, ...asBonusRule(row), load_number_from: Number(row.load_number_from) || 1, load_number_to: row.load_number_to == null ? null : Number(row.load_number_to), cooldown_hours: Number(row.cooldown_hours) || 0, daily_reset_time: row.daily_reset_time ?? null, image_path: row.image_path ?? null, deposit_image_path: row.deposit_image_path ?? null, banner_layout: normalizeBonusBannerLayout(row.banner_layout, theme), sort_order: Number(row.sort_order) || 0 };
 }
 
 function offerDetail(bonus: BonusOffer) {
@@ -236,6 +237,22 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
       reloadPromotions();
     });
   }
+  async function uploadDepositImage(bonus: BonusOffer, event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]; event.target.value = '';
+    if (!file || demo || !supabase) return;
+    await action(async () => {
+      const extension = file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : '';
+      if (!extension || file.size > 5 * 1024 * 1024) throw new InputError('Elegí una imagen JPG, PNG o WebP de hasta 5 MB.');
+      const path = `deposit-bonus-images/${crypto.randomUUID()}.${extension}`;
+      const uploaded = await supabase!.storage.from('app-assets').upload(path, file, { contentType: file.type, upsert: false });
+      if (uploaded.error) throw persistError(uploaded.error);
+      const { data, error } = await supabase!.from('promotions').update({ deposit_image_path: path }).eq('id', bonus.id).select(offerColumns).single();
+      if (error || !data) { await supabase!.storage.from('app-assets').remove([path]); throw persistError(error ?? { message: 'No se pudo guardar la imagen.' }); }
+      const saved = offerFromRow(data, theme);
+      setBonuses(old => old.map(item => item.id === saved.id ? saved : item));
+      reloadPromotions();
+    });
+  }
   async function saveLayout(bonus: BonusOffer) {
     await action(async () => {
       if (demo || !supabase) throw new InputError(previewNotice);
@@ -299,6 +316,7 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
           <button type="button" disabled={busy} onClick={() => void removeBonus(bonus)}>Eliminar</button>
         </div>
         <div className="special-bonus-image-editor">
+          <div className="bonus-deposit-image-editor"><strong>Imagen que verá el jugador al elegir este bono en Cargas</strong><small>Recomendado: 1050 × 300 px (3,5:1), JPG, PNG o WebP hasta 5 MB. Se adapta a móvil y computadora.</small>{bonus.deposit_image_path && <StorageImage path={bonus.deposit_image_path} alt={`Vista previa para Cargas: ${bonus.title}`} />}<label className="portal-extra-add">{bonus.deposit_image_path ? 'Cambiar imagen' : 'Subir imagen para Cargas'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy || demo} onChange={event => void uploadDepositImage(bonus, event)} /></label></div>
           <label className="portal-extra-add">{bonus.image_path ? 'Cambiar banner (imagen o video)' : 'Subir banner (imagen o video)'}<input type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" disabled={busy || demo} onChange={event => void uploadImage(bonus, event)} /></label>
           <small className="bonus-banner-guidance">Imagen JPG, PNG o WebP hasta 5 MB; tamaño recomendado: 720 × 400 px (relación 9:5). Video MP4 o WebM hasta 20 MB. Ajustá el encuadre en la vista previa.</small>
           <BannerLayoutEditor label={bonus.title} layout={bonus.banner_layout} previewLayout={{ ...specialBonusDisplayLayout(bonus.banner_layout), height: 55.6 }} extraStyle={bonusButtonLayoutStyles(bonus.banner_layout) as CSSProperties} defaults={defaultBonusBannerLayout(theme)} heightRange={[55.6, 55.6]} hideHeight disabled={busy || demo} saved={savedLayoutId === bonus.id} onChange={layout => { setBonuses(old => old.map(item => item.id === bonus.id ? { ...item, banner_layout: normalizeBonusBannerLayout(layout, theme) } : item)); setSavedLayoutId(null); }} onSave={() => void saveLayout(bonus)}>

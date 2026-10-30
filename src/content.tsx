@@ -44,6 +44,7 @@ export type Promotion = {
   bonus_amount: number; min_amount: number; max_amount: number;
   load_number_from: number; load_number_to: number | null;
   cooldown_hours: number; daily_reset_time: string | null; banner_layout: unknown;
+  deposit_image_path: string | null;
   active: boolean; show_banner: boolean; selectable: boolean; sort_order: number;
 };
 export type ContactChannel = 'whatsapp' | 'telegram' | 'instagram';
@@ -60,10 +61,10 @@ const welcome: Promotion = {
   description: 'Desde $5.000 recibís $1.000 y desde $10.000 recibís $2.000.',
   image_path: null, image_layout: 'image',
   reward_type: 'cash', reward_label: '', rules_text: '',
-  bonus_mode: 'percent', bonus_percent: 0, bonus_amount: 0, min_amount: 0, max_amount: 0, load_number_from: 1, load_number_to: null, cooldown_hours: 0, daily_reset_time: null, banner_layout: {},
+  bonus_mode: 'percent', bonus_percent: 0, bonus_amount: 0, min_amount: 0, max_amount: 0, load_number_from: 1, load_number_to: null, cooldown_hours: 0, daily_reset_time: null, deposit_image_path: null, banner_layout: {},
   active: true, show_banner: true, selectable: false, sort_order: 0,
 };
-const promotionColumns = 'id,title,description,image_path,image_layout,reward_type,reward_label,rules_text,bonus_percent,bonus_mode,bonus_amount,min_amount,max_amount,load_number_from,load_number_to,cooldown_hours,daily_reset_time,banner_layout,active,show_banner,selectable,sort_order';
+const promotionColumns = 'id,title,description,image_path,image_layout,reward_type,reward_label,rules_text,bonus_percent,bonus_mode,bonus_amount,min_amount,max_amount,load_number_from,load_number_to,cooldown_hours,daily_reset_time,deposit_image_path,banner_layout,active,show_banner,selectable,sort_order';
 const legacyPromotionColumns = 'id,title,description,image_path,image_layout,bonus_percent,active,show_banner,selectable,sort_order';
 function toPromotion(row: {
   id: string; title: string; description?: string | null; image_path?: string | null; image_layout?: string | null;
@@ -71,7 +72,7 @@ function toPromotion(row: {
   rules_text?: string | null;
   bonus_mode?: string | null; bonus_percent?: number | null; bonus_amount?: number | null; min_amount?: number | null; max_amount?: number | null;
   load_number_from?: number | null; load_number_to?: number | null;
-  cooldown_hours?: number | null; daily_reset_time?: string | null; banner_layout?: unknown;
+  cooldown_hours?: number | null; daily_reset_time?: string | null; deposit_image_path?: string | null; banner_layout?: unknown;
   active?: boolean | null; show_banner?: boolean | null; selectable?: boolean | null; sort_order?: number | null;
 }): Promotion {
   return {
@@ -80,7 +81,7 @@ function toPromotion(row: {
     rules_text: row.rules_text ?? '',
     image_layout: row.image_layout === 'reference' ? 'reference' : 'image', ...asBonusRule(row),
     load_number_from: Number(row.load_number_from) || 1, load_number_to: row.load_number_to == null ? null : Number(row.load_number_to),
-    cooldown_hours: Number(row.cooldown_hours) || 0, daily_reset_time: row.daily_reset_time ?? null, banner_layout: row.banner_layout ?? {},
+    cooldown_hours: Number(row.cooldown_hours) || 0, daily_reset_time: row.daily_reset_time ?? null, deposit_image_path: row.deposit_image_path ?? null, banner_layout: row.banner_layout ?? {},
     active: !!row.active, show_banner: !!row.show_banner, selectable: !!row.selectable, sort_order: row.sort_order ?? 0,
   };
 }

@@ -1547,6 +1547,8 @@ body:has(.user-app.theme-halloween), body:has(.user-login.theme-halloween) { bac
 .user-app.page-bonuses .player-bonuses { margin-bottom: 12px; }
 .deposit-selected-bonus, .deposit-bonus-empty { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 14px; padding: 13px 14px; border: 1px solid #9e42c5; border-radius: 12px; background: linear-gradient(120deg, #30123e, #17101d 78%); box-shadow: 0 0 18px #a23aca30; }
 .deposit-selected-bonus > div { min-width: 0; }
+.deposit-selected-bonus:has(.deposit-selected-bonus-image) { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
+.deposit-selected-bonus-image { grid-column: 1 / -1; display: block; width: 100%; height: auto; aspect-ratio: 3.5 / 1; border: 1px solid #75418b; border-radius: 9px; object-fit: cover; object-position: center; }
 .deposit-selected-bonus .deposit-bonus-selected-heading { display: flex; align-items: center; gap: 7px; flex: 0 0 auto; color: #e3a8ff; }
 .deposit-selected-bonus .deposit-bonus-selected-heading strong { color: #e3a8ff; }
 .deposit-selected-bonus strong, .deposit-selected-bonus small { display: block; }
