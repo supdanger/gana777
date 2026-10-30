@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent, type ChangeEvent, type CSSProperties } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, ImagePlus, Trash2 } from 'lucide-react';
 import { asBonusRule, percentText, type BonusMode } from '../supabase/functions/_shared/bonus-rule';
 import { assertFormFields, InputError, parseAmount, parseBonusLoadNumber, parseBonusRewardLabel, parseBonusRule, parseBonusRulesText, parseBonusTitle } from '../supabase/functions/_shared/validation';
 import { money, supabase } from './lib';
@@ -79,7 +79,24 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
   const [resetTime, setResetTime] = useState('23:00');
   const [savedLayoutId, setSavedLayoutId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [buttonImageBusy, setButtonImageBusy] = useState(false);
   const editing = bonuses.find(item => item.id === editingId) ?? null;
+  async function setDepositBonusButtonImage(file?: File) {
+    if (!supabase || demo || buttonImageBusy) return;
+    setButtonImageBusy(true);
+    let path: string | null = null;
+    if (file) {
+      const ext = file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : '';
+      if (!ext || file.size > 5 * 1024 * 1024) { setButtonImageBusy(false); throw new InputError('Elegí una imagen JPG, PNG o WebP de hasta 5 MB.'); }
+      path = `bonus-cta/${crypto.randomUUID()}.${ext}`;
+      const uploaded = await supabase.storage.from('app-assets').upload(path, file, { contentType: file.type, upsert: false });
+      if (uploaded.error) { setButtonImageBusy(false); throw persistError(uploaded.error); }
+    }
+    const result = await supabase.from('app_settings').update({ deposit_bonus_button_path: path }).eq('id', true);
+    setButtonImageBusy(false);
+    if (result.error) throw persistError(result.error);
+    reloadPromotions();
+  }
   useEffect(() => {
     if (demo || !supabase) { setLoading(false); return; }
     const db = supabase;
@@ -234,6 +251,7 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
   }
   return <section className="bonus-admin" aria-labelledby="bonus-title">
     <h1 id="bonus-title">Bonos</h1>
+    <section className="card bonus-cta-image-settings"><div><strong>Imagen del botón para elegir bono en Cargas</strong><small>Subí una imagen llamativa; al tocarla, el jugador verá los bonos disponibles.</small><small>Medida recomendada: 1200 × 300 px (proporción 4:1). Se muestra completa, sin recortarse.</small></div>{settings.deposit_bonus_button_path && <StorageImage path={settings.deposit_bonus_button_path} alt="Vista previa de la imagen del botón de bonos" />}<label><ImagePlus size={16} />{settings.deposit_bonus_button_path ? 'Cambiar imagen' : 'Subir imagen'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={demo || buttonImageBusy} onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; void action(() => setDepositBonusButtonImage(file)); }} /></label>{settings.deposit_bonus_button_path && <button type="button" disabled={demo || buttonImageBusy} onClick={() => void action(() => setDepositBonusButtonImage())}><Trash2 size={16} /> Usar botón violeta</button>}</section>
     <form className="bonus-create" key={editing?.id ?? 'new'} onSubmit={createBonus}>
       <p>{demo ? previewNotice : editing ? 'Los cambios valen para las próximas cargas. Las que ya se enviaron conservan el valor anterior.' : 'Cada bono se mostrará en el apartado Bonos con su propio banner y botón Obtener.'}</p>
       <label>Nombre<input name="title" maxLength={80} placeholder="Ejemplo: Recarga" defaultValue={editing?.title ?? ''} required /></label>

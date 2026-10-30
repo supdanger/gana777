@@ -1545,14 +1545,27 @@ body:has(.user-app.theme-halloween), body:has(.user-login.theme-halloween) { bac
 .player-bonus-rules-dialog header button { display: grid; place-items: center; width: 36px; height: 36px; min-height: 36px; padding: 0; border: 1px solid #553165; border-radius: 10px; background: #170f1d; color: #ead6f4; }
 .player-bonus-rules-text { overflow: auto; padding: 17px 19px 20px; color: #e3d9e9; font-size: 14px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .user-app.page-bonuses .player-bonuses { margin-bottom: 12px; }
-.deposit-selected-bonus, .deposit-bonus-empty { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 12px; padding: 10px 12px; border: 1px solid #573267; border-radius: 10px; background: #17101d; }
+.deposit-selected-bonus, .deposit-bonus-empty { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 14px; padding: 13px 14px; border: 1px solid #9e42c5; border-radius: 12px; background: linear-gradient(120deg, #30123e, #17101d 78%); box-shadow: 0 0 18px #a23aca30; }
 .deposit-selected-bonus > div { min-width: 0; }
+.deposit-selected-bonus .deposit-bonus-selected-heading { display: flex; align-items: center; gap: 7px; flex: 0 0 auto; color: #e3a8ff; }
+.deposit-selected-bonus .deposit-bonus-selected-heading strong { color: #e3a8ff; }
 .deposit-selected-bonus strong, .deposit-selected-bonus small { display: block; }
 .deposit-selected-bonus strong { color: #fff; }
 .deposit-selected-bonus small { margin-top: 3px; color: #c3b1cd; font-size: 11px; }
 .deposit-selected-bonus button, .deposit-bonus-empty button { flex: 0 0 auto; min-height: 34px; padding: 6px 10px; border: 1px solid #9141b2; border-radius: 8px; background: #291433; color: #f0caff; font-size: 12px; font-weight: 750; }
-.deposit-bonus-empty { color: #d7c9df; font-size: 13px; }
-.deposit-bonus-empty button { display: inline-flex; align-items: center; gap: 6px; }
+.deposit-bonus-empty { align-items: stretch; flex-direction: column; gap: 11px; padding: 15px; color: #fff; }
+.deposit-bonus-empty > div { display: grid; gap: 4px; }
+.deposit-bonus-empty > div strong { color: #fff; font-size: 16px; }
+.deposit-bonus-empty > div span { color: #d4bfdf; font-size: 12px; line-height: 1.35; }
+.deposit-bonus-empty button { display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: center; gap: 8px; border-color: #d58aff; background: linear-gradient(120deg, #a62bd4, #70208c); color: #fff; font-size: 14px; font-weight: 900; box-shadow: 0 4px 15px #9b32c866; }
+.deposit-bonus-empty .deposit-bonus-image-button { min-height: 72px; padding: 0; overflow: hidden; border: 0; background: transparent; box-shadow: none; }
+.deposit-bonus-image-button img { display: block; width: 100%; max-height: 110px; object-fit: contain; }
+.bonus-cta-image-settings { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; margin-bottom: 14px; padding: 14px; }
+.bonus-cta-image-settings > div { display: grid; gap: 4px; }
+.bonus-cta-image-settings small { color: #c3b1cd; }
+.bonus-cta-image-settings img { grid-column: 1 / -1; width: 100%; max-height: 130px; object-fit: contain; }
+.bonus-cta-image-settings label, .bonus-cta-image-settings > button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; padding: 7px 12px; border: 1px solid #9141b2; border-radius: 8px; background: #291433; color: #f0caff; font-size: 12px; font-weight: 750; cursor: pointer; }
+.bonus-cta-image-settings input { display: none; }
 .deposit-bonus-note { margin: 10px 0 0; padding: 9px 11px; border-left: 3px solid #e9a83e; border-radius: 0 8px 8px 0; background: #352811; color: #f8d68e !important; font-size: 12px; line-height: 1.4; }
 .deposit-bonus-note.is-special { border-color: #a942d2; background: #24112f; color: #e7c9f5 !important; }
 .user-app.theme-card-chat-custom .action-card[data-theme-card='chat'] { background: var(--theme-chat-background) !important; border: var(--theme-chat-border-width) solid var(--theme-chat-border) !important; border-radius: var(--theme-chat-radius) !important; }
