@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { ArrowLeft, Dices, Send, UserRound } from 'lucide-react';
+import { ArrowLeft, Dices, LogIn, Send, UserRound } from 'lucide-react';
 import { InputError } from '../supabase/functions/_shared/validation';
 import { deviceFootprint } from './device-footprint';
 import { supabase } from './lib';
@@ -46,6 +46,7 @@ export function PlayerAccessRequest({ onBack }: { onBack: () => void }) {
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
   const [restoring, setRestoring] = useState(true);
   const log = useRef<HTMLDivElement>(null);
 
@@ -105,6 +106,18 @@ export function PlayerAccessRequest({ onBack }: { onBack: () => void }) {
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'No pudimos enviar el mensaje.'); }
     finally { setBusy(false); }
   }
+  async function enterAccount() {
+    if (!token || thread?.status !== 'approved') return;
+    setError(''); setSigningIn(true);
+    try {
+      const result = await callAccess({ action: 'public-login-link', access_token: token });
+      if (typeof result.action_url !== 'string' || !result.action_url.startsWith('https://')) throw new InputError('No pudimos preparar el acceso. Volvé a intentarlo.');
+      window.location.assign(result.action_url);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'No pudimos ingresar a tu cuenta.');
+      setSigningIn(false);
+    }
+  }
   function newRequest() {
     localStorage.removeItem(tokenKey);
     setToken(''); setThread(null); setMessages([]); setUsername(''); setError('');
@@ -121,6 +134,7 @@ export function PlayerAccessRequest({ onBack }: { onBack: () => void }) {
       <button className="primary" disabled={busy || restoring}>{restoring ? 'Cargando…' : busy ? 'Enviando solicitud…' : 'Enviar solicitud'}</button>
     </form> : <>
       <div className="player-access-status"><strong>{thread.status === 'approved' ? 'Usuario creado' : thread.status === 'rejected' ? 'Solicitud cerrada' : 'Esperando al equipo'}</strong><span>Usuario solicitado: @{thread.username}</span>{thread.referral_code && <small>Recomendado por @{thread.referral_code}</small>}</div>
+      {thread.status === 'approved' && <div className="player-access-login"><button type="button" onClick={() => void enterAccount()} disabled={signingIn}><LogIn size={18} />{signingIn ? 'Abriendo tu cuenta…' : 'Entrar a mi cuenta'}</button><small>Ingresás directamente, sin volver al login ni escribir tu contraseña.</small></div>}
       <div className="player-access-messages" ref={log} role="log" aria-live="polite">
         {messages.map(message => <article key={message.id} className={`player-access-message${message.sender === 'admin' ? ' from-admin' : ''}`}><p>{message.body}</p><time>{new Intl.DateTimeFormat('es', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(message.created_at))}</time></article>)}
       </div>

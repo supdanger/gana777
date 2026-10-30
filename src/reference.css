@@ -1157,6 +1157,11 @@ body:has(.user-login) { min-height: 100svh; }
 .user-login .player-access-form .primary { min-height: 50px; margin: 1px 0 0; border: 1px solid #d05af0; border-radius: 12px; background: linear-gradient(110deg, #8c22b2, #66148a 56%, #42105f); color: #fff; font-size: 15px; font-weight: 850; letter-spacing: .01em; box-shadow: 0 7px 18px #871da933, inset 0 1px #ffffff20; }
 .user-login .player-access-form .primary:not(:disabled):hover { filter: brightness(1.12); transform: translateY(-1px); }
 .user-login .player-access-form .primary:disabled { opacity: .65; }
+.user-login .player-access-login { display: grid; gap: 7px; margin: 0 0 12px; }
+.user-login .player-access-login button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; width: 100%; min-height: 48px; border: 1px solid #bd54e7; border-radius: 12px; background: linear-gradient(110deg, #8420a9, #4b155f 72%, #17101c); color: #fff; font-size: 15px; font-weight: 850; box-shadow: 0 6px 18px #8f23b533, inset 0 1px #ffffff24; }
+.user-login .player-access-login button:not(:disabled):hover { filter: brightness(1.12); }
+.user-login .player-access-login button:disabled { cursor: wait; opacity: .72; }
+.user-login .player-access-login small { color: #bdaac8; font-size: 11px; line-height: 1.4; text-align: center; }
 @media (max-width: 360px) {
   .user-login .player-access-card { padding: 16px; }
   .user-login .player-access-heading { gap: 9px; }
