@@ -1625,3 +1625,39 @@ html.player-portal :is(img, video) {
   .player-chat-widget.is-open .player-chat-panel .chat-composer { padding-bottom: max(10px, env(safe-area-inset-bottom)); padding-left: max(10px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
 }
 @media (prefers-reduced-motion: reduce) { .player-chat-launcher { transition: none; } }
+
+/* Campo del monto de carga: contraste violeta claro sobre el fondo del portal. */
+.user-app.page-deposit .deposit-amount .amount-input {
+  border-color: #a650c7;
+  background: linear-gradient(135deg, #30203c, #21152b);
+  box-shadow: inset 0 1px 0 #ffffff18, 0 0 0 1px #a650c72b;
+}
+.user-app.page-deposit .deposit-amount .amount-input input {
+  border-color: transparent;
+  background: transparent;
+  background-color: transparent;
+}
+.user-app.page-deposit .deposit-amount .amount-input input::placeholder {
+  color: #ead0f5;
+  -webkit-text-fill-color: #ead0f5;
+}
+.user-app.page-deposit .deposit-amount .amount-input:focus-within {
+  border-color: #d36bf0;
+  outline: 3px solid #bd4be855;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 1px #d36bf0;
+}
+.user-app.page-deposit .deposit-amount .amount-input input:-webkit-autofill {
+  -webkit-text-fill-color: #fff;
+  caret-color: #fff;
+  box-shadow: 0 0 0 1000px #291a35 inset;
+  -webkit-box-shadow: 0 0 0 1000px #291a35 inset;
+}
+.user-app.page-deposit .deposit-amount .amount-input.is-invalid,
+.user-app.page-deposit .deposit-amount .amount-input.is-invalid:focus-within {
+  border-color: #ff536b;
+  background: linear-gradient(135deg, #3d1723, #28101a);
+  outline: 3px solid #ff536b55;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 1px #ff536b;
+}

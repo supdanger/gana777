@@ -255,8 +255,10 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
   const [preview, setPreview] = useState('');
   const [bonus, setBonus] = useState(initialBonusId);
   const [rawAmount, setRawAmount] = useState('');
+  const [amountAttempted, setAmountAttempted] = useState(kind === 'deposit');
   const [nextLoadNumber, setNextLoadNumber] = useState<number | null>(demo || !supabase ? 1 : null);
   const [loadNumberReady, setLoadNumberReady] = useState(demo || !supabase);
+  useEffect(() => { setAmountAttempted(kind === 'deposit'); }, [kind]);
   useEffect(() => { if (kind === 'withdrawal' && pending) setRawAmount(''); }, [kind, pending]);
   const cameraInput = useRef<HTMLInputElement>(null);
   const galleryInput = useRef<HTMLInputElement>(null);
@@ -337,9 +339,27 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
   const withdrawalAmount = kind === 'withdrawal' ? readMoney(rawAmount) : null;
   const withdrawalPartCount = withdrawalAmount === null ? 0 : Math.ceil(withdrawalAmount / 100000);
   const amountBelowMinimum = kind === 'deposit' && typedAmount !== null && typedAmount < 1000;
-  const amount = <label className="amount-label">Monto a {kind === 'deposit' ? 'cargar' : 'retirar'}<span className="amount-input">{(kind !== 'deposit' || rawAmount) && <span aria-hidden="true">$</span>}<input className="amount" name="amount" inputMode="decimal" type="text" pattern={moneyInputPattern} maxLength={moneyInputMaxLength} placeholder={kind === 'deposit' ? 'Mínimo 1.000' : '10.000'} aria-label={`Monto a ${kind === 'deposit' ? 'cargar' : 'retirar'} en pesos argentinos`} required value={rawAmount} onChange={event => setRawAmount(event.target.value)} />{bonusCreditLabel && <span className="amount-bonus">{bonusCreditLabel}</span>}</span>{kind === 'deposit' && <small className={amountBelowMinimum ? 'amount-minimum-error' : 'amount-minimum-note'} role={amountBelowMinimum ? 'alert' : undefined}>{amountBelowMinimum ? 'El monto mínimo para cargar es de $1.000.' : 'La carga mínima es de $1.000.'}</small>}{kind === 'withdrawal' && withdrawalPartCount > 1 && <small className="withdrawal-split-note">{withdrawalPartCount > 100 ? 'El máximo por solicitud es de $10.000.000.' : `Se pagará en ${withdrawalPartCount} transferencias de hasta ${money(100000)}. Cada pago tendrá su comprobante en el historial.`}</small>}</label>;
+  const amount = <label className="amount-label">Monto a {kind === 'deposit' ? 'cargar' : 'retirar'}<span className={`amount-input${kind === 'deposit' && amountAttempted && !depositAmountValid ? ' is-invalid' : ''}`}>{(kind !== 'deposit' || rawAmount) && <span aria-hidden="true">$</span>}<input className="amount" name="amount" inputMode="decimal" type="text" pattern={moneyInputPattern} maxLength={moneyInputMaxLength} placeholder={kind === 'deposit' ? 'Ej.: 1.000' : '10.000'} aria-label={`Monto a ${kind === 'deposit' ? 'cargar' : 'retirar'} en pesos argentinos`} aria-describedby={kind === 'deposit' ? 'deposit-amount-help' : undefined} required value={rawAmount} onInvalid={event => {
+    if (kind !== 'deposit') return;
+    setAmountAttempted(true);
+    const input = event.currentTarget;
+    input.setCustomValidity(input.validity.valueMissing
+      ? 'Escribí cuánto querés cargar. Ejemplo: 1.000. El mínimo es $1.000.'
+      : 'Ingresá un monto válido en pesos, por ejemplo 1.000.');
+  }} onChange={event => { event.currentTarget.setCustomValidity(''); const nextAmount = readMoney(event.currentTarget.value); if (kind === 'deposit' && nextAmount !== null && nextAmount >= 1000) setAmountAttempted(false); setRawAmount(event.target.value); }} />{bonusCreditLabel && <span className="amount-bonus">{bonusCreditLabel}</span>}</span>{kind === 'deposit' && <small id="deposit-amount-help" className={amountBelowMinimum ? 'amount-minimum-error' : 'amount-minimum-note'} role={amountBelowMinimum ? 'alert' : undefined}>{amountBelowMinimum ? 'El mínimo es $1.000. Ingresá 1.000 o más.' : 'Ingresá cuánto querés cargar. Ejemplo: 1.000. Mínimo: $1.000.'}</small>}{kind === 'withdrawal' && withdrawalPartCount > 1 && <small className="withdrawal-split-note">{withdrawalPartCount > 100 ? 'El máximo por solicitud es de $10.000.000.' : `Se pagará en ${withdrawalPartCount} transferencias de hasta ${money(100000)}. Cada pago tendrá su comprobante en el historial.`}</small>}</label>;
   return <form className="request-form" onSubmit={event => {
-    if (kind === 'deposit' && !depositAmountValid) { event.preventDefault(); return; }
+    if (kind === 'deposit' && !depositAmountValid) {
+      event.preventDefault();
+      setAmountAttempted(true);
+      const amountInput = event.currentTarget.elements.namedItem('amount');
+      if (amountInput instanceof HTMLInputElement) {
+        amountInput.setCustomValidity(typedAmount === null
+          ? 'Escribí cuánto querés cargar. Ejemplo: 1.000. El mínimo es $1.000.'
+          : 'El mínimo para cargar es $1.000. Ingresá 1.000 o más.');
+        amountInput.reportValidity();
+      }
+      return;
+    }
     onSubmit(event, kind === 'deposit' ? file : null);
   }}>
     {kind === 'deposit' ? <>
@@ -377,7 +397,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     </>}
     {feedback && <div className="request-feedback">{feedback}</div>}
     {depositRetrySeconds > 0 && <div className="deposit-retry-countdown" role="timer" aria-live="polite"><span>Podés volver a enviar en</span><strong>{depositRetryCountdown}</strong></div>}
-    <button className="primary" disabled={busy || demo || withdrawalBlocked || withdrawalPartCount > 100 || pendingDeposit || compressing || depositRetrySeconds > 0 || (kind === 'deposit' && (!depositAmountValid || !file || !bank || (!!selectedOffer && !loadNumberReady)))} aria-describedby={pendingDeposit ? 'deposit-pending-message' : undefined}>{compressing ? 'Optimizando…' : busy ? kind === 'deposit' ? 'Enviando solicitud…' : 'Enviando…' : depositRetrySeconds > 0 ? `Esperá ${depositRetryCountdown}` : kind === 'deposit' ? 'Solicitar carga' : 'Solicitar retiro'}</button>
+    <button className="primary" disabled={busy || demo || withdrawalBlocked || withdrawalPartCount > 100 || pendingDeposit || compressing || depositRetrySeconds > 0 || (kind === 'deposit' && (!file || !bank || (!!selectedOffer && !loadNumberReady)))} aria-describedby={pendingDeposit ? 'deposit-pending-message' : undefined}>{compressing ? 'Optimizando…' : busy ? kind === 'deposit' ? 'Enviando solicitud…' : 'Enviando…' : depositRetrySeconds > 0 ? `Esperá ${depositRetryCountdown}` : kind === 'deposit' ? 'Solicitar carga' : 'Solicitar retiro'}</button>
     {pendingDeposit && <p id="deposit-pending-message" className="deposit-pending-message" role="status">Tu carga ya está en proceso. Podrás solicitar otra cuando sea aprobada.</p>}
   </form>;
 }
