@@ -90,7 +90,7 @@ export function ThemeDesignAdmin({ theme, designs, demo, onSaved }: {
         const extension = await bannerImageExtension(imageFile);
         const imagePath = `theme-card-images/${theme}/${imageSlot}-${crypto.randomUUID()}.${extension}`;
         const uploaded = await supabase.storage.from('app-assets').upload(imagePath, imageFile, { contentType: imageFile.type, upsert: false });
-        if (uploaded.error) throw new InputError(`No pudimos subir la imagen de ${imageSlot === 'deposit' ? 'Cargar' : imageSlot === 'withdrawal' ? 'Retiros' : imageSlot === 'bonuses' ? 'Bonos' : 'Ruleta'}. Revisá la migración 053 y los permisos.`);
+        if (uploaded.error) throw new InputError(`No pudimos subir la imagen de ${cardSlots.find(item => item.id === imageSlot)?.label ?? imageSlot}. Revisá la migración 053 y los permisos.`);
         nextDesign[`${imageSlot}Path`] = imagePath;
       }
       const next = { ...designs, [theme]: nextDesign };
@@ -132,7 +132,7 @@ export function ThemeDesignAdmin({ theme, designs, demo, onSaved }: {
           <label>Redondeo <output>{card.radius}px</output><input type="range" min="0" max="40" value={card.radius} disabled={busy || demo} onChange={event => setCard({ ...card, radius: Number(event.target.value) })} /></label>
         </div>
         {isImageCardSlot(slot) && <div className="theme-card-image-editor">
-          <h4>Imagen de {slot === 'deposit' ? 'Cargar' : slot === 'withdrawal' ? 'Retiros' : slot === 'bonuses' ? 'Bonos' : 'Ruleta'}</h4>
+          <h4>Imagen de {cardSlots.find(item => item.id === slot)?.label ?? slot}</h4>
           <label className="theme-design-file"><ImagePlus size={17} />{selectedImagePath || selectedCardImageFile ? 'Cambiar imagen' : 'Subir imagen'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy || demo} onChange={event => { const nextFile = event.target.files?.[0]; if (nextFile) setCardImageFiles(current => ({ ...current, [slot]: nextFile })); setSaved(false); event.currentTarget.value = ''; }} /><small>JPG, PNG o WebP · hasta 5 MB. Tamaño recomendado: 720 × 300 px (relación 12:5). Se recorta para llenar la tarjeta sin deformarse.</small></label>
           <div className="theme-card-live-preview">
             <strong>Vista previa en vivo</strong>

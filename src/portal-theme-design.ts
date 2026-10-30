@@ -14,13 +14,14 @@ export const cardSlots = [
   { id: 'deposit', label: 'Cargar' },
   { id: 'withdrawal', label: 'Retiros' },
   { id: 'bonuses', label: 'Bonos' },
+  { id: 'tutorial', label: 'Tutorial' },
   { id: 'wheel', label: 'Ruleta' },
   { id: 'chat', label: 'Chat' },
   { id: 'general', label: 'Otras tarjetas' },
   { id: 'install', label: 'Instalar' },
 ] as const;
 export type CardSlot = typeof cardSlots[number]['id'];
-export const imageCardSlots = ['deposit', 'withdrawal', 'bonuses', 'wheel'] as const;
+export const imageCardSlots = ['deposit', 'withdrawal', 'bonuses', 'tutorial', 'wheel'] as const;
 export type ImageCardSlot = typeof imageCardSlots[number];
 export const isImageCardSlot = (slot: CardSlot): slot is ImageCardSlot => (imageCardSlots as readonly string[]).includes(slot);
 export type CardStyle = { background: string; borderColor: string; borderWidth: number; radius: number };
@@ -48,10 +49,12 @@ export type ThemeDesign = {
   depositPath?: string | null;
   withdrawalPath?: string | null;
   bonusesPath?: string | null;
+  tutorialPath?: string | null;
   wheelPath?: string | null;
   depositImageLayout?: ThemeCardImageLayout;
   withdrawalImageLayout?: ThemeCardImageLayout;
   bonusesImageLayout?: ThemeCardImageLayout;
+  tutorialImageLayout?: ThemeCardImageLayout;
   wheelImageLayout?: ThemeCardImageLayout;
   logoPath?: string | null;
   cards?: Partial<Record<CardSlot, CardStyle>>;

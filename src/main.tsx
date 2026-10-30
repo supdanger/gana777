@@ -200,6 +200,10 @@ function App() {
     playerHistoryClosing.current = false;
     const handlePopState = (event: PopStateEvent) => {
       if (playerHistoryClosing.current) return;
+      if (document.querySelector('.home-tutorial-backdrop[data-required="true"]')) {
+        window.history.pushState({ gana777Player: true, page: 'home', guard: true }, '', window.location.href);
+        return;
+      }
       const state = event.state as { gana777Player?: boolean; page?: Page; root?: boolean; guard?: boolean } | null;
       if (state?.gana777Player && state.root) {
         setExitConfirmationOpen(true);

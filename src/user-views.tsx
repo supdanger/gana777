@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { ArrowLeft, ChevronRight, Disc, Eye, EyeOff, FileText, Gift, Images, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserPlus, UserRound, X } from 'lucide-react';
+import { ArrowLeft, BookOpen, ChevronRight, Disc, Eye, EyeOff, FileText, Gift, Images, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserPlus, UserRound, X } from 'lucide-react';
 import { StorageImage, useContent } from './content';
 import { HomeBonusCarousel } from './special-bonus-carousel';
 import { asBonusRule, bonusEnabled, moneyInputMaxLength, moneyInputPattern, percentText, readMoney } from '../supabase/functions/_shared/bonus-rule';
@@ -21,6 +21,7 @@ import { referralShareMessage, referralShareUrl } from './share-referral';
 import referralBannerUrl from './assets/home-casino-banner-v3.png';
 import { PlayerAccessRequest } from './player-access';
 import { ChatImage, useChatImagePreview } from './chat-images';
+import { HomeTutorial, useHomeTutorial } from './home-tutorial';
 
 export type Page = 'home' | 'profile' | 'deposit' | 'withdrawal' | 'referrals' | 'wheel' | 'history' | 'users' | 'platform' | 'access-requests' | 'contacts' | 'portal' | 'themes' | 'bonuses' | 'accounts' | 'shifts' | 'chat' | 'external-chat' | 'external-chat-admin' | 'cashiers' | 'announcements' | 'telegram';
 export const titles = { home: 'Inicio', profile: 'Mi perfil', deposit: 'Cargas', withdrawal: 'Retiros', referrals: 'Recomendados', wheel: 'Ruleta', history: 'Historial', users: 'Usuarios', platform: 'Platform', 'access-requests': 'Solicitudes', contacts: 'Contactos', portal: 'Portal', themes: 'Temas', bonuses: 'Bonos', accounts: 'Cuentas', shifts: 'Turnos', chat: 'Chat', 'external-chat': 'Chat externo', 'external-chat-admin': 'Admin', cashiers: 'Cajeros', announcements: 'Mensajes', telegram: 'Telegram' };
@@ -100,6 +101,7 @@ function playerGreeting() {
 }
 export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, username, casinoUrl, demo = false, userId = '', wheelEligible = false }: { name: string; navigate: (page: Page) => void; onClaimSpecialBonus: (id: string) => void; whatsappUrl?: string | null; username?: string | null; casinoUrl?: string | null; demo?: boolean; userId?: string; wheelEligible?: boolean }) {
   const { settings, contactAnimations } = useContent();
+  const tutorial = useHomeTutorial(userId, demo);
   const bannerUrl = homeBannerLink(settings, casinoUrl);
   const bannerImage = homeBannerImage(settings, settings.portal_theme);
   const casinoBannerLayout = homeBannerLayout(settings, settings.portal_theme);
@@ -189,11 +191,12 @@ export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, use
         { id: 'deposit', title: 'Cargar', description: 'Hacé tu depósito y subí el comprobante', Icon: Landmark },
         { id: 'withdrawal', title: 'Retiros', description: 'Solicitá tu retiro', Icon: Link2 },
         { id: 'bonuses', title: 'Bonos', description: 'Elegí tu bono antes de cargar', Icon: Gift },
+        { id: 'tutorial', title: 'Tutorial', description: 'Aprendé a usar la app', Icon: BookOpen },
         { id: 'wheel', title: 'Ruleta', description: 'Girás una vez por día', Icon: Disc },
       ] as const).filter(action => action.id !== 'wheel' || settings.wheel_enabled && wheelEligible).map(({ id, title, description, Icon }) => {
         const detail = id === 'wheel' && wheelWait ? wheelWait : description;
         const cardImagePath = isImageCardSlot(id) ? settings.portal_theme_designs?.[settings.portal_theme]?.[`${id}Path`] : null;
-        return <button className="action-card" data-theme-card={id} key={id} aria-label={title} onClick={() => navigate(id)}>{cardImagePath ? <><StorageImage path={cardImagePath} alt="" className="action-card-image" />{id === 'wheel' && wheelWaitClock && <span className="wheel-image-countdown" role="timer">{wheelWaitClock}</span>}</> : <><span className="icon-circle"><Icon /></span><span><strong>{title}</strong><small className={id === 'wheel' && wheelWait ? 'wheel-home-wait' : undefined} role={id === 'wheel' && wheelWait ? 'timer' : undefined}>{detail}</small></span><ChevronRight /></>}</button>;
+        return <button className="action-card" data-theme-card={id} key={id} aria-label={id === 'tutorial' ? 'Abrir tutorial de la app' : title} onClick={() => id === 'tutorial' ? tutorial.show() : navigate(id)}>{cardImagePath ? <><StorageImage path={cardImagePath} alt="" className="action-card-image" />{id === 'wheel' && wheelWaitClock && <span className="wheel-image-countdown" role="timer">{wheelWaitClock}</span>}</> : <><span className="icon-circle"><Icon /></span><span><strong>{title}</strong><small className={id === 'wheel' && wheelWait ? 'wheel-home-wait' : undefined} role={id === 'wheel' && wheelWait ? 'timer' : undefined}>{detail}</small></span><ChevronRight /></>}</button>;
       })}
     </div>
     {contacts.length > 0 && <section className="card contacts"><h2>Contactanos</h2><div className="contact-links">{contacts.map(({ name, url, mark, className, animation }) => {
@@ -203,6 +206,7 @@ export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, use
         : <span key={name} className={`social ${className} unavailable`} role="img" aria-label={`${name}, próximamente`} title={`${name}, próximamente`}>{icon}<span className="social-name" aria-hidden="true">{name}</span></span>;
     })}</div></section>}
     <PortalInstall />
+    <HomeTutorial open={tutorial.open} required={tutorial.required} onClose={tutorial.close} onFinish={tutorial.finish} />
   </>;
 }
 export function UserProfile({ name, busy, logout, allowLogout = false }: { name: string; busy: boolean; logout: () => void; allowLogout?: boolean }) {
@@ -428,9 +432,9 @@ export function Conversation({ messages, userId, busy, disabled, open, onOpenCha
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         if (!root.closest('.user-app.page-home')) { root.style.removeProperty('bottom'); return; }
-        const wheelCard = root.closest('.user-app')?.querySelector<HTMLElement>('.action-card[data-theme-card="wheel"]');
-        if (!wheelCard) { root.style.bottom = 'max(108px, calc(env(safe-area-inset-bottom) + 88px))'; return; }
-        const rect = wheelCard.getBoundingClientRect();
+        const anchorCard = root.closest('.user-app')?.querySelector<HTMLElement>('.action-card[data-theme-card="wheel"]') ?? root.closest('.user-app')?.querySelector<HTMLElement>('.action-card[data-theme-card="tutorial"]');
+        if (!anchorCard) { root.style.bottom = 'max(108px, calc(env(safe-area-inset-bottom) + 88px))'; return; }
+        const rect = anchorCard.getBoundingClientRect();
         if (rect.bottom <= 0 || rect.top >= window.innerHeight) { root.style.bottom = 'max(108px, calc(env(safe-area-inset-bottom) + 88px))'; return; }
         const launcherHeight = 50;
         const desiredTop = rect.bottom + 30;

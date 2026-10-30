@@ -1074,12 +1074,12 @@ body:has(.user-login) { min-height: 100svh; }
 .user-app.page-home .action-card[data-theme-card="wheel"] strong { margin-bottom: 3px; font-size: 16px; }
 .user-app.page-home .action-card[data-theme-card="wheel"] small { font-size: 11px; line-height: 1.15; }
 .user-app.page-home .action-card[data-theme-card="wheel"] > svg { width: 15px; height: 15px; }
-.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]):not([data-theme-card="bonuses"]) { min-height: 84px; gap: 8px; padding: 8px 9px; }
-.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]):not([data-theme-card="bonuses"]) .icon-circle { width: 36px; height: 36px; }
-.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]):not([data-theme-card="bonuses"]) .icon-circle svg { width: 21px; height: 21px; }
-.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]):not([data-theme-card="bonuses"]) strong { font-size: 17px; }
-.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]):not([data-theme-card="bonuses"]) small { font-size: 12px; line-height: 1.25; }
-.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]):not([data-theme-card="bonuses"]) > svg { width: 15px; height: 15px; }
+.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]):not([data-theme-card="bonuses"]):not([data-theme-card="tutorial"]) { min-height: 84px; gap: 8px; padding: 8px 9px; }
+.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]):not([data-theme-card="bonuses"]):not([data-theme-card="tutorial"]) .icon-circle { width: 36px; height: 36px; }
+.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]):not([data-theme-card="bonuses"]):not([data-theme-card="tutorial"]) .icon-circle svg { width: 21px; height: 21px; }
+.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]):not([data-theme-card="bonuses"]):not([data-theme-card="tutorial"]) strong { font-size: 17px; }
+.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]):not([data-theme-card="bonuses"]):not([data-theme-card="tutorial"]) small { font-size: 12px; line-height: 1.25; }
+.user-app.page-home:has(.home-link-banner) .action-card:not(.home-link-banner):not([data-theme-card="wheel"]):not([data-theme-card="bonuses"]):not([data-theme-card="tutorial"]) > svg { width: 15px; height: 15px; }
 .player-access-open { display: flex; align-items: center; gap: 13px; width: 100%; min-height: 70px; margin: 12px 0 0; padding: 11px 15px; border: 1px solid #315c74; border-radius: 13px; background: #000; color: #eaf8ff; text-align: left; }
 .player-access-open:hover { border-color: #32b7ef; background: #000; }
 .player-access-icon { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 auto; border: 1px solid #227fa7; border-radius: 11px; background: #0a3044; color: #66d8ff; }
@@ -1473,22 +1473,26 @@ body:has(.user-app.theme-halloween), body:has(.user-login.theme-halloween) { bac
 .user-app.theme-card-casino-custom .home-link-banner { background: var(--theme-casino-background) !important; border: var(--theme-casino-border-width) solid var(--theme-casino-border) !important; border-radius: var(--theme-casino-radius) !important; }
 .user-app.theme-card-deposit-custom .action-card[data-theme-card='deposit'] { background: var(--theme-deposit-background) !important; border: var(--theme-deposit-border-width) solid var(--theme-deposit-border) !important; border-radius: var(--theme-deposit-radius) !important; }
 .user-app.theme-card-withdrawal-custom .action-card[data-theme-card='withdrawal'] { background: var(--theme-withdrawal-background) !important; border: var(--theme-withdrawal-border-width) solid var(--theme-withdrawal-border) !important; border-radius: var(--theme-withdrawal-radius) !important; }
+.user-app.theme-card-tutorial-custom .action-card[data-theme-card='tutorial'] { background: var(--theme-tutorial-background) !important; border: var(--theme-tutorial-border-width) solid var(--theme-tutorial-border) !important; border-radius: var(--theme-tutorial-radius) !important; }
 .user-app.theme-card-wheel-custom .action-card[data-theme-card='wheel'] { background: var(--theme-wheel-background) !important; border: var(--theme-wheel-border-width) solid var(--theme-wheel-border) !important; border-radius: var(--theme-wheel-radius) !important; }
 .user-app.theme-card-deposit-image .action-card[data-theme-card='deposit'],
 .user-app.theme-card-withdrawal-image .action-card[data-theme-card='withdrawal'],
 .user-app.theme-card-bonuses-image .action-card[data-theme-card='bonuses'],
+.user-app.theme-card-tutorial-image .action-card[data-theme-card='tutorial'],
 .user-app.theme-card-wheel-image .action-card[data-theme-card='wheel'] { background-position: center; background-size: cover; background-repeat: no-repeat; }
 .user-app.theme-card-deposit-image .action-card[data-theme-card='deposit'] .action-card-image,
 .user-app.theme-card-withdrawal-image .action-card[data-theme-card='withdrawal'] .action-card-image,
 .user-app.theme-card-bonuses-image .action-card[data-theme-card='bonuses'] .action-card-image,
+.user-app.theme-card-tutorial-image .action-card[data-theme-card='tutorial'] .action-card-image,
 .user-app.theme-card-wheel-image .action-card[data-theme-card='wheel'] .action-card-image { position: absolute; z-index: 0; left: 50%; top: 50%; display: block; width: 100%; height: 100%; max-width: none; object-fit: cover; transform: translate(-50%, -50%); pointer-events: none; }
 .user-app.theme-card-deposit-image .action-card[data-theme-card='deposit'] .action-card-image { left: calc(50% + var(--theme-deposit-image-x, 0%)); top: calc(50% + var(--theme-deposit-image-y, 0%)); width: var(--theme-deposit-image-width, 100%); height: var(--theme-deposit-image-height, 100%); }
 .user-app.theme-card-withdrawal-image .action-card[data-theme-card='withdrawal'] .action-card-image { left: calc(50% + var(--theme-withdrawal-image-x, 0%)); top: calc(50% + var(--theme-withdrawal-image-y, 0%)); width: var(--theme-withdrawal-image-width, 100%); height: var(--theme-withdrawal-image-height, 100%); }
 .user-app.theme-card-bonuses-image .action-card[data-theme-card='bonuses'] .action-card-image { left: calc(50% + var(--theme-bonuses-image-x, 0%)); top: calc(50% + var(--theme-bonuses-image-y, 0%)); width: var(--theme-bonuses-image-width, 100%); height: var(--theme-bonuses-image-height, 100%); }
+.user-app.theme-card-tutorial-image .action-card[data-theme-card='tutorial'] .action-card-image { left: calc(50% + var(--theme-tutorial-image-x, 0%)); top: calc(50% + var(--theme-tutorial-image-y, 0%)); width: var(--theme-tutorial-image-width, 100%); height: var(--theme-tutorial-image-height, 100%); }
 .user-app.theme-card-wheel-image .action-card[data-theme-card='wheel'] .action-card-image { left: calc(50% + var(--theme-wheel-image-x, 0%)); top: calc(50% + var(--theme-wheel-image-y, 0%)); width: var(--theme-wheel-image-width, 100%); height: var(--theme-wheel-image-height, 100%); }
 .user-app.page-home .action-card[data-theme-card='wheel'] .wheel-image-countdown { position: absolute; z-index: 1; inset: 0; display: grid; place-items: center; padding: 0 4px; background: #0006; color: #fff; font-size: clamp(16px, 7vw, 28px); font-weight: 950; font-variant-numeric: tabular-nums; letter-spacing: -.045em; line-height: 1; text-align: center; text-shadow: 0 2px 8px #000, 0 0 16px #000b; white-space: nowrap; pointer-events: none; }
-.user-app.page-home:has(.home-link-banner):is(.theme-card-deposit-image, .theme-card-withdrawal-image) .action-card:not(.home-link-banner):not([data-theme-card='wheel']):not([data-theme-card='bonuses']),
-.user-app.page-home:not(:has(.home-link-banner)):is(.theme-card-deposit-image, .theme-card-withdrawal-image) .action-card:not([data-theme-card='wheel']):not([data-theme-card='bonuses']) { min-height: 0; aspect-ratio: 12 / 5; padding: 0; }
+.user-app.page-home:has(.home-link-banner):is(.theme-card-deposit-image, .theme-card-withdrawal-image) .action-card:not(.home-link-banner):not([data-theme-card='wheel']):not([data-theme-card='bonuses']):not([data-theme-card='tutorial']),
+.user-app.page-home:not(:has(.home-link-banner)):is(.theme-card-deposit-image, .theme-card-withdrawal-image) .action-card:not([data-theme-card='wheel']):not([data-theme-card='bonuses']):not([data-theme-card='tutorial']) { min-height: 0; aspect-ratio: 12 / 5; padding: 0; }
 .user-app.page-home.theme-card-bonuses-image .action-card[data-theme-card='bonuses'] { min-height: 0; aspect-ratio: 12 / 5; padding: 0; }
 .user-app.page-home.theme-card-wheel-image .action-card[data-theme-card='wheel'] { min-height: 0; aspect-ratio: 12 / 5; padding: 0; }
 .user-app.page-home .action-card[data-theme-card='bonuses'] { border-color: var(--home-accent, #a73ad2); background: color-mix(in srgb, var(--home-accent, #a73ad2) 12%, #08090d); }
@@ -1625,6 +1629,58 @@ html.player-portal :is(img, video) {
   .player-chat-widget.is-open .player-chat-panel .chat-composer { padding-bottom: max(10px, env(safe-area-inset-bottom)); padding-left: max(10px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
 }
 @media (prefers-reduced-motion: reduce) { .player-chat-launcher { transition: none; } }
+
+/* Guía de primer ingreso y acceso permanente junto a Bonos. */
+.user-app.page-home .action-card[data-theme-card='tutorial'] { min-height: 0; aspect-ratio: 12 / 5; gap: 7px; padding: 8px; border-color: #9d40c9; background: radial-gradient(circle at 12% 20%, #79289955, transparent 55%), linear-gradient(125deg, #1d0c27, #09070d); }
+.user-app.page-home .action-card[data-theme-card='tutorial']::after { content: ''; position: absolute; right: -16px; bottom: -32px; width: 90px; height: 90px; border: 1px solid #bb4de833; border-radius: 50%; pointer-events: none; }
+.user-app.page-home .action-card[data-theme-card='tutorial'] .icon-circle { width: 34px; height: 34px; padding: 0; border-color: #b34be3; background: #251031; color: #e7b3ff; }
+.user-app.page-home .action-card[data-theme-card='tutorial'] .icon-circle svg { width: 20px; height: 20px; }
+.user-app.page-home .action-card[data-theme-card='tutorial'] strong { margin: 0 0 3px; color: #fff; font-size: 16px; font-weight: 800; }
+.user-app.page-home .action-card[data-theme-card='tutorial'] small { color: #d1b1de; font-size: 11px; line-height: 1.15; }
+.user-app.page-home .action-card[data-theme-card='tutorial'] > svg { width: 15px; height: 15px; color: #e3b3f7; }
+.user-app.page-home .action-card[data-theme-card='tutorial']:hover { border-color: #d77aff; background: linear-gradient(125deg, #371341, #110917); }
+.user-app.page-home .action-card[data-theme-card='tutorial']:focus-visible { outline: 3px solid #e6a6ff; outline-offset: 3px; }
+.user-app.page-home.theme-card-tutorial-image .action-card[data-theme-card='tutorial'] { padding: 0; }
+.user-app.page-home.theme-card-tutorial-image .action-card[data-theme-card='tutorial']::after { display: none; }
+
+.home-tutorial-backdrop { position: fixed; z-index: 2147483000; inset: 0; display: grid; place-items: center; padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)); background: #050209dc; backdrop-filter: blur(8px); font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+.home-tutorial-dialog { width: min(440px, 100%); max-height: 100%; overflow-y: auto; padding: 0; border: 1px solid #9c42bf; border-radius: 22px; background: radial-gradient(circle at 80% 0, #572063 0, #211027 29%, #0d0a12 70%); color: #fff; box-shadow: 0 24px 70px #000e, 0 0 40px #a829c03d; outline: none; }
+.home-tutorial-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 0; padding: 15px 18px 10px; }
+.home-tutorial-brand { display: inline-flex; align-items: center; gap: 9px; color: #f3d3ff; font-size: 11px; font-weight: 900; letter-spacing: .13em; }
+.home-tutorial-required { padding: 6px 8px; border: 1px solid #a757c6; border-radius: 7px; background: #3b174a; color: #efd0fa; font-size: 9px; font-weight: 900; letter-spacing: .08em; white-space: nowrap; }
+.home-tutorial-close { display: grid; place-items: center; width: 36px; height: 36px; min-height: 36px; padding: 0; border: 1px solid #754184; border-radius: 10px; background: #1d1124; color: #e8c8f1; }
+.home-tutorial-progress { display: grid; gap: 8px; padding: 0 22px; }
+.home-tutorial-progress > span { color: #bf95ce; font-size: 10px; font-weight: 800; letter-spacing: .16em; }
+.home-tutorial-progress-track { height: 4px; overflow: hidden; border-radius: 999px; background: #5a2b68; }
+.home-tutorial-progress-track i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #a641df, #e7a9ff); transition: width .22s ease; }
+.home-tutorial-visual { position: relative; height: clamp(139px, 38vw, 174px); margin: 10px 18px 0; overflow: hidden; border: 1px solid #7d3c95; border-radius: 16px; background: radial-gradient(circle at center, #291331, #09060d 75%); }
+.home-tutorial-artwork { position: absolute; inset: 9px 9px 30px; display: grid; place-items: center; overflow: hidden; border: 1px solid #703c81; border-radius: 11px; background: #09060d; }
+.home-tutorial-artwork > img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.home-tutorial-artwork.is-collage { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 5px; border: 0; background: transparent; }
+.home-tutorial-artwork.is-collage > img,
+.home-tutorial-artwork.is-collage > .home-tutorial-art-fallback { min-width: 0; min-height: 0; border: 1px solid #713d84; border-radius: 7px; background: #09060d; }
+.home-tutorial-art-fallback { display: grid; place-items: center; width: 100%; height: 100%; padding: 6px; color: #f4dbff; font-size: 15px; font-weight: 900; text-align: center; }
+.home-tutorial-visual-number { position: absolute; top: 15px; right: 16px; padding: 4px 7px; border: 1px solid #ad62ca; border-radius: 7px; background: #120a19dc; color: #f6ddff; font-size: 12px; font-weight: 900; letter-spacing: .1em; }
+.home-tutorial-visual-caption { position: absolute; right: 10px; bottom: 5px; left: 10px; color: #deb5ec; font-size: 11px; font-weight: 700; text-align: center; }
+.home-tutorial-copy { min-height: 192px; padding: 18px 22px 8px; }
+.home-tutorial-label { color: #dda2f7; font-size: 10px; font-weight: 900; letter-spacing: .14em; }
+.home-tutorial-copy h2 { display: block; margin: 6px 0 9px; color: #fff; font-size: clamp(23px, 6vw, 28px); font-weight: 850; line-height: 1.12; letter-spacing: -.045em; }
+.home-tutorial-copy p { margin: 0; color: #e2d4e7; font-size: 15px; line-height: 1.48; }
+.home-tutorial-tip { display: flex; align-items: flex-start; gap: 8px; margin-top: 14px; padding: 10px 11px; border: 1px solid #654073; border-radius: 11px; background: #2c1934b8; color: #efd9f6; font-size: 12px; line-height: 1.35; }
+.home-tutorial-tip svg { flex: 0 0 auto; color: #e6a65c; }
+.home-tutorial-footer { display: block; margin: 0; padding: 10px 22px 20px; }
+.home-tutorial-dots { display: flex; justify-content: center; gap: 6px; margin-bottom: 15px; }
+.home-tutorial-dots span { width: 6px; height: 6px; border-radius: 999px; background: #774985; }
+.home-tutorial-dots span.active { width: 22px; background: #cb69ed; }
+.home-tutorial-actions { display: flex; justify-content: space-between; gap: 12px; }
+.home-tutorial-actions > button:only-child { margin-left: auto; }
+.home-tutorial-actions button { display: inline-flex; justify-content: center; align-items: center; gap: 7px; min-height: 44px; padding: 10px 15px; border-radius: 11px; font-size: 14px; font-weight: 750; }
+.home-tutorial-back, .home-tutorial-skip { border: 1px solid #70417e; background: #1c1123; color: #e0c6e9; }
+.home-tutorial-next { min-width: 132px; border: 1px solid #d575f2; background: linear-gradient(135deg, #ae3ddd, #72169f); color: #fff; box-shadow: 0 6px 18px #7e1fa955; }
+.home-tutorial-actions button:focus-visible, .home-tutorial-close:focus-visible { outline: 2px solid #f2c7ff; outline-offset: 3px; }
+@media (max-height: 620px) { .home-tutorial-visual { height: 120px; } .home-tutorial-copy { min-height: 0; } }
+@media (max-width: 350px) { .user-app.page-home .action-card[data-theme-card='tutorial'] { padding: 6px; gap: 5px; } .user-app.page-home .action-card[data-theme-card='tutorial'] .icon-circle { width: 28px; height: 28px; } .user-app.page-home .action-card[data-theme-card='tutorial'] strong { font-size: 14px; } .user-app.page-home .action-card[data-theme-card='tutorial'] small { display: none; } .home-tutorial-copy { padding-left: 18px; padding-right: 18px; } }
+@media (prefers-reduced-motion: reduce) { .home-tutorial-progress-track i { transition: none; } }
 
 /* Campo del monto de carga: contraste violeta claro sobre el fondo del portal. */
 .user-app.page-deposit .deposit-amount .amount-input {
