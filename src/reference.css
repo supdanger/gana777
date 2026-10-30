@@ -1560,7 +1560,7 @@ body:has(.user-app.theme-halloween), body:has(.user-login.theme-halloween) { bac
 .deposit-bonus-empty button { display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: center; gap: 8px; border-color: #d58aff; background: linear-gradient(120deg, #a62bd4, #70208c); color: #fff; font-size: 14px; font-weight: 900; box-shadow: 0 4px 15px #9b32c866; }
 .deposit-bonus-empty .deposit-bonus-image-button { position: relative; width: 100%; min-height: 0; aspect-ratio: 4 / 1; padding: 0; overflow: hidden; border: 0; border-radius: 9px; background: #100b15; box-shadow: 0 4px 15px #9b32c866; }
 .deposit-bonus-empty:has(.deposit-bonus-image-button) { display: block; aspect-ratio: 4 / 1; padding: 0; border: 0; background: transparent; box-shadow: none; }
-.deposit-bonus-empty:has(.deposit-bonus-image-button) .deposit-bonus-image-button { aspect-ratio: auto; height: 100%; min-height: 0; border-radius: 12px; }
+.deposit-bonus-empty:has(.deposit-bonus-image-button) .deposit-bonus-image-button { aspect-ratio: auto; height: 100%; min-height: 0; border: 1px solid #a12eea; border-radius: 12px; }
 .deposit-bonus-image-button img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; max-height: none; object-fit: cover; object-position: center; }
 .bonus-cta-image-settings { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; margin-bottom: 14px; padding: 14px; }
 .bonus-cta-image-settings > div { display: grid; gap: 4px; }
