@@ -16,7 +16,7 @@ function countdown(milliseconds: number) {
 
 export function HomeBonusCarousel({ onClaim }: { onClaim: (id: string) => void }) {
   const { promotions, settings } = useContent();
-  const specials = promotions.filter(p => p.selectable && p.cooldown_hours > 0);
+  const specials = promotions.filter(p => p.selectable && p.cooldown_hours > 0 && p.reward_type !== 'free_spins');
   const hasMainBanner = promotions.some(p => p.show_banner);
   const homeBanners = portalBannersFor(settings.portal_banners, settings.portal_theme, 'home');
   const [slide, setSlide] = useState(0);
