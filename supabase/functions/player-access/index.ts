@@ -41,14 +41,6 @@ async function digest(value: string): Promise<string> {
 function pepper(): string {
   return Deno.env.get('REGISTRATION_HASH_PEPPER') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || 'gana777-player-access-v1';
 }
-function playerRedirectUrl(request: Request): string {
-  const allowedOrigins = new Set([
-    'https://gana777bet.com', 'https://www.gana777bet.com',
-    'https://gana777bet.online', 'https://gana777.vercel.app',
-  ]);
-  const origin = request.headers.get('origin');
-  return `${origin && allowedOrigins.has(origin) ? origin : 'https://gana777bet.com'}/`;
-}
 function casinoUrl(value: unknown): string {
   const raw = text(value, 'URL personal del casino', 10, 2048);
   let url: URL;
@@ -185,31 +177,11 @@ Deno.serve(async request => {
       return json({ ok: true, request_id: created.id, username: created.username, status: created.status, resumed: false });
     }
 
-    if (action === 'resume' || action === 'public-messages' || action === 'public-send' || action === 'public-login-link') {
+    if (action === 'resume' || action === 'public-messages' || action === 'public-send') {
       const server = serverClient();
       const thread = await publicThread(server, payload.access_token);
       if (action === 'resume') return json({ ok: true, thread, messages: await messagesFor(server, thread.id) });
       if (action === 'public-messages') return json({ ok: true, thread, messages: await messagesFor(server, thread.id) });
-      if (action === 'public-login-link') {
-        if (thread.status !== 'approved') throw new HttpError(409, 'El acceso estará disponible cuando el equipo apruebe tu solicitud.');
-        const { data: approved, error: approvedError } = await server.from('player_access_requests')
-          .select('player_user_id,username,status').eq('id', thread.id).maybeSingle();
-        if (approvedError || !approved || approved.status !== 'approved' || !approved.player_user_id) {
-          throw new HttpError(409, 'Todavía no encontramos el usuario creado para esta solicitud. Actualizá e intentá de nuevo.');
-        }
-        const { data: authResult, error: authError } = await server.auth.admin.getUserById(approved.player_user_id);
-        const player = authResult?.user;
-        if (authError || !player?.email || player.email.toLowerCase() !== `${approved.username}@players.gana777.internal`) {
-          throw new HttpError(500, 'No pudimos preparar el acceso de este usuario. Contactá a soporte.');
-        }
-        const { data: linkResult, error: linkError } = await server.auth.admin.generateLink({
-          type: 'magiclink', email: player.email,
-          options: { redirectTo: playerRedirectUrl(request) },
-        });
-        const actionLink = linkResult?.properties?.action_link;
-        if (linkError || !actionLink) throw new HttpError(500, 'No pudimos generar el acceso. Volvé a intentarlo.');
-        return json({ ok: true, action_url: actionLink });
-      }
       if (thread.status !== 'pending') throw new HttpError(409, 'La solicitud ya fue respondida y no admite nuevos mensajes.');
       const body = text(payload.body, 'Mensaje', 1, 2000);
       const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();

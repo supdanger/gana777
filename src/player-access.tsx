@@ -38,7 +38,7 @@ async function callAccess(body: Record<string, unknown>) {
   return data;
 }
 
-export function PlayerAccessRequest({ onBack }: { onBack: () => void }) {
+export function PlayerAccessRequest({ onBack, onCredentialsReady }: { onBack: () => void; onCredentialsReady: (username: string, password: string) => void }) {
   const [token, setToken] = useState('');
   const [device, setDevice] = useState('');
   const [thread, setThread] = useState<AccessThread | null>(null);
@@ -46,7 +46,6 @@ export function PlayerAccessRequest({ onBack }: { onBack: () => void }) {
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [signingIn, setSigningIn] = useState(false);
   const [restoring, setRestoring] = useState(true);
   const log = useRef<HTMLDivElement>(null);
 
@@ -106,17 +105,14 @@ export function PlayerAccessRequest({ onBack }: { onBack: () => void }) {
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'No pudimos enviar el mensaje.'); }
     finally { setBusy(false); }
   }
-  async function enterAccount() {
-    if (!token || thread?.status !== 'approved') return;
-    setError(''); setSigningIn(true);
-    try {
-      const result = await callAccess({ action: 'public-login-link', access_token: token });
-      if (typeof result.action_url !== 'string' || !result.action_url.startsWith('https://')) throw new InputError('No pudimos preparar el acceso. Volvé a intentarlo.');
-      window.location.assign(result.action_url);
-    } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'No pudimos ingresar a tu cuenta.');
-      setSigningIn(false);
+  function continueToLogin() {
+    if (thread?.status !== 'approved') return;
+    const savedPassword = [...messages].reverse().find(message => message.sender === 'admin')?.body.match(/^Contraseña(?: temporal)?:\s*(.+)$/mi)?.[1]?.trim();
+    if (!savedPassword) {
+      setError('No encontramos la contraseña en esta conversación. Respondé al chat para que soporte te la vuelva a enviar.');
+      return;
     }
+    onCredentialsReady(thread.username, savedPassword);
   }
   function newRequest() {
     localStorage.removeItem(tokenKey);
@@ -134,7 +130,7 @@ export function PlayerAccessRequest({ onBack }: { onBack: () => void }) {
       <button className="primary" disabled={busy || restoring}>{restoring ? 'Cargando…' : busy ? 'Enviando solicitud…' : 'Enviar solicitud'}</button>
     </form> : <>
       <div className="player-access-status"><strong>{thread.status === 'approved' ? 'Usuario creado' : thread.status === 'rejected' ? 'Solicitud cerrada' : 'Esperando al equipo'}</strong><span>Usuario solicitado: @{thread.username}</span>{thread.referral_code && <small>Recomendado por @{thread.referral_code}</small>}</div>
-      {thread.status === 'approved' && <div className="player-access-login"><button type="button" onClick={() => void enterAccount()} disabled={signingIn}><LogIn size={18} />{signingIn ? 'Abriendo tu cuenta…' : 'Entrar a mi cuenta'}</button><small>Ingresás directamente, sin volver al login ni escribir tu contraseña.</small></div>}
+      {thread.status === 'approved' && <div className="player-access-login"><button type="button" onClick={continueToLogin}><LogIn size={18} />Cargar acceso e ir al ingreso</button><small>El usuario y la contraseña se completan en el login para que solo tengas que tocar «Ingresar».</small></div>}
       <div className="player-access-messages" ref={log} role="log" aria-live="polite">
         {messages.map(message => <article key={message.id} className={`player-access-message${message.sender === 'admin' ? ' from-admin' : ''}`}><p>{message.body}</p><time>{new Intl.DateTimeFormat('es', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(message.created_at))}</time></article>)}
       </div>

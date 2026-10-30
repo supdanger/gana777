@@ -44,6 +44,7 @@ export function LoginView({ admin, busy, configured, feedback, onLogin, onDemo, 
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaReset, setCaptchaReset] = useState(0);
   const [requestingAccess, setRequestingAccess] = useState(false);
+  const [loginPrefill, setLoginPrefill] = useState<{ username: string; password: string } | null>(null);
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     setNow(Date.now());
@@ -62,12 +63,12 @@ export function LoginView({ admin, busy, configured, feedback, onLogin, onDemo, 
   return <main className={`login ${admin ? 'admin-login' : `user-login ${surface.className}`}`} style={admin ? undefined : surface.style}>
     {admin && <Brand panel />}
     {admin ? <p className="eyebrow">PANEL DE ADMINISTRACIÓN</p> : <div className={`login-character ${settings.login_image_path === 'brand/panda-login-transparent.png' || settings.login_image_path === 'brand/panda-login-bright.png' ? 'transparent-character' : settings.login_image_layout === 'reference' ? 'reference-character' : ''}`}><StorageImage path={settings.login_image_path} fallbackPath="brand/panda-login-transparent.png" alt="Panda GANA777 con gorra y campera morada" /></div>}
-    {!admin && requestingAccess ? <PlayerAccessRequest onBack={() => setRequestingAccess(false)} /> : <><section className="card login-card">{!admin && <span className="brand login-domain-brand">gana777bet.com</span>}<h1>Bienvenido</h1>{admin && <p>Ingresá a tu cuenta</p>}
+    {!admin && requestingAccess ? <PlayerAccessRequest onBack={() => setRequestingAccess(false)} onCredentialsReady={(username, password) => { setLoginPrefill({ username, password }); setRequestingAccess(false); }} /> : <><section className="card login-card">{!admin && <span className="brand login-domain-brand">gana777bet.com</span>}<h1>Bienvenido</h1>{admin && <p>Ingresá a tu cuenta</p>}
       <form onSubmit={submit}>
         {admin && <label htmlFor="email">Usuario o correo electrónico</label>}
-        <div className="icon-input"><span className="input-icon"><UserRound /></span><input id="email" name="email" type="text" autoComplete="username" aria-label={admin ? undefined : 'Usuario'} placeholder={admin ? 'Ejemplo: carlos' : 'Usuario'} maxLength={254} autoCapitalize="none" spellCheck={false} required /></div>
+        <div className="icon-input"><span className="input-icon"><UserRound /></span><input id="email" name="email" type="text" defaultValue={!admin ? loginPrefill?.username : undefined} autoComplete="username" aria-label={admin ? undefined : 'Usuario'} placeholder={admin ? 'Ejemplo: carlos' : 'Usuario'} maxLength={254} autoCapitalize="none" spellCheck={false} required /></div>
         <label htmlFor="password">Contraseña</label>
-        <div className="icon-input password"><span className="input-icon"><LockKeyhole /></span><input id="password" name="password" type={visible ? 'text' : 'password'} autoComplete="current-password" placeholder={admin ? 'Tu contraseña' : 'Contraseña'} maxLength={1024} required /><button type="button" aria-label={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setVisible(!visible)}>{visible ? <EyeOff /> : <Eye />}</button></div>
+        <div className="icon-input password"><span className="input-icon"><LockKeyhole /></span><input id="password" name="password" type={visible ? 'text' : 'password'} defaultValue={!admin ? loginPrefill?.password : undefined} autoComplete="current-password" placeholder={admin ? 'Tu contraseña' : 'Contraseña'} maxLength={1024} required /><button type="button" aria-label={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setVisible(!visible)}>{visible ? <EyeOff /> : <Eye />}</button></div>
         {siteKey && <Turnstile siteKey={siteKey} resetKey={captchaReset} onToken={setCaptchaToken} />}
         {feedback}{retrySeconds > 0 && <p className="login-retry" role="status">Podés volver a intentar en {retrySeconds} segundos.</p>}
         <button className="primary" disabled={busy || retrySeconds > 0 || (!!siteKey && !captchaToken)}>{busy ? 'Ingresando…' : retrySeconds > 0 ? 'Esperá para reintentar' : 'Ingresar'}</button>
