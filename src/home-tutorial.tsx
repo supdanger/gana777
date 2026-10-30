@@ -103,7 +103,8 @@ export function HomeTutorial({ open, required, onClose, onFinish }: { open: bool
   if (!open) return null;
   const step = steps[index];
   function goTo(next: number) {
-    if (required && next > reached) return;
+    // En el tutorial obligatorio se puede avanzar al siguiente apartado, pero no saltar los que faltan.
+    if (required && next > reached + 1) return;
     setIndex(next);
     setReached(value => Math.max(value, next));
   }
