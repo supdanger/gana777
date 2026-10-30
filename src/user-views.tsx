@@ -184,7 +184,7 @@ export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, use
   ].filter(contact => contact.visible);
   return <>
     <h1 className="home-welcome">¡{greeting}, <span className="home-welcome-name">{name}!</span></h1>
-    <HomeBonusCarousel onClaim={onClaimSpecialBonus} />
+    {settings.home_banners_visible !== false && <HomeBonusCarousel onClaim={onClaimSpecialBonus} />}
     <h2 className="section-title">¿Qué querés hacer?</h2>
     <div className="quick-actions">
       {bannerUrl && bannerImage && <a className="action-card home-link-banner" style={bannerStyle} href={bannerUrl} target="_blank" rel="noopener noreferrer" aria-label={`${settings.home_banner_title} (abre en otra pestaña)`}>{bannerImage.startsWith('/') ? <img src={bannerImage} alt={settings.home_banner_title} draggable={false} decoding="async" /> : <StorageImage path={bannerImage} alt={settings.home_banner_title} />}</a>}

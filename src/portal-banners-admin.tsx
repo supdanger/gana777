@@ -33,6 +33,16 @@ export function PortalBannersAdmin({ theme, baseTheme, demo }: { theme: PortalTh
     setBanners(normalizePortalBanners(settings.portal_banners));
   }, [settings.portal_banners]);
 
+  async function toggleHomeBanners() {
+    if (demo || !supabase || busy) return;
+    setBusy(true); setError(''); setNotice('');
+    const next = settings.home_banners_visible === false;
+    const { error } = await supabase.rpc('set_home_banners_visible', { p_visible: next });
+    if (error) setError('No pudimos guardar la visibilidad. Revisá la migración 079 y tus permisos.');
+    else { reloadPromotions(); setNotice(next ? 'Banners del inicio activados.' : 'Banners del inicio ocultos. Las imágenes siguen guardadas.'); }
+    setBusy(false);
+  }
+
   async function persist(next: PortalBanner[], savedBannerId: string | null, message: string) {
     if (demo || !supabase) return;
     setBusy(true); setError(''); setNotice('');
@@ -81,6 +91,13 @@ export function PortalBannersAdmin({ theme, baseTheme, demo }: { theme: PortalTh
   const visible = (place: PortalBannerPlace) => banners.filter(banner => banner.theme === theme && banner.place === place);
 
   return <div className="portal-extra-admin">
+    <section className="card">
+      <h3>Banners en el inicio</h3>
+      <p>Mostrá u ocultá todo el carrusel del inicio en todos los temas, sin borrar las imágenes configuradas.</p>
+      <button type="button" className={`external-chat-toggle${settings.home_banners_visible !== false ? ' is-active' : ''}`} role="switch" aria-label="Mostrar banners en el inicio" aria-checked={settings.home_banners_visible !== false} disabled={busy || demo} onClick={() => void toggleHomeBanners()}>
+        <span className="external-chat-toggle-knob" /><span>{busy ? 'Guardando…' : settings.home_banners_visible !== false ? 'Visibles' : 'Ocultos'}</span>
+      </button>
+    </section>
     {error && <p className="alert error" role="alert">{error}</p>}
     {notice && <p className="alert" role="status">{notice}</p>}
     {places.map(place => <section key={place.id} aria-labelledby={`extra-banners-${place.id}`}>
