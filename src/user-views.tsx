@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { ArrowLeft, Camera, ChevronRight, Disc, Eye, EyeOff, FileText, Gift, Images, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserPlus, UserRound, X } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Disc, Eye, EyeOff, FileText, Gift, Images, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserPlus, UserRound, X } from 'lucide-react';
 import { StorageImage, useContent } from './content';
 import { HomeBonusCarousel } from './special-bonus-carousel';
 import { asBonusRule, bonusEnabled, moneyInputMaxLength, moneyInputPattern, percentText, readMoney } from '../supabase/functions/_shared/bonus-rule';
@@ -260,9 +260,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
   const [loadNumberReady, setLoadNumberReady] = useState(demo || !supabase);
   useEffect(() => { setAmountAttempted(kind === 'deposit'); }, [kind]);
   useEffect(() => { if (kind === 'withdrawal' && pending) setRawAmount(''); }, [kind, pending]);
-  const cameraInput = useRef<HTMLInputElement>(null);
-  const galleryInput = useRef<HTMLInputElement>(null);
-  const pdfInput = useRef<HTMLInputElement>(null);
+  const receiptInput = useRef<HTMLInputElement>(null);
   const receiptChangeId = useRef(0);
   useEffect(() => { if (kind === 'deposit') reloadPromotions(); }, [kind, reloadPromotions]);
   useEffect(() => {
@@ -301,7 +299,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
   useEffect(() => {
     if (kind !== 'deposit' || !pendingDeposit) return;
     receiptChangeId.current += 1;
-    [cameraInput, galleryInput, pdfInput].forEach(input => { if (input.current) input.current.value = ''; });
+    if (receiptInput.current) receiptInput.current.value = '';
     setFile(null);
     setBonus('');
     setRawAmount('');
@@ -316,10 +314,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     setCompressing(true);
     try {
       const optimized = await compressReceipt(selected);
-      if (changeId === receiptChangeId.current) {
-        [cameraInput, galleryInput, pdfInput].forEach(other => { if (other.current && other.current !== input) other.current.value = ''; });
-        setFile(optimized);
-      }
+      if (changeId === receiptChangeId.current) setFile(optimized);
     } catch (error) {
       if (changeId !== receiptChangeId.current) return;
       input.value = '';
@@ -330,7 +325,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
   }
   function clearReceipt() {
     receiptChangeId.current += 1;
-    [cameraInput, galleryInput, pdfInput].forEach(input => { if (input.current) input.current.value = ''; });
+    if (receiptInput.current) receiptInput.current.value = '';
     setFile(null);
     setReceiptError('');
     setCompressing(false);
@@ -377,11 +372,9 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
           {preview ? <img className="receipt-preview" src={preview} alt="Vista previa del comprobante seleccionado" /> : file ? <FileText className="camera-icon" size={30} /> : null}
           {(file || compressing) && <div className="receipt-file-copy" aria-live="polite"><strong>{compressing ? 'Optimizando imagen…' : file?.name}</strong><small>{compressing ? 'Esperá un momento' : file ? `Listo para enviar · ${readableFileSize(file.size)}` : ''}</small></div>}
           <div className="receipt-source-actions">
-            <label className="receipt-source-button"><Camera size={20} /><span>Sacar foto</span><input ref={cameraInput} type="file" accept="image/*" capture="environment" onChange={event => void selectReceipt(event)} /></label>
-            <label className="receipt-source-button"><Images size={20} /><span>Elegir de galería</span><input ref={galleryInput} type="file" accept="image/*" onChange={event => void selectReceipt(event)} /></label>
+            <label className="receipt-source-button"><FileText size={20} /><span>Mandar comprobante</span><input ref={receiptInput} type="file" accept="image/*,application/pdf" onChange={event => void selectReceipt(event)} /></label>
           </div>
           {file && <button className="receipt-remove" type="button" onClick={clearReceipt} aria-label="Eliminar comprobante"><Trash2 size={18} /></button>}
-          <label className="receipt-pdf-option">¿Tenés el comprobante en PDF? Adjuntalo aquí<input ref={pdfInput} type="file" accept="application/pdf" onChange={event => void selectReceipt(event)} /></label>
           {receiptError && <small className="receipt-error" role="alert">{receiptError}</small>}
         </div>
       </section>
