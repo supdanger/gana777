@@ -304,7 +304,8 @@ a.social.instagram:hover { border-color: #ff8ab8; }
 .user-app.page-home .bonus-offer-tiers small { margin-top: 1px; color: #f5f8fc; font-size: clamp(7px, 1.85vw, 9px); font-weight: 800; line-height: 1; }
 .user-app.page-home .section-title { position: relative; display: block; margin: 0 0 20px; padding-left: 14px; color: var(--home-text); font-size: clamp(25px, 7vw, 30px); font-weight: 780; letter-spacing: -.75px; line-height: 1.12; }
 .user-app.page-home .section-title::before { content: ''; position: absolute; top: 3px; bottom: 3px; left: 0; width: 4px; border-radius: 99px; background: var(--home-accent); }
-.user-app.page-home .quick-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 0 0 40px; }
+.user-app.page-home .quick-actions { display: grid; grid-template-columns: 1fr; gap: 12px; margin: 0 0 40px; }
+.user-app.page-home .quick-actions .action-card:has(.action-card-image) { min-height: 0; aspect-ratio: 25 / 8; padding: 0; }
 .user-app.page-home .action-card { position: relative; display: flex; flex-direction: row; align-items: center; width: 100%; min-height: 112px; gap: 16px; padding: 18px 16px; overflow: hidden; border: 1px solid #304a60; border-radius: 12px; background: #14283a; color: var(--home-text); text-align: left; box-shadow: 0 10px 24px #0007, inset 0 1px 0 #ffffff08; transition: transform 140ms ease, border-color 140ms ease, background-color 140ms ease;
 }
 .user-app.page-home button.action-card:first-of-type { border-color: #3b5c75; background: #1a344a; box-shadow: 0 12px 26px #0007, inset 0 1px 0 #69b9ff2b, 0 -10px 25px #087bdf0c; }
@@ -1068,7 +1069,7 @@ body:has(.user-login) { min-height: 100svh; }
 .user-app.page-home:has(.home-link-banner) .action-card strong { font-size: 19px; margin-bottom: 2px; }
 .user-app.page-home:has(.home-link-banner) .action-card small { font-size: 14px; }
 .user-app.page-home .action-card.home-link-banner { grid-column: 1 / -1; }
-.user-app.page-home .action-card[data-theme-card="wheel"] { grid-column: auto; min-height: 0; aspect-ratio: 12 / 5; gap: 7px; padding: 8px; }
+.user-app.page-home .action-card[data-theme-card="wheel"] { grid-column: auto; min-height: 0; aspect-ratio: 25 / 8; gap: 7px; padding: 8px; }
 .user-app.page-home .action-card[data-theme-card="wheel"] .icon-circle { width: 34px; height: 34px; }
 .user-app.page-home .action-card[data-theme-card="wheel"] .icon-circle svg { width: 20px; height: 20px; }
 .user-app.page-home .action-card[data-theme-card="wheel"] strong { margin-bottom: 3px; font-size: 16px; }
@@ -1489,17 +1490,20 @@ body:has(.user-app.theme-halloween), body:has(.user-login.theme-halloween) { bac
 .user-app.theme-card-withdrawal-image .action-card[data-theme-card='withdrawal'] .action-card-image,
 .user-app.theme-card-bonuses-image .action-card[data-theme-card='bonuses'] .action-card-image,
 .user-app.theme-card-tutorial-image .action-card[data-theme-card='tutorial'] .action-card-image,
-.user-app.theme-card-wheel-image .action-card[data-theme-card='wheel'] .action-card-image { position: absolute; z-index: 0; left: 50%; top: 50%; display: block; width: 100%; height: 100%; max-width: none; object-fit: cover; transform: translate(-50%, -50%); pointer-events: none; }
+.user-app.theme-card-wheel-image .action-card[data-theme-card='wheel'] .action-card-image,
+.user-app.theme-card-chat-image .action-card[data-theme-card='chat'] .action-card-image { position: absolute; z-index: 0; left: 50%; top: 50%; display: block; width: 100%; height: 100%; max-width: none; object-fit: cover; transform: translate(-50%, -50%); pointer-events: none; }
 .user-app.theme-card-deposit-image .action-card[data-theme-card='deposit'] .action-card-image { left: calc(50% + var(--theme-deposit-image-x, 0%)); top: calc(50% + var(--theme-deposit-image-y, 0%)); width: var(--theme-deposit-image-width, 100%); height: var(--theme-deposit-image-height, 100%); }
 .user-app.theme-card-withdrawal-image .action-card[data-theme-card='withdrawal'] .action-card-image { left: calc(50% + var(--theme-withdrawal-image-x, 0%)); top: calc(50% + var(--theme-withdrawal-image-y, 0%)); width: var(--theme-withdrawal-image-width, 100%); height: var(--theme-withdrawal-image-height, 100%); }
 .user-app.theme-card-bonuses-image .action-card[data-theme-card='bonuses'] .action-card-image { left: calc(50% + var(--theme-bonuses-image-x, 0%)); top: calc(50% + var(--theme-bonuses-image-y, 0%)); width: var(--theme-bonuses-image-width, 100%); height: var(--theme-bonuses-image-height, 100%); }
 .user-app.theme-card-tutorial-image .action-card[data-theme-card='tutorial'] .action-card-image { left: calc(50% + var(--theme-tutorial-image-x, 0%)); top: calc(50% + var(--theme-tutorial-image-y, 0%)); width: var(--theme-tutorial-image-width, 100%); height: var(--theme-tutorial-image-height, 100%); }
 .user-app.theme-card-wheel-image .action-card[data-theme-card='wheel'] .action-card-image { left: calc(50% + var(--theme-wheel-image-x, 0%)); top: calc(50% + var(--theme-wheel-image-y, 0%)); width: var(--theme-wheel-image-width, 100%); height: var(--theme-wheel-image-height, 100%); }
+.user-app.theme-card-chat-image .action-card[data-theme-card='chat'] .action-card-image { left: calc(50% + var(--theme-chat-image-x, 0%)); top: calc(50% + var(--theme-chat-image-y, 0%)); width: var(--theme-chat-image-width, 100%); height: var(--theme-chat-image-height, 100%); }
 .user-app.page-home .action-card[data-theme-card='wheel'] .wheel-image-countdown { position: absolute; z-index: 1; inset: 0; display: grid; place-items: center; padding: 0 4px; background: #0006; color: #fff; font-size: clamp(16px, 7vw, 28px); font-weight: 950; font-variant-numeric: tabular-nums; letter-spacing: -.045em; line-height: 1; text-align: center; text-shadow: 0 2px 8px #000, 0 0 16px #000b; white-space: nowrap; pointer-events: none; }
 .user-app.page-home:has(.home-link-banner):is(.theme-card-deposit-image, .theme-card-withdrawal-image) .action-card:not(.home-link-banner):not([data-theme-card='wheel']):not([data-theme-card='bonuses']):not([data-theme-card='tutorial']),
-.user-app.page-home:not(:has(.home-link-banner)):is(.theme-card-deposit-image, .theme-card-withdrawal-image) .action-card:not([data-theme-card='wheel']):not([data-theme-card='bonuses']):not([data-theme-card='tutorial']) { min-height: 0; aspect-ratio: 12 / 5; padding: 0; }
-.user-app.page-home.theme-card-bonuses-image .action-card[data-theme-card='bonuses'] { min-height: 0; aspect-ratio: 12 / 5; padding: 0; }
-.user-app.page-home.theme-card-wheel-image .action-card[data-theme-card='wheel'] { min-height: 0; aspect-ratio: 12 / 5; padding: 0; }
+.user-app.page-home:not(:has(.home-link-banner)):is(.theme-card-deposit-image, .theme-card-withdrawal-image) .action-card:not([data-theme-card='wheel']):not([data-theme-card='bonuses']):not([data-theme-card='tutorial']) { min-height: 0; aspect-ratio: 25 / 8; padding: 0; }
+.user-app.page-home.theme-card-bonuses-image .action-card[data-theme-card='bonuses'],
+.user-app.page-home.theme-card-chat-image .action-card[data-theme-card='chat'],
+.user-app.page-home.theme-card-wheel-image .action-card[data-theme-card='wheel'] { min-height: 0; aspect-ratio: 25 / 8; padding: 0; }
 .user-app.page-home .action-card[data-theme-card='bonuses'] { border-color: var(--home-accent, #a73ad2); background: color-mix(in srgb, var(--home-accent, #a73ad2) 12%, #08090d); }
 .user-app.page-home .action-card[data-theme-card='bonuses'] .icon-circle { border-color: var(--home-accent, #a73ad2); color: var(--home-accent, #a73ad2); }
 .user-app.page-home .action-card[data-theme-card='bonuses']:hover { border-color: color-mix(in srgb, var(--home-accent, #a73ad2) 80%, white); }
@@ -1669,7 +1673,7 @@ html.player-portal :is(img, video) {
 @media (prefers-reduced-motion: reduce) { .player-chat-launcher { transition: none; } }
 
 /* Guía de primer ingreso y acceso permanente junto a Bonos. */
-.user-app.page-home .action-card[data-theme-card='tutorial'] { min-height: 0; aspect-ratio: 12 / 5; gap: 7px; padding: 8px; border-color: #9d40c9; background: radial-gradient(circle at 12% 20%, #79289955, transparent 55%), linear-gradient(125deg, #1d0c27, #09070d); }
+.user-app.page-home .action-card[data-theme-card='tutorial'] { min-height: 0; aspect-ratio: 25 / 8; gap: 7px; padding: 8px; border-color: #9d40c9; background: radial-gradient(circle at 12% 20%, #79289955, transparent 55%), linear-gradient(125deg, #1d0c27, #09070d); }
 .user-app.page-home .action-card[data-theme-card='tutorial']::after { content: ''; position: absolute; right: -16px; bottom: -32px; width: 90px; height: 90px; border: 1px solid #bb4de833; border-radius: 50%; pointer-events: none; }
 .user-app.page-home .action-card[data-theme-card='tutorial'] .icon-circle { width: 34px; height: 34px; padding: 0; border-color: #b34be3; background: #251031; color: #e7b3ff; }
 .user-app.page-home .action-card[data-theme-card='tutorial'] .icon-circle svg { width: 20px; height: 20px; }

@@ -34,6 +34,8 @@ export type AppContent = HomeBannerSettings & {
   home_bonus_layouts: Record<string, unknown>;
   portal_banners: unknown;
   home_banners_visible: boolean;
+  home_tutorial_enabled: boolean;
+  home_tutorial_first_login_enabled: boolean;
   deposit_bonus_button_path: string | null;
 };
 export type Promotion = {
@@ -53,7 +55,7 @@ const defaults: AppContent = {
   ...defaultHomeBanner,
   id: true, portal_theme: 'base', portal_theme_designs: {}, logo_path: null, portal_header_logo_path: null, portal_header_logo_halloween_path: null, portal_header_logo_layouts: {}, login_image_path: 'brand/panda-login-transparent.png',
   login_image_layout: 'image', whatsapp_url: null, telegram_url: null,
-  instagram_url: null, help_url: null, show_whatsapp: true, show_telegram: true, show_instagram: true, allow_player_logout: false, wheel_enabled: false, home_bonus_media_path: null, home_bonus_halloween_media_path: null, home_bonus_layouts: {}, portal_banners: [], home_banners_visible: true, deposit_bonus_button_path: null,
+  instagram_url: null, help_url: null, show_whatsapp: true, show_telegram: true, show_instagram: true, allow_player_logout: false, wheel_enabled: false, home_bonus_media_path: null, home_bonus_halloween_media_path: null, home_bonus_layouts: {}, portal_banners: [], home_banners_visible: true, home_tutorial_enabled: true, home_tutorial_first_login_enabled: true, deposit_bonus_button_path: null,
 };
 const loadBonusPromotionId = '00000000-0000-4000-8000-000000000777';
 const welcome: Promotion = {

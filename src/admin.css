@@ -72,7 +72,7 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .theme-card-image-editor .theme-design-file small { grid-column: 1 / -1; color: #9fb8cd; font-size: 11px; line-height: 1.4; }
 .theme-card-live-preview { display: grid; gap: 7px; }
 .theme-card-live-preview > strong { color: #dceaf5; font-size: 11px; }
-.theme-card-live-preview-frame { position: relative; width: 100%; max-width: 500px; aspect-ratio: 12 / 5; overflow: hidden; background: #070a10; box-shadow: 0 5px 15px #0005; }
+.theme-card-live-preview-frame { position: relative; width: 100%; max-width: 500px; aspect-ratio: 25 / 8; overflow: hidden; background: #070a10; box-shadow: 0 5px 15px #0005; }
 .theme-card-live-preview-frame img { position: absolute; max-width: none; object-fit: cover; transform: translate(-50%, -50%); pointer-events: none; }
 .theme-card-live-preview-frame span { position: absolute; inset: 0; display: grid; place-items: center; padding: 12px; color: #8198aa; font-size: 12px; text-align: center; }
 .theme-card-image-editor .theme-card-image-layout { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
@@ -1259,6 +1259,9 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .portal-layout-editor .portal-banner-actions button { padding: 9px 11px; font-size: 12px; }
 .theme-banner-editor .portal-layout-editor { margin: 18px 0; }
 .portal-extra-admin { display: grid; gap: 22px; margin-top: 28px; }
+.portal-visibility-setting { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 14px; padding-top: 14px; border-top: 1px solid #29485f; }
+.portal-visibility-setting strong { color: #fff; font-size: 14px; }
+.portal-visibility-setting p { margin: 4px 0 0; color: #9fb8cd; font-size: 12px; line-height: 1.4; }
 .bonus-special-toggle { display: flex !important; flex-direction: row !important; align-items: center; gap: 8px; }
 .bonus-special-toggle input { width: auto !important; }
 .special-bonus-image-editor { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; width: 100%; min-width: 0; }

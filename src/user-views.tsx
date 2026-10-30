@@ -100,9 +100,9 @@ function playerGreeting() {
   const hour = Number(greetingHourFormatter.format(new Date()));
   return hour >= 6 && hour < 12 ? 'Buenos días' : hour >= 12 && hour < 20 ? 'Buenas tardes' : 'Buenas noches';
 }
-export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, username, casinoUrl, demo = false, userId = '', wheelEligible = false }: { name: string; navigate: (page: Page) => void; onClaimSpecialBonus: (id: string) => void; whatsappUrl?: string | null; username?: string | null; casinoUrl?: string | null; demo?: boolean; userId?: string; wheelEligible?: boolean }) {
+export function UserHome({ name, navigate, onClaimSpecialBonus, onOpenChat, whatsappUrl, username, casinoUrl, demo = false, userId = '', wheelEligible = false }: { name: string; navigate: (page: Page) => void; onClaimSpecialBonus: (id: string) => void; onOpenChat: () => void; whatsappUrl?: string | null; username?: string | null; casinoUrl?: string | null; demo?: boolean; userId?: string; wheelEligible?: boolean }) {
   const { settings, contactAnimations } = useContent();
-  const tutorial = useHomeTutorial(userId, demo);
+  const tutorial = useHomeTutorial(userId, demo, settings.home_tutorial_first_login_enabled !== false);
   const bannerUrl = homeBannerLink(settings, casinoUrl);
   const bannerImage = homeBannerImage(settings, settings.portal_theme);
   const casinoBannerLayout = homeBannerLayout(settings, settings.portal_theme);
@@ -193,11 +193,12 @@ export function UserHome({ name, navigate, onClaimSpecialBonus, whatsappUrl, use
         { id: 'withdrawal', title: 'Retiros', description: 'Solicitá tu retiro', Icon: Link2 },
         { id: 'bonuses', title: 'Bonos', description: 'Elegí tu bono antes de cargar', Icon: Gift },
         { id: 'tutorial', title: 'Tutorial', description: 'Aprendé a usar la app', Icon: BookOpen },
+        { id: 'chat', title: 'Chat', description: 'Escribí a soporte', Icon: MessageCircle },
         { id: 'wheel', title: 'Ruleta', description: 'Girás una vez por día', Icon: Disc },
-      ] as const).filter(action => action.id !== 'wheel' || settings.wheel_enabled && wheelEligible).map(({ id, title, description, Icon }) => {
+      ] as const).filter(action => (action.id !== 'wheel' || settings.wheel_enabled && wheelEligible) && (action.id !== 'tutorial' || settings.home_tutorial_enabled !== false)).map(({ id, title, description, Icon }) => {
         const detail = id === 'wheel' && wheelWait ? wheelWait : description;
         const cardImagePath = isImageCardSlot(id) ? settings.portal_theme_designs?.[settings.portal_theme]?.[`${id}Path`] : null;
-        return <button className="action-card" data-theme-card={id} key={id} aria-label={id === 'tutorial' ? 'Abrir tutorial de la app' : title} onClick={() => id === 'tutorial' ? tutorial.show() : navigate(id)}>{cardImagePath ? <><StorageImage path={cardImagePath} alt="" className="action-card-image" />{id === 'wheel' && wheelWaitClock && <span className="wheel-image-countdown" role="timer">{wheelWaitClock}</span>}</> : <><span className="icon-circle"><Icon /></span><span><strong>{title}</strong><small className={id === 'wheel' && wheelWait ? 'wheel-home-wait' : undefined} role={id === 'wheel' && wheelWait ? 'timer' : undefined}>{detail}</small></span><ChevronRight /></>}</button>;
+        return <button className="action-card" data-theme-card={id} key={id} aria-label={id === 'tutorial' ? 'Abrir tutorial de la app' : title} onClick={() => id === 'tutorial' ? tutorial.show() : id === 'chat' ? onOpenChat() : navigate(id)}>{cardImagePath ? <><StorageImage path={cardImagePath} alt="" className="action-card-image" />{id === 'wheel' && wheelWaitClock && <span className="wheel-image-countdown" role="timer">{wheelWaitClock}</span>}</> : <><span className="icon-circle"><Icon /></span><span><strong>{title}</strong><small className={id === 'wheel' && wheelWait ? 'wheel-home-wait' : undefined} role={id === 'wheel' && wheelWait ? 'timer' : undefined}>{detail}</small></span><ChevronRight /></>}</button>;
       })}
     </div>
     {contacts.length > 0 && <section className="card contacts"><h2>Contactanos</h2><div className="contact-links">{contacts.map(({ name, url, mark, className, animation }) => {
@@ -401,7 +402,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     {pendingDeposit && <p id="deposit-pending-message" className="deposit-pending-message" role="status">Tu carga ya está en proceso. Podrás solicitar otra cuando sea aprobada.</p>}
   </form>;
 }
-export function Conversation({ messages, userId, busy, disabled, open, onOpenChange, onSubmit }: { messages: Message[]; userId: string; busy: boolean; disabled: boolean; open: boolean; onOpenChange: (open: boolean) => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
+export function Conversation({ messages, userId, busy, disabled, open, onOpenChange, onSubmit, showLauncher = true }: { messages: Message[]; userId: string; busy: boolean; disabled: boolean; open: boolean; onOpenChange: (open: boolean) => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void; showLauncher?: boolean }) {
   const log = useRef<HTMLElement>(null);
   const nearBottom = useRef(true);
   const [image, setImage] = useState<File | null>(null);
@@ -496,6 +497,6 @@ export function Conversation({ messages, userId, busy, disabled, open, onOpenCha
       </section>
       <form className="composer chat-composer" onSubmit={onSubmit} onReset={() => setImage(null)}>{imagePreview && <div className="chat-image-preview"><img src={imagePreview} alt="Imagen seleccionada" /><span>{image?.name}</span><button type="button" aria-label="Quitar imagen" onClick={() => { setImage(null); if (imageInput.current) imageInput.current.value = ''; }}><Trash2 size={16} /></button></div>}<input ref={imageInput} className="chat-file-input" name="image" type="file" accept="image/*" disabled={busy || disabled} onChange={event => setImage(event.target.files?.[0] ?? null)} /><button type="button" className="chat-gallery-button" aria-label="Adjuntar imagen de la galería" disabled={busy || disabled} onClick={() => imageInput.current?.click()}><Images size={20} /></button><input ref={messageInput} className="player-chat-message" name="message" aria-label="Mensaje" placeholder="Escribí un mensaje…" maxLength={2000} autoComplete="off" enterKeyHint="send" required={!image} disabled={busy || disabled} /><button className="send" aria-label="Enviar mensaje" disabled={busy || disabled}><Send size={21} /></button></form>
     </section>
-    <button ref={launcher} className="player-chat-launcher" type="button" aria-label={open ? 'Cerrar chat de soporte' : 'Abrir chat de soporte'} aria-expanded={open} onClick={() => onOpenChange(!open)}><MessageCircle size={22} /><span>CHAT</span></button>
+    {showLauncher && <button ref={launcher} className="player-chat-launcher" type="button" aria-label={open ? 'Cerrar chat de soporte' : 'Abrir chat de soporte'} aria-expanded={open} onClick={() => onOpenChange(!open)}><MessageCircle size={22} /><span>CHAT</span></button>}
   </div>;
 }

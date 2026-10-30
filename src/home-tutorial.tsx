@@ -57,11 +57,11 @@ function needsTutorial(userId: string, demo: boolean) {
   try { return window.localStorage.getItem(key) !== 'done'; } catch { return true; }
 }
 
-export function useHomeTutorial(userId: string, demo: boolean) {
-  const [mode, setMode] = useState<'required' | 'replay' | null>(() => needsTutorial(userId, demo) ? 'required' : null);
+export function useHomeTutorial(userId: string, demo: boolean, firstLoginEnabled = true) {
+  const [mode, setMode] = useState<'required' | 'replay' | null>(() => firstLoginEnabled && needsTutorial(userId, demo) ? 'required' : null);
   useEffect(() => {
-    setMode(needsTutorial(userId, demo) ? 'required' : null);
-  }, [demo, userId]);
+    setMode(firstLoginEnabled && needsTutorial(userId, demo) ? 'required' : null);
+  }, [demo, firstLoginEnabled, userId]);
   const finish = useCallback(() => {
     if (!demo && userId) {
       const key = storageKey(userId);

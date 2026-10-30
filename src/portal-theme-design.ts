@@ -21,7 +21,7 @@ export const cardSlots = [
   { id: 'install', label: 'Instalar' },
 ] as const;
 export type CardSlot = typeof cardSlots[number]['id'];
-export const imageCardSlots = ['deposit', 'withdrawal', 'bonuses', 'tutorial', 'wheel'] as const;
+export const imageCardSlots = ['deposit', 'withdrawal', 'bonuses', 'tutorial', 'wheel', 'chat'] as const;
 export type ImageCardSlot = typeof imageCardSlots[number];
 export const isImageCardSlot = (slot: CardSlot): slot is ImageCardSlot => (imageCardSlots as readonly string[]).includes(slot);
 export type CardStyle = { background: string; borderColor: string; borderWidth: number; radius: number };
@@ -51,11 +51,13 @@ export type ThemeDesign = {
   bonusesPath?: string | null;
   tutorialPath?: string | null;
   wheelPath?: string | null;
+  chatPath?: string | null;
   depositImageLayout?: ThemeCardImageLayout;
   withdrawalImageLayout?: ThemeCardImageLayout;
   bonusesImageLayout?: ThemeCardImageLayout;
   tutorialImageLayout?: ThemeCardImageLayout;
   wheelImageLayout?: ThemeCardImageLayout;
+  chatImageLayout?: ThemeCardImageLayout;
   logoPath?: string | null;
   cards?: Partial<Record<CardSlot, CardStyle>>;
 };

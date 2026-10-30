@@ -43,6 +43,26 @@ export function PortalBannersAdmin({ theme, baseTheme, demo }: { theme: PortalTh
     setBusy(false);
   }
 
+  async function toggleHomeTutorial() {
+    if (demo || !supabase || busy) return;
+    setBusy(true); setError(''); setNotice('');
+    const next = settings.home_tutorial_enabled === false;
+    const result = await supabase.from('app_settings').update({ home_tutorial_enabled: next }).eq('id', true).select('home_tutorial_enabled').single();
+    if (result.error) setError('No pudimos guardar la visibilidad del tutorial. Revisá la migración 083 y tus permisos.');
+    else { reloadPromotions(); setNotice(next ? 'Tutorial del inicio activado.' : 'Tutorial del inicio oculto.'); }
+    setBusy(false);
+  }
+
+  async function toggleFirstLoginTutorial() {
+    if (demo || !supabase || busy) return;
+    setBusy(true); setError(''); setNotice('');
+    const next = settings.home_tutorial_first_login_enabled === false;
+    const result = await supabase.from('app_settings').update({ home_tutorial_first_login_enabled: next }).eq('id', true).select('home_tutorial_first_login_enabled').single();
+    if (result.error) setError('No pudimos guardar el tutorial del primer ingreso. Revisá la migración 083 y tus permisos.');
+    else { reloadPromotions(); setNotice(next ? 'Tutorial del primer ingreso activado.' : 'Tutorial del primer ingreso desactivado.'); }
+    setBusy(false);
+  }
+
   async function persist(next: PortalBanner[], savedBannerId: string | null, message: string) {
     if (demo || !supabase) return;
     setBusy(true); setError(''); setNotice('');
@@ -97,6 +117,18 @@ export function PortalBannersAdmin({ theme, baseTheme, demo }: { theme: PortalTh
       <button type="button" className={`external-chat-toggle${settings.home_banners_visible !== false ? ' is-active' : ''}`} role="switch" aria-label="Mostrar banners en el inicio" aria-checked={settings.home_banners_visible !== false} disabled={busy || demo} onClick={() => void toggleHomeBanners()}>
         <span className="external-chat-toggle-knob" /><span>{busy ? 'Guardando…' : settings.home_banners_visible !== false ? 'Visibles' : 'Ocultos'}</span>
       </button>
+      <div className="portal-visibility-setting">
+        <div><strong>Tutorial en el inicio</strong><p>Mostrá u ocultá la tarjeta Tutorial sin afectar el tutorial obligatorio del primer ingreso.</p></div>
+        <button type="button" className={`external-chat-toggle${settings.home_tutorial_enabled !== false ? ' is-active' : ''}`} role="switch" aria-label="Mostrar tutorial en el inicio" aria-checked={settings.home_tutorial_enabled !== false} disabled={busy || demo} onClick={() => void toggleHomeTutorial()}>
+          <span className="external-chat-toggle-knob" /><span>{busy ? 'Guardando…' : settings.home_tutorial_enabled !== false ? 'Visible' : 'Oculto'}</span>
+        </button>
+      </div>
+      <div className="portal-visibility-setting">
+        <div><strong>Tutorial obligatorio del primer ingreso</strong><p>Controlá si los usuarios nuevos deben completar la guía antes de usar la app.</p></div>
+        <button type="button" className={`external-chat-toggle${settings.home_tutorial_first_login_enabled !== false ? ' is-active' : ''}`} role="switch" aria-label="Activar tutorial obligatorio del primer ingreso" aria-checked={settings.home_tutorial_first_login_enabled !== false} disabled={busy || demo} onClick={() => void toggleFirstLoginTutorial()}>
+          <span className="external-chat-toggle-knob" /><span>{busy ? 'Guardando…' : settings.home_tutorial_first_login_enabled !== false ? 'Activo' : 'Apagado'}</span>
+        </button>
+      </div>
     </section>
     {error && <p className="alert error" role="alert">{error}</p>}
     {notice && <p className="alert" role="status">{notice}</p>}
