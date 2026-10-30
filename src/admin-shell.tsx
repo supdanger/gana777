@@ -4,6 +4,7 @@ import {
   LayoutDashboard, LogOut, Menu, MessagesSquare, MessageCircle, PhoneCall, UserCog, Users, X, PanelsTopLeft, UserRound, Layers3, BellRing, Palette, Settings2,
 } from 'lucide-react';
 import { Brand, titles, type Page } from './user-views';
+import { AdminPageGuide } from './admin-guides';
 import { canOpenAdminPage, type StaffPermissions } from './staff';
 
 type PendingCounts = { deposit: number; withdrawal: number; chat: number; externalChat: number; access: number };
@@ -92,7 +93,7 @@ export function AdminShell({ page, counts, permissions, superAdmin, staffName, a
           <span><strong>{staffName}</strong><small>{superAdmin ? 'Superadministrador' : 'Cajero'}</small></span>
         </div>
       </header>
-      <main className={`app admin admin-content page-${page}`}>{children}</main>
+      <main className={`app admin admin-content page-${page}`}><AdminPageGuide key={page} page={page} />{children}</main>
     </section>
   </div>;
 }
