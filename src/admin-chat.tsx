@@ -45,7 +45,9 @@ export function AdminChat({ inbox, selectedId, demo, canManageExternalLinks, onS
   const messageLog = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   const activeThreadId = useRef(selectedId);
+  const externalLinksRef = useRef(externalLinks);
   activeThreadId.current = selectedId;
+  externalLinksRef.current = externalLinks;
   const selected = inbox.find(row => row.user_id === selectedId);
   const selectedSubtitle = selected ? [
     selected.completed_at ? 'Conversación completada' : '',
@@ -82,8 +84,14 @@ export function AdminChat({ inbox, selectedId, demo, canManageExternalLinks, onS
         const message = payload.new as Message;
         setMessages(old => old.some(item => item.id === message.id) ? old : [...old, { ...message, source: 'app' }]);
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'external_chat_messages' }, () => loadLatest())
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'external_chat_threads' }, () => loadLatest())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'external_chat_messages' }, payload => {
+        const message = payload.new as { thread_id?: string };
+        if (message.thread_id && externalLinksRef.current.some(link => link.id === message.thread_id)) loadLatest();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'external_chat_threads' }, payload => {
+        const thread = payload.new as { linked_user_id?: string | null };
+        if (thread.linked_user_id === selectedId) loadLatest();
+      })
       .subscribe();
     return () => { alive = false; void db.removeChannel(channel); };
   }, [selectedId, demo]);

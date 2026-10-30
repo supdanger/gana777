@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Image as ImageIcon } from 'lucide-react';
 import { supabase } from './lib';
 import { compressReceipt } from './image-compression';
@@ -40,20 +40,41 @@ export function useChatImagePreview(file: File | null): string {
 }
 
 export function ChatImage({ path, source = 'app' }: { path: string; source?: 'app' | 'external' }) {
+  const slot = useRef<HTMLSpanElement>(null);
+  const [nearViewport, setNearViewport] = useState(false);
   const [url, setUrl] = useState('');
   const [failed, setFailed] = useState(false);
   useEffect(() => {
-    if (!supabase) return;
+    const element = slot.current;
+    if (!element || nearViewport || !('IntersectionObserver' in window)) {
+      setNearViewport(true);
+      return;
+    }
+    const root = element.closest('.admin-chat-messages, .player-chat-log');
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        setNearViewport(true);
+        observer.disconnect();
+      }
+    }, { root, rootMargin: '240px 0px' });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [nearViewport]);
+  useEffect(() => {
+    if (!nearViewport || !supabase) return;
     let alive = true;
     setUrl(''); setFailed(false);
-    void supabase.storage.from(source === 'external' ? 'external-chat-files' : bucket).createSignedUrl(path, 86400).then(({ data, error }) => {
+    void supabase.storage.from(source === 'external' ? 'external-chat-files' : bucket).createSignedUrl(path, source === 'external' ? 3600 : 86400).then(({ data, error }) => {
       if (!alive) return;
       if (error || !data?.signedUrl) setFailed(true);
       else setUrl(data.signedUrl);
-    });
+    }).catch(() => { if (alive) setFailed(true); });
     return () => { alive = false; };
-  }, [path, source]);
-  if (failed) return <span className="chat-image-error">No pudimos abrir la imagen.</span>;
-  if (!url) return <span className="chat-image-loading"><ImageIcon size={18} /> Cargando imagen…</span>;
-  return <a className="chat-image" href={url} target="_blank" rel="noreferrer" aria-label="Abrir imagen adjunta"><img src={url} alt="Imagen adjunta" loading="lazy" /></a>;
+  }, [path, source, nearViewport]);
+  const stateClass = source === 'external' ? 'external-chat-image-loading' : 'chat-image-loading';
+  return <span className="chat-image-slot" ref={slot}>
+    {failed ? <span className="chat-image-error">No pudimos abrir la imagen.</span>
+      : !url ? <span className={stateClass}><ImageIcon size={18} /> Cargando imagen…</span>
+        : <a className={`chat-image${source === 'external' ? ' external-chat-image-link' : ''}`} href={url} target="_blank" rel="noreferrer" aria-label="Abrir imagen adjunta"><img className={source === 'external' ? 'external-chat-image' : undefined} src={url} alt="Imagen adjunta" loading="lazy" /></a>}
+  </span>;
 }

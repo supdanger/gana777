@@ -113,6 +113,7 @@ function App() {
   const [sacStation, setSacStation] = useState<number | null>(() => parseSacStation(window.localStorage.getItem(SAC_STATION_KEY)));
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [withdrawalParts, setWithdrawalParts] = useState<WithdrawalPart[]>([]);
+  const [withdrawalReload, setWithdrawalReload] = useState(0);
   const [partPreview, setPartPreview] = useState<{ key: string; url: string } | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [chatBubbleOpen, setChatBubbleOpen] = useState(false);
@@ -162,11 +163,12 @@ function App() {
   const playerHistoryReady = useRef(false);
   const playerHistoryClosing = useRef(false);
   const playerPageRef = useRef<Page>('home');
+  const currentPageRef = useRef(page);
   const playerPopHandler = useRef<((event: PopStateEvent) => void) | null>(null);
   const depositTrigger = useRef<HTMLButtonElement | null>(null);
   const bankAssignmentId = useRef<string | null>(null);
   const userId = session?.user.id ?? 'demo';
-  useEffect(() => { playerPageRef.current = page; }, [page]);
+  useEffect(() => { playerPageRef.current = page; currentPageRef.current = page; }, [page]);
   useEffect(() => {
     if (adminApp || demo || !session || !supabase) return;
     const client = supabase;
@@ -370,15 +372,14 @@ function App() {
     const db = supabase;
     let alive = true;
     async function refresh() {
-      const requestPromise = adminApp && page === 'history' ? Promise.resolve({ data: [] as RequestRow[], error: null }) : (async () => {
+      // El historial de retiros se carga al abrir Retiros; el inicio solo carga los datos del jugador.
+      const requestPromise = adminApp ? Promise.resolve({ data: [] as RequestRow[], error: null }) : (async () => {
         let requestQuery = db.from('request_summaries').select(REQUEST_COLUMNS).order('created_at', { ascending: false });
-        if (adminApp) requestQuery = requestQuery.neq('kind', 'deposit');
-        else requestQuery = requestQuery.eq('user_id', session!.user.id);
+        requestQuery = requestQuery.eq('user_id', session!.user.id);
         const first = await requestQuery;
         if (!missingBonusAmount(first.error) && !missingDepositRoute(first.error)) return first;
         let legacyQuery = db.from('request_summaries').select(REQUEST_COLUMNS_LEGACY).order('created_at', { ascending: false });
-        if (adminApp) legacyQuery = legacyQuery.neq('kind', 'deposit');
-        else legacyQuery = legacyQuery.eq('user_id', session!.user.id);
+        legacyQuery = legacyQuery.eq('user_id', session!.user.id);
         const second = await legacyQuery;
         return { ...second, data: (second.data ?? []).map(row => ({ ...row, bonus_amount: 0 })) };
       })();
@@ -391,10 +392,8 @@ function App() {
       const playerContactQuery = adminApp ? Promise.resolve({ data: null, error: null }) : db.rpc('get_my_whatsapp_url');
       const playerProfileQuery = adminApp ? Promise.resolve({ data: null, error: null }) : db.from('user_profiles').select('username').eq('user_id', session!.user.id).maybeSingle();
       const playerCasinoQuery = adminApp ? Promise.resolve({ data: null, error: null }) : db.from('player_casino_links').select('url').eq('user_id', session!.user.id).maybeSingle();
-      const partsQuery = adminApp && page === 'history'
+      const partsQuery = adminApp
         ? Promise.resolve({ data: [] as WithdrawalPart[], error: null })
-        : adminApp
-        ? db.from('withdrawal_parts').select('request_id,part_number,amount,receipt_path,paid_at,source_bank_account_id,source_bank_name,source_alias')
         : db.from('withdrawal_parts').select('request_id,part_number,amount,receipt_path,paid_at');
       const [r, m, role, pendingWithdrawals, context, playerContact, playerProfile, playerCasino, partsResult] = await Promise.all([
         requestPromise,
@@ -410,7 +409,8 @@ function App() {
       if (!alive) return;
       const failure = r.error ?? m.error ?? role.error ?? pendingWithdrawals.error ?? context.error ?? partsResult.error;
       if (failure) { setError(publicError(failure)); return; }
-      setRequests(r.data as RequestRow[]); setWithdrawalParts((partsResult.data ?? []) as WithdrawalPart[]); setMessages(m.data as Message[]);
+      if (!adminApp) { setRequests(r.data as RequestRow[]); setWithdrawalParts((partsResult.data ?? []) as WithdrawalPart[]); }
+      setMessages(m.data as Message[]);
       setIsAdmin(role.data === true);
       if (!adminApp) setPlayerWhatsAppUrl(!playerContact.error && typeof playerContact.data === 'string' ? playerContact.data : null);
       if (!adminApp) setPlayerUsername(!playerProfile.error && typeof playerProfile.data?.username === 'string' ? playerProfile.data.username : null);
@@ -441,16 +441,39 @@ function App() {
     const onFocus = () => { if (!adminApp) void refresh(); };
     window.addEventListener('focus', onFocus);
     const channel = db.channel(`updates-${session.user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => { void refresh(); setDepositReload(value => value + 1); setHistoryReload(value => value + 1); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => { void refresh(); if (adminApp && currentPageRef.current === 'withdrawal') setWithdrawalReload(value => value + 1); setDepositReload(value => value + 1); setHistoryReload(value => value + 1); })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'deposit_credits' }, () => setLeaderboardReload(value => value + 1))
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'withdrawal_parts' }, () => void refresh())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'withdrawal_parts' }, () => { void refresh(); if (adminApp && currentPageRef.current === 'withdrawal') setWithdrawalReload(value => value + 1); })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => { if (!adminApp) void refresh(); })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'external_chat_messages' }, () => { if (!adminApp) void refresh(); })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'external_chat_threads' }, () => { if (!adminApp) void refresh(); })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'admin_permissions', filter: `user_id=eq.${session.user.id}` }, () => void refresh())
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'cashier_profiles', filter: `user_id=eq.${session.user.id}` }, () => void refresh()).subscribe();
     return () => { alive = false; window.removeEventListener('focus', onFocus); void db.removeChannel(channel); };
-  }, [session, sacStation]);
+  }, [session, sacStation, adminApp]);
+  useEffect(() => {
+    if (!adminApp || page !== 'withdrawal' || !session || !supabase) return;
+    let alive = true;
+    void (async () => {
+      const [result, parts] = await Promise.all([
+        supabase!.from('request_summaries').select(REQUEST_COLUMNS).neq('kind', 'deposit').order('created_at', { ascending: false }),
+        supabase!.from('withdrawal_parts').select('request_id,part_number,amount,receipt_path,paid_at,source_bank_account_id,source_bank_name,source_alias'),
+      ]);
+      let rows = (result.data ?? []) as RequestRow[];
+      let requestError = result.error;
+      if (missingBonusAmount(result.error) || missingDepositRoute(result.error)) {
+        const legacy = await supabase!.from('request_summaries').select(REQUEST_COLUMNS_LEGACY).neq('kind', 'deposit').order('created_at', { ascending: false });
+        requestError = legacy.error;
+        rows = (legacy.data ?? []).map(row => ({ ...row, bonus_amount: 0 })) as RequestRow[];
+      }
+      if (!alive) return;
+      const failure = requestError ?? parts.error;
+      if (failure) { setError(publicError(failure)); return; }
+      setRequests(rows);
+      setWithdrawalParts((parts.data ?? []) as WithdrawalPart[]);
+    })();
+    return () => { alive = false; };
+  }, [adminApp, page, session?.user.id, withdrawalReload]);
   useEffect(() => {
     if (!adminApp || !session || !supabase) return;
     const db = supabase;
