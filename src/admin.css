@@ -1261,7 +1261,9 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .portal-extra-admin { display: grid; gap: 22px; margin-top: 28px; }
 .bonus-special-toggle { display: flex !important; flex-direction: row !important; align-items: center; gap: 8px; }
 .bonus-special-toggle input { width: auto !important; }
-.special-bonus-image-editor { grid-column: 1 / -1; display: grid; gap: 10px; width: 100%; }
+.special-bonus-image-editor { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; width: 100%; min-width: 0; }
+.bonus-deposit-image-editor { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: start; gap: 8px; min-width: 0; }
+.bonus-deposit-image-editor > img { display: block; width: min(100%, 420px); max-width: 100%; height: auto; aspect-ratio: 3.5 / 1; object-fit: contain; border: 1px solid var(--panel-border, #75418b); border-radius: 10px; background: #100b15; }
 .bonus-offer:has(.special-bonus-image-editor) { flex-wrap: wrap; }
 .special-bonus-image-editor { flex: 0 0 100%; }
 .bonus-offer .special-banner-copy button { border: 1px solid #c357f3; color: #fff; background: linear-gradient(135deg, #a435d5, #5c1687); }
