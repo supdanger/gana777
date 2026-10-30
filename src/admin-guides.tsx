@@ -145,14 +145,15 @@ export function AdminPageGuide({ page }: { page: Page }) {
   const returnFocus = useRef<HTMLElement | null>(null);
   const guide = guides[page] ?? { intro: 'Ayuda rápida para usar este apartado.', steps: ['Revisá las opciones disponibles.', 'Guardá los cambios y comprobá el resultado.'] };
   const title = page === 'external-chat-admin' ? 'Configuración del chat externo' : titles[page];
-  const PageIcon = ({
+  const pageIcons: Partial<Record<Page, typeof BookOpen>> = {
     home: Activity, deposit: ArrowDownToLine, withdrawal: ArrowUpFromLine, chat: MessagesSquare,
     'external-chat': MessageCircle, announcements: BellRing, 'access-requests': UserRound,
     users: Users, platform: Layers3, shifts: Clock3, referrals: Gift, wheel: Disc,
     history: History, contacts: PhoneCall, portal: PanelsTopLeft, themes: Palette,
     bonuses: Gift, accounts: Landmark, telegram: BellRing, cashiers: UserCog,
     'external-chat-admin': Settings2,
-  } satisfies Partial<Record<Page, typeof BookOpen>>)[page] ?? BookOpen;
+  };
+  const PageIcon = pageIcons[page] ?? BookOpen;
   const close = useCallback(() => setOpen(false), []);
   useEffect(() => {
     if (!open) { setIndex(0); return; }
