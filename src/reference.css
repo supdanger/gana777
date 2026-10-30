@@ -1547,15 +1547,16 @@ body:has(.user-app.theme-halloween), body:has(.user-login.theme-halloween) { bac
 .user-app.page-bonuses .player-bonuses { margin-bottom: 12px; }
 .deposit-selected-bonus, .deposit-bonus-empty { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 14px; padding: 13px 14px; border: 1px solid #9e42c5; border-radius: 12px; background: linear-gradient(120deg, #30123e, #17101d 78%); box-shadow: 0 0 18px #a23aca30; }
 .deposit-selected-bonus > div { min-width: 0; }
-.deposit-selected-bonus:has(.deposit-selected-bonus-image) { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
-.deposit-selected-bonus:has(.deposit-selected-bonus-image) > button { grid-column: -2; }
-.deposit-selected-bonus-image { grid-column: 1 / -1; display: block; width: 100%; height: auto; aspect-ratio: 3.5 / 1; border: 1px solid #75418b; border-radius: 9px; object-fit: cover; object-position: center; }
+.deposit-selected-bonus:has(.deposit-selected-bonus-image-button) { display: block; padding: 0; border: 0; background: transparent; box-shadow: none; }
+.deposit-selected-bonus-image { display: block; width: 100%; height: auto; aspect-ratio: 3.5 / 1; object-fit: cover; object-position: center; }
 .deposit-selected-bonus .deposit-bonus-selected-heading { display: flex; align-items: center; gap: 7px; flex: 0 0 auto; color: #e3a8ff; }
 .deposit-selected-bonus .deposit-bonus-selected-heading strong { color: #e3a8ff; }
 .deposit-selected-bonus strong, .deposit-selected-bonus small { display: block; }
 .deposit-selected-bonus strong { color: #fff; }
 .deposit-selected-bonus small { margin-top: 3px; color: #c3b1cd; font-size: 11px; }
 .deposit-selected-bonus button, .deposit-bonus-empty button { flex: 0 0 auto; min-height: 34px; padding: 6px 10px; border: 1px solid #9141b2; border-radius: 8px; background: #291433; color: #f0caff; font-size: 12px; font-weight: 750; }
+.deposit-selected-bonus .deposit-selected-bonus-image-button { display: block; width: 100%; min-height: 0; padding: 0; overflow: hidden; border: 1px solid #a12eea; border-radius: 12px; cursor: pointer; }
+.deposit-selected-bonus-image-button:focus-visible { outline: 2px solid #e4a5ff; outline-offset: 3px; }
 .deposit-bonus-empty { align-items: stretch; flex-direction: column; gap: 11px; padding: 15px; color: #fff; }
 .deposit-bonus-empty > div { display: grid; gap: 4px; }
 .deposit-bonus-empty > div strong { color: #fff; font-size: 16px; }
@@ -1563,6 +1564,7 @@ body:has(.user-app.theme-halloween), body:has(.user-login.theme-halloween) { bac
 .deposit-bonus-empty button { display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: center; gap: 8px; border-color: #d58aff; background: linear-gradient(120deg, #a62bd4, #70208c); color: #fff; font-size: 14px; font-weight: 900; box-shadow: 0 4px 15px #9b32c866; }
 .deposit-bonus-empty .deposit-bonus-image-button { position: relative; width: 100%; min-height: 0; aspect-ratio: 4 / 1; padding: 0; overflow: hidden; border: 0; border-radius: 9px; background: #100b15; box-shadow: 0 4px 15px #9b32c866; }
 .user-app.page-deposit .deposit-bonus-prompt { margin-bottom: 12px; padding: 8px; border-color: #704087; background: #100b15; }
+.user-app.page-deposit .deposit-bonus-prompt:has(.deposit-selected-bonus-image-button) { padding: 0; border: 0; background: transparent; }
 .user-app.page-deposit .deposit-bonus-prompt .deposit-bonus-empty,
 .user-app.page-deposit .deposit-bonus-prompt .deposit-selected-bonus { margin: 0; }
 .user-app.page-deposit .deposit-amount { margin-top: 0; border: 1px solid #8a36ad; background: linear-gradient(145deg, #17101d, #0b0a10 72%); box-shadow: 0 0 18px #922ac52b, inset 0 1px #d58aff18; }
