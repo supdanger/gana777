@@ -5,8 +5,8 @@ Deno.serve(async request => {
   if (request.method !== 'POST') return json({ error: 'Método no permitido.' }, 405);
   try {
     const { db } = await authenticate(request);
-    const { data: admin, error: permissionError } = await db.rpc('is_super_admin');
-    if (permissionError || !admin) throw new HttpError(403, 'Solo el superadministrador puede probar estos avisos.');
+    const { data: allowed, error: permissionError } = await db.rpc('has_admin_permission', { permission_name: 'telegram' });
+    if (permissionError || !allowed) throw new HttpError(403, 'No tenés permiso para probar estos avisos.');
     const input = await request.json().catch(() => null) as { route?: unknown } | null;
     const route = typeof input?.route === 'string' ? input.route : '';
     if (!/^(withdrawals|deposits_all|shifts|sac_[1-5])$/.test(route)) throw new HttpError(400, 'Grupo inválido.');

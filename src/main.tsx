@@ -58,7 +58,7 @@ import { TelegramAdmin } from './telegram-admin';
 import { ThemesAdmin } from './themes-admin';
 import { deviceFootprint } from './device-footprint';
 import { themeSurface } from './portal-theme-design';
-import { allStaffPermissions, canOpenAdminPage, noStaffPermissions, staffPermissionPages, staffSignInEmail, type StaffPermissions } from './staff';
+import { allStaffPermissions, canOpenAdminPage, noStaffPermissions, staffPermissionPages, staffPermissionRoute, staffSignInEmail, type StaffPermissions } from './staff';
 import './styles.css';
 import './mobile.css';
 import './reference.css';
@@ -479,7 +479,7 @@ function App() {
     return () => { alive = false; window.removeEventListener('focus', onFocus); void db.removeChannel(channel); };
   }, [session?.user.id, chatReload]);
   useEffect(() => {
-    if (!adminApp || !session || !supabase || demo || (!staffContext.superAdmin && !staffContext.permissions.chat)) {
+    if (!adminApp || !session || !supabase || demo || (!staffContext.superAdmin && !staffContext.permissions.external_chat)) {
       setExternalChatInbox([]);
       return;
     }
@@ -510,9 +510,9 @@ function App() {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'external_chat_threads' }, () => void refreshExternalInbox())
       .subscribe();
     return () => { alive = false; window.removeEventListener('focus', onFocus); void db.removeChannel(channel); };
-  }, [session?.user.id, externalChatReload, demo, staffContext.superAdmin, staffContext.permissions.chat]);
+  }, [session?.user.id, externalChatReload, demo, staffContext.superAdmin, staffContext.permissions.external_chat]);
   useEffect(() => {
-    if (!adminApp || !session || !supabase || !staffContext.permissions.users || demo) { setAccessRequestCount(0); return; }
+    if (!adminApp || !session || !supabase || (!staffContext.superAdmin && !staffContext.permissions.access_requests) || demo) { setAccessRequestCount(0); return; }
     let alive = true;
     const refreshCount = async () => {
       try {
@@ -530,7 +530,7 @@ function App() {
     void refreshCount();
     window.addEventListener('focus', refreshCount);
     return () => { alive = false; window.clearInterval(timer); window.removeEventListener('focus', refreshCount); };
-  }, [session?.user.id, staffContext.permissions.users, demo]);
+  }, [session?.user.id, staffContext.superAdmin, staffContext.permissions.access_requests, demo]);
   useEffect(() => {
     if (adminApp || demo || page !== 'deposit' || !session || !supabase) return;
     let alive = true;
@@ -574,7 +574,7 @@ function App() {
   useEffect(() => {
     if (!adminApp || !isAdmin || demo || canOpenAdminPage(page, staffContext.permissions, staffContext.superAdmin)) return;
     const first = staffPermissionPages.find(candidate => staffContext.permissions[candidate]);
-    if (first) navigate(first);
+    if (first) navigate(staffPermissionRoute[first]);
   }, [page, isAdmin, demo, staffContext]);
   useEffect(() => {
     if (!adminApp || demo || page !== 'deposit' || !session || !supabase || !staffReady) return;
@@ -1071,12 +1071,12 @@ function App() {
       {adminApp && page === 'access-requests' && <AdminPlayerAccess demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'contacts' && <ContactAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'portal' && <PortalAdmin demo={demo} busy={busy} action={action} canEditThemes={demo || staffContext.superAdmin} />}
-      {adminApp && page === 'themes' && staffContext.superAdmin && <ThemesAdmin demo={demo} />}
-      {adminApp && page === 'announcements' && staffContext.superAdmin && <ScheduledAnnouncementsAdmin demo={demo} />}
-      {adminApp && page === 'telegram' && staffContext.superAdmin && <TelegramAdmin demo={demo} />}
+      {adminApp && page === 'themes' && <ThemesAdmin demo={demo} />}
+      {adminApp && page === 'announcements' && <ScheduledAnnouncementsAdmin demo={demo} />}
+      {adminApp && page === 'telegram' && <TelegramAdmin demo={demo} />}
       {adminApp && page === 'bonuses' && <BonusAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'referrals' && <ReferralRewardsAdmin demo={demo} busy={busy} action={action} userId={userId} superAdmin={demo || staffContext.superAdmin} />}
-      {adminApp && page === 'wheel' && <WheelAdmin demo={demo} busy={busy} action={action} userId={userId} superAdmin={demo || staffContext.superAdmin} canEditPrizes={demo || staffContext.superAdmin || staffContext.permissions.bonuses} />}
+      {adminApp && page === 'wheel' && <WheelAdmin demo={demo} busy={busy} action={action} userId={userId} superAdmin={demo || staffContext.superAdmin} canEditPrizes={demo || staffContext.superAdmin || staffContext.permissions.wheel} />}
       {!adminApp && page === 'wheel' && settings.wheel_enabled && wheelEligibilityReady && wheelEligible && <UserWheel demo={demo} userId={userId} />}
       {adminApp && page === 'accounts' && <AccountAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'shifts' && <ShiftAdmin demo={demo} busy={busy} action={action} station={sacStation} onStation={chooseSac} />}

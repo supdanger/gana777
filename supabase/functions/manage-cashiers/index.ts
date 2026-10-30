@@ -1,6 +1,9 @@
 import { authenticate, cors, HttpError, json, serverClient } from '../_shared/http.ts';
 
-const permissionNames = ['home','deposit','withdrawal','history','users','contacts','bonuses','accounts','shifts','chat'] as const;
+const permissionNames = [
+  'home','deposit','withdrawal','chat','external_chat','announcements','access_requests','users','platform',
+  'shifts','referrals','wheel','history','contacts','portal','themes','bonuses','accounts','telegram',
+] as const;
 type PermissionName = typeof permissionNames[number];
 
 function record(value: unknown): Record<string, unknown> {

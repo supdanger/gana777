@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { canOpenAdminPage, noStaffPermissions, staffSignInEmail } from '../src/staff.ts';
+import { canOpenAdminPage, noStaffPermissions, staffPermissionGroups, staffPermissionPages, staffPermissionRoute, staffSignInEmail } from '../src/staff.ts';
 
 test('convierte el usuario del cajero a un correo interno', () => {
   assert.equal(staffSignInEmail('Carlos_1'), 'carlos_1@staff.gana777.internal');
@@ -16,25 +16,35 @@ test('un cajero abre solamente apartados habilitados y el superadmin abre todos'
   assert.equal(canOpenAdminPage('cashiers', permissions, true), true);
 });
 
-test('Recomendados conserva los permisos de Usuarios o Bonos', () => {
-  assert.equal(canOpenAdminPage('referrals', noStaffPermissions, false), false);
-  assert.equal(canOpenAdminPage('referrals', { ...noStaffPermissions, deposit: true, withdrawal: true }, false), false);
-  assert.equal(canOpenAdminPage('referrals', { ...noStaffPermissions, users: true }, false), true);
-  assert.equal(canOpenAdminPage('referrals', { ...noStaffPermissions, bonuses: true }, false), true);
-  assert.equal(canOpenAdminPage('referrals', noStaffPermissions, true), true);
+test('cada apartado nuevo requiere su propio permiso', () => {
+  const routes = [
+    ['external_chat', 'external-chat', { chat: true }],
+    ['access_requests', 'access-requests', { users: true }],
+    ['platform', 'platform', { users: true }],
+    ['referrals', 'referrals', { users: true, bonuses: true }],
+    ['wheel', 'wheel', { deposit: true, bonuses: true }],
+    ['portal', 'portal', { contacts: true }],
+    ['announcements', 'announcements', { chat: true }],
+    ['themes', 'themes', { portal: true }],
+    ['telegram', 'telegram', { contacts: true }],
+  ];
+  for (const [permission, page, inherited] of routes) {
+    assert.equal(staffPermissionRoute[permission], page);
+    assert.equal(canOpenAdminPage(page, { ...noStaffPermissions, ...inherited }, false), false);
+    assert.equal(canOpenAdminPage(page, { ...noStaffPermissions, [permission]: true }, false), true);
+    assert.equal(canOpenAdminPage(page, noStaffPermissions, true), true);
+  }
 });
 
-test('Ruleta la abren Bonos, Cargas o el superadmin', () => {
-  assert.equal(canOpenAdminPage('wheel', noStaffPermissions, false), false);
-  assert.equal(canOpenAdminPage('wheel', { ...noStaffPermissions, deposit: true }, false), true);
-  assert.equal(canOpenAdminPage('wheel', { ...noStaffPermissions, bonuses: true }, false), true);
-  assert.equal(canOpenAdminPage('wheel', { ...noStaffPermissions, users: true }, false), false);
-  assert.equal(canOpenAdminPage('wheel', noStaffPermissions, true), true);
+test('configuración sensible permanece solo para el superadministrador', () => {
+  for (const page of ['cashiers', 'external-chat-admin']) {
+    assert.equal(canOpenAdminPage(page, noStaffPermissions, false), false);
+    assert.equal(canOpenAdminPage(page, noStaffPermissions, true), true);
+  }
 });
 
-test('solo el superadmin o el permiso Contactos permiten configurar el portal', () => {
-  assert.equal(canOpenAdminPage('portal', noStaffPermissions, false), false);
-  assert.equal(canOpenAdminPage('portal', { ...noStaffPermissions, users: true, bonuses: true }, false), false);
-  assert.equal(canOpenAdminPage('portal', { ...noStaffPermissions, contacts: true }, false), true);
-  assert.equal(canOpenAdminPage('portal', noStaffPermissions, true), true);
+test('el editor de cajeros muestra cada permiso delegable una sola vez', () => {
+  const displayed = staffPermissionGroups.flatMap(group => group.items.map(item => item.key));
+  assert.deepEqual([...displayed].sort(), [...staffPermissionPages].sort());
+  assert.equal(new Set(displayed).size, displayed.length);
 });

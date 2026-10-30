@@ -2,8 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Camera, KeyRound, Trash2, UserRound } from 'lucide-react';
 import { InputError } from '../supabase/functions/_shared/validation';
 import { supabase } from './lib';
-import { noStaffPermissions, staffPermissionPages, type StaffPermissionPage, type StaffPermissions } from './staff';
-import { titles } from './user-views';
+import { noStaffPermissions, staffPermissionGroups, staffPermissionPages, type StaffPermissionPage, type StaffPermissions } from './staff';
 
 type Cashier = StaffPermissions & {
   user_id: string;
@@ -36,14 +35,14 @@ export function CashierAdmin({ demo, busy, action }: { demo: boolean; busy: bool
   const [cashiers, setCashiers] = useState<Cashier[]>([]);
   const [loading, setLoading] = useState(!demo && !!supabase);
   const [loadError, setLoadError] = useState('');
-  const [newPermissions, setNewPermissions] = useState<StaffPermissions>({ ...noStaffPermissions, home: true, deposit: true });
+  const [newPermissions, setNewPermissions] = useState<StaffPermissions>({ ...noStaffPermissions });
   const [passwordId, setPasswordId] = useState<string | null>(null);
 
   async function refresh() {
     if (demo || !supabase) { setLoading(false); return; }
     const { data, error } = await supabase.from('cashier_directory').select(columns).order('created_at');
     setLoading(false);
-    if (error) { setLoadError('No pudimos cargar los cajeros. Aplicá la migración 015 y desplegá la función manage-cashiers.'); return; }
+    if (error) { setLoadError('No pudimos cargar los permisos. Aplicá la migración 075 y desplegá la función manage-cashiers.'); return; }
     setLoadError('');
     setCashiers((data ?? []) as unknown as Cashier[]);
   }
@@ -80,7 +79,7 @@ export function CashierAdmin({ demo, busy, action }: { demo: boolean; busy: bool
         catch { await refresh(); throw new InputError('El cajero fue creado, pero el icono no pudo guardarse. Podés cargarlo desde su tarjeta.'); }
       }
       element.reset();
-      setNewPermissions({ ...noStaffPermissions, home: true, deposit: true });
+      setNewPermissions({ ...noStaffPermissions });
       await refresh();
     });
   }
@@ -134,7 +133,7 @@ export function CashierAdmin({ demo, busy, action }: { demo: boolean; busy: bool
         <label>Contraseña<input name="password" type="password" minLength={8} maxLength={72} autoComplete="new-password" placeholder="Mínimo 8 caracteres" required /></label>
         <label>Icono<input name="avatar" type="file" accept="image/jpeg,image/png,image/webp" /></label>
       </div>
-      <fieldset className="cashier-permissions"><legend>Accesos iniciales</legend>{staffPermissionPages.map(permission => <label key={permission}><span>{titles[permission]}</span><input type="checkbox" role="switch" checked={newPermissions[permission]} onChange={event => setNewPermissions(value => ({ ...value, [permission]: event.target.checked }))} /></label>)}</fieldset>
+      <div className="cashier-permission-groups"><h3>Accesos iniciales</h3><p>Empezá sin accesos y activá solo lo que va a usar este cajero.</p>{staffPermissionGroups.map(group => <fieldset className="cashier-permissions" key={group.label}><legend>{group.label}</legend>{group.items.map(item => <label key={item.key}><span><strong>{item.label}</strong><small>{item.description}</small></span><input type="checkbox" role="switch" checked={newPermissions[item.key]} onChange={event => setNewPermissions(value => ({ ...value, [item.key]: event.target.checked }))} /></label>)}</fieldset>)}<p className="cashier-locked-pages">Solo superadministrador: Cajeros y configuración de Chat externo.</p></div>
       <button className="cashier-create-submit" disabled={busy || loading}>Crear cajero</button>
     </form>
     {loading ? <p className="empty">Cargando cajeros…</p> : loadError ? <p className="empty">{loadError}</p> : !cashiers.length ? <p className="empty">Todavía no creaste ningún cajero.</p> : <div className="cashier-list">{cashiers.map(cashier => <article className={`cashier-card${cashier.active ? '' : ' inactive'}`} key={cashier.user_id}>
@@ -143,7 +142,7 @@ export function CashierAdmin({ demo, busy, action }: { demo: boolean; busy: bool
         <div><strong>{cashier.display_name}</strong><small>@{cashier.username}</small></div>
         <button type="button" role="switch" aria-checked={cashier.active} onClick={() => void toggleActive(cashier)}><span />{cashier.active ? 'Activo' : 'Pausado'}</button>
       </header>
-      <div className="cashier-access-grid">{staffPermissionPages.map(permission => <button type="button" role="switch" aria-checked={cashier[permission]} className={cashier[permission] ? 'enabled' : ''} key={permission} onClick={() => void togglePermission(cashier, permission)}><span />{titles[permission]}</button>)}</div>
+      <div className="cashier-access-groups">{staffPermissionGroups.map(group => <section className="cashier-access-group" key={group.label}><h3>{group.label}</h3><div className="cashier-access-grid">{group.items.map(item => <button type="button" role="switch" aria-checked={cashier[item.key]} aria-label={`${item.label}: ${cashier[item.key] ? 'permitido' : 'sin acceso'}`} title={item.description} className={cashier[item.key] ? 'enabled' : ''} key={item.key} disabled={busy || loading} onClick={() => void togglePermission(cashier, item.key)}><span />{item.label}</button>)}</div></section>)}</div>
       {passwordId === cashier.user_id && <form className="cashier-password" onSubmit={event => void changePassword(event, cashier)}><input name="password" type="password" minLength={8} maxLength={72} autoComplete="new-password" placeholder="Nueva contraseña" required /><button disabled={busy}>Guardar contraseña</button><button type="button" onClick={() => setPasswordId(null)}>Cancelar</button></form>}
       <div className="cashier-card-actions">
         <label className="cashier-file-button"><Camera />Cambiar icono<input type="file" accept="image/jpeg,image/png,image/webp" onChange={event => void changeAvatar(cashier, event.target.files?.[0])} /></label>

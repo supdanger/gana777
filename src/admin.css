@@ -1849,6 +1849,23 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .cashier-create-submit, .cashier-card, .player-create, .player-card, .contact-settings-card, .principal-create, .principal-card,
 .bonus-create, .bonus-offer, .account-create, .account-offer { border-color: var(--panel-border); }
 .cashier-access-grid button.enabled { border-color: #75418b; background: #271832; color: #e4c2f0; }
+
+/* Los permisos de cajeros siguen la misma agrupación que el menú del panel. */
+.cashier-permission-groups { display: grid; gap: 10px; }
+.cashier-permission-groups h3 { margin: 0; color: #f5eaf8; font-size: 15px; }
+.cashier-permission-groups > p { margin: 0; color: #baadc2; font-size: 12px; line-height: 1.4; }
+.cashier-permissions { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; border-color: #47304f; }
+.cashier-permissions legend { color: #dca7ec; font-size: 11px; }
+.cashier-permissions label { min-height: 55px; border-color: #45334c; font-size: 12px; }
+.cashier-permissions label span { display: grid; gap: 2px; overflow: visible; text-overflow: clip; }
+.cashier-permissions label strong { color: #eee3f2; font-size: 12px; font-weight: 750; }
+.cashier-permissions label small { color: #a89aaf; font-size: 10px; line-height: 1.25; }
+.cashier-permission-groups .cashier-locked-pages { padding: 9px 11px; border: 1px solid #48334e; border-radius: 8px; background: #17101b; color: #b9a6c2; }
+.cashier-access-groups { display: grid; gap: 12px; padding: 12px 14px; }
+.cashier-access-group h3 { margin: 0 0 7px; color: #d7acdf; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.cashier-access-group .cashier-access-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); padding: 0; }
+.cashier-access-group .cashier-access-grid button { min-height: 37px; font-size: 11px; }
+@media (max-width: 560px) { .cashier-permissions { grid-template-columns: 1fr; } .cashier-access-group .cashier-access-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .player-edit-form, .player-password-form { background: #120d18; }
 .admin-content .announcement-days label.selected { border-color: #a442c4; background: #291734; color: #f5e9fa; }
 .admin-content .announcement-editor input:focus-visible, .admin-content .announcement-editor textarea:focus-visible,

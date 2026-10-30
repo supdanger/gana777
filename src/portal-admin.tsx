@@ -142,7 +142,7 @@ export function PortalAdmin({ demo, busy, action, canEditThemes }: { demo: boole
         {canEditThemes && Object.entries(designs).filter(([id]) => isCustomTheme(id)).map(([id, design]) => <ThemeBannerSlot key={id} theme={id as HomeBannerTheme} label={design.name || 'Tema personalizado'} path={design.casinoPath ?? null} basePath={path} fallbackTheme={themeBase({ portal_theme: id as HomeBannerTheme, portal_theme_designs: designs })} layout={layouts[id] ?? defaultHomeBannerLayoutForTheme(design.baseTheme ?? 'base')} layouts={layouts} layoutSaved={layoutSaved === id} onLayoutChange={next => changeLayout(id as HomeBannerTheme, next)} onLayoutSave={() => void saveLayout(id as HomeBannerTheme)} demo={demo} busy={busy || loading} action={action} designs={designs} onSaved={nextPath => { setDesigns(current => ({ ...current, [id]: { ...current[id], casinoPath: nextPath } })); reloadContent(); }} />)}</div>
     </div>}
     <PortalHeaderLogoAdmin demo={demo} busy={busy} action={action} canEditThemes={canEditThemes} />
-    <p className="portal-banner-permissions">Disponible para superadministradores y cajeros con permiso de Contactos.</p>
+    <p className="portal-banner-permissions">Disponible para superadministradores y cajeros con permiso de Portal.</p>
   </section>;
 }
 

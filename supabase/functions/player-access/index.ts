@@ -71,10 +71,10 @@ async function platformProfile(server: ReturnType<typeof serverClient>, userId: 
   if (error || !data) throw new HttpError(404, 'No encontramos ese usuario Platform.');
   return data;
 }
-async function requireStaff(request: Request) {
+async function requireStaff(request: Request, permission: 'access_requests' | 'platform' = 'access_requests') {
   const { db, user } = await authenticate(request);
-  const { data: allowed, error } = await db.rpc('has_admin_permission', { permission_name: 'users' });
-  if (error || !allowed) throw new HttpError(403, 'No tenés permiso para gestionar solicitudes de acceso.');
+  const { data: allowed, error } = await db.rpc('has_admin_permission', { permission_name: permission });
+  if (error || !allowed) throw new HttpError(403, `No tenés permiso para gestionar ${permission === 'platform' ? 'Platform' : 'solicitudes de acceso'}.`);
   return { user, server: serverClient() };
 }
 function missingIpColumn(error: { message?: string } | null | undefined): boolean {
@@ -405,7 +405,7 @@ Deno.serve(async request => {
     }
 
     if (action === 'admin-platform-detail') {
-      const { server } = await requireStaff(request);
+      const { server } = await requireStaff(request, 'platform');
       const userId = id(payload.user_id);
       const profile = await platformProfile(server, userId);
       const [authResult, accessResult, linkResult, referralResult, statsResult, operationsResult] = await Promise.all([
@@ -457,7 +457,7 @@ Deno.serve(async request => {
     }
 
     if (action === 'admin-platform-update') {
-      const { server } = await requireStaff(request);
+      const { server } = await requireStaff(request, 'platform');
       const userId = id(payload.user_id);
       await platformProfile(server, userId);
       const displayName = text(payload.display_name, 'Nombre visible', 1, 80);
@@ -479,7 +479,7 @@ Deno.serve(async request => {
     }
 
     if (action === 'admin-platform-link') {
-      const { server } = await requireStaff(request);
+      const { server } = await requireStaff(request, 'platform');
       const userId = id(payload.user_id);
       await platformProfile(server, userId);
       const url = casinoUrl(payload.casino_url);
@@ -490,7 +490,7 @@ Deno.serve(async request => {
     }
 
     if (action === 'admin-platform-ban') {
-      const { server } = await requireStaff(request);
+      const { server } = await requireStaff(request, 'platform');
       const userId = id(payload.user_id);
       await platformProfile(server, userId);
       if (typeof payload.suspend !== 'boolean') throw new HttpError(400, 'Estado de suspensión no válido.');
