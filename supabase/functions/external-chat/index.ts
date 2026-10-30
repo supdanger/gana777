@@ -6,6 +6,7 @@ import { parseMessage, parseUuid } from '../_shared/validation.ts';
 const allowedOrigins = new Set(['https://gana777bet.com', 'https://www.gana777bet.com', 'https://gana777bet.online', 'https://gana777.vercel.app']);
 const nicknameParts = ['Poker', 'Ruleta', 'Fichas', 'Jackpot', 'Crupier', 'Tragamonedas', 'Blackjack', 'Casino'];
 const tokenPattern = /^[A-Za-z0-9_-]{40,64}$/;
+type Thread = { id: string; nickname: string; completed_at: string | null; origin: string; linked_user_id: string | null; linked_at: string | null };
 const service = () => createClient(requiredEnv('SUPABASE_URL'), requiredEnv('SUPABASE_SERVICE_ROLE_KEY'), {
   auth: { persistSession: false, autoRefreshToken: false },
 });
@@ -42,7 +43,7 @@ async function createThread(origin: string) {
     const token = newToken();
     const nickname = `${nicknameParts[crypto.getRandomValues(new Uint32Array(1))[0] % nicknameParts.length]}${1000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 9000)}`;
     const { data, error } = await db.from('external_chat_threads').insert({ nickname, token_hash: await tokenHash(token), origin })
-      .select('id,nickname,completed_at,origin').single();
+      .select('id,nickname,completed_at,origin,linked_user_id,linked_at').single();
     if (!error && data) return { token, thread: data };
     if (error?.code !== '23505') throw new HttpError(503, 'No pudimos iniciar el chat. Intentá nuevamente.');
   }
@@ -52,18 +53,29 @@ async function createThread(origin: string) {
 async function findThread(token: unknown) {
   if (typeof token !== 'string' || !tokenPattern.test(token)) throw new HttpError(401, 'La sesión del chat venció.');
   const { data, error } = await service().from('external_chat_threads')
-    .select('id,nickname,completed_at,origin').eq('token_hash', await tokenHash(token)).maybeSingle();
+    .select('id,nickname,completed_at,origin,linked_user_id,linked_at').eq('token_hash', await tokenHash(token)).maybeSingle();
   if (error) throw new HttpError(503, 'No pudimos consultar el chat.');
   if (!data) throw new HttpError(401, 'La sesión del chat venció.');
   return data;
 }
 
-async function readMessages(threadId: string) {
+async function readMessages(thread: Thread) {
   const { data, error } = await service().from('external_chat_messages')
-    .select('id,sender_type,body,attachment_path,created_at').eq('thread_id', threadId)
+    .select('id,sender_type,body,attachment_path,created_at').eq('thread_id', thread.id)
     .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(100);
   if (error) throw new HttpError(503, 'No pudimos cargar los mensajes.');
-  return (data ?? []).reverse();
+  if (!thread.linked_user_id || !thread.linked_at) return (data ?? []).reverse();
+  const { data: appMessages, error: appError } = await service().from('messages')
+    .select('id,sender_id,body,attachment_path,created_at')
+    .eq('user_id', thread.linked_user_id).eq('external_visible', true)
+    .gte('created_at', thread.linked_at)
+    .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(100);
+  if (appError) throw new HttpError(503, 'No pudimos cargar los mensajes vinculados.');
+  return [...(data ?? []), ...(appMessages ?? []).map(message => ({
+    id: message.id,
+    sender_type: message.sender_id === thread.linked_user_id ? 'visitor' : 'staff',
+    body: message.body, attachment_path: message.attachment_path, created_at: message.created_at,
+  }))].sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id)).slice(-100);
 }
 
 async function isChatEnabled(db: ReturnType<typeof service>) {
@@ -93,10 +105,10 @@ Deno.serve(async request => {
     if (!await isChatEnabled(db)) throw new HttpError(503, 'El chat de soporte está pausado en este momento.');
 
     if (action === 'start') {
-      let thread: { id: string; nickname: string; completed_at: string | null; origin: string } | null = null;
+      let thread: Thread | null = null;
       let token = typeof input.token === 'string' ? input.token : null;
       if (token && tokenPattern.test(token)) {
-        const { data } = await db.from('external_chat_threads').select('id,nickname,completed_at,origin').eq('token_hash', await tokenHash(token)).maybeSingle();
+        const { data } = await db.from('external_chat_threads').select('id,nickname,completed_at,origin,linked_user_id,linked_at').eq('token_hash', await tokenHash(token)).maybeSingle();
         if (data?.origin === origin) thread = data;
       }
       if (!thread) {
@@ -105,7 +117,7 @@ Deno.serve(async request => {
         thread = created.thread;
       }
       await db.from('external_chat_threads').update({ last_seen_at: new Date().toISOString() }).eq('id', thread.id);
-      return jsonResponse({ token, nickname: thread.nickname, messages: await readMessages(thread.id) }, 200, origin);
+      return jsonResponse({ token, nickname: thread.nickname, link_version: thread.linked_at, messages: await readMessages(thread) }, 200, origin);
     }
 
     const thread = await findThread(input?.token);
@@ -143,15 +155,26 @@ Deno.serve(async request => {
         throw new HttpError(error.code === 'P0001' ? 429 : 503, error.code === 'P0001' ? error.message : 'No pudimos enviar el mensaje. Intentá nuevamente.');
       }
       await db.from('external_chat_threads').update({ completed_at: null, completed_by: null, last_seen_at: new Date().toISOString() }).eq('id', thread.id);
-      return jsonResponse({ nickname: thread.nickname, messages: await readMessages(thread.id) }, 200, origin);
+      return jsonResponse({ nickname: thread.nickname, link_version: thread.linked_at, messages: await readMessages(thread) }, 200, origin);
     }
-    if (action === 'read') return jsonResponse({ nickname: thread.nickname, messages: await readMessages(thread.id) }, 200, origin);
+    if (action === 'read') return jsonResponse({ nickname: thread.nickname, link_version: thread.linked_at, messages: await readMessages(thread) }, 200, origin);
     if (action === 'attachment-url') {
       const messageId = parseUuid(input?.message_id);
       const { data: message, error: messageError } = await db.from('external_chat_messages')
         .select('attachment_path').eq('id', messageId).eq('thread_id', thread.id).maybeSingle();
-      if (messageError || !message?.attachment_path) throw new HttpError(404, 'No encontramos esa imagen.');
-      const { data: signed, error: signedError } = await db.storage.from('external-chat-files').createSignedUrl(message.attachment_path, 3600);
+      if (messageError) throw new HttpError(503, 'No pudimos consultar la imagen.');
+      let imagePath = message?.attachment_path ?? null;
+      let imageBucket = 'external-chat-files';
+      if (!imagePath && thread.linked_user_id && thread.linked_at) {
+        const { data: linkedMessage, error: linkedError } = await db.from('messages')
+          .select('attachment_path').eq('id', messageId).eq('user_id', thread.linked_user_id)
+          .eq('external_visible', true).gte('created_at', thread.linked_at).maybeSingle();
+        if (linkedError) throw new HttpError(503, 'No pudimos consultar la imagen.');
+        imagePath = linkedMessage?.attachment_path ?? null;
+        imageBucket = 'chat-images';
+      }
+      if (!imagePath) throw new HttpError(404, 'No encontramos esa imagen.');
+      const { data: signed, error: signedError } = await db.storage.from(imageBucket).createSignedUrl(imagePath, 3600);
       if (signedError || !signed?.signedUrl) throw new HttpError(503, 'No pudimos cargar la imagen.');
       return jsonResponse({ url: signed.signedUrl }, 200, origin);
     }

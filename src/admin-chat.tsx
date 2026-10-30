@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { ArrowLeft, Check, CircleCheck, Copy, Images, MessageCircle, RotateCcw, Search, Send, X } from 'lucide-react';
+import { ArrowLeft, Check, CircleCheck, Copy, Images, Link2, MessageCircle, RotateCcw, Search, Send, Unlink2, X } from 'lucide-react';
 import { date, supabase, type Message } from './lib';
 import { ChatImage, removeChatImage, uploadChatImage, useChatImagePreview } from './chat-images';
 import { needsChatReply, pendingChatCount } from './admin-navigation';
@@ -9,7 +9,7 @@ import { publicError } from './security';
 export type ChatInboxRow = {
   user_id: string; username: string | null; display_name: string | null;
   last_message_id: string; last_sender_id: string; last_body: string; last_created_at: string;
-  completed_at: string | null; completed_by: string | null;
+  completed_at: string | null; completed_by: string | null; last_source?: 'app' | 'external';
 };
 type Filter = 'pending' | 'all' | 'completed';
 const PAGE_SIZE = 50;
@@ -22,8 +22,8 @@ function shortDate(value: string) {
     : new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: 'short' }).format(when);
 }
 
-export function AdminChat({ inbox, selectedId, demo, onSelect, onChanged }: {
-  inbox: ChatInboxRow[]; selectedId: string; demo: boolean;
+export function AdminChat({ inbox, selectedId, demo, canManageExternalLinks, onSelect, onChanged }: {
+  inbox: ChatInboxRow[]; selectedId: string; demo: boolean; canManageExternalLinks: boolean;
   onSelect: (id: string) => void; onChanged: () => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -40,6 +40,8 @@ export function AdminChat({ inbox, selectedId, demo, onSelect, onChanged }: {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [externalLinks, setExternalLinks] = useState<{ id: string; nickname: string }[]>([]);
+  const [unlinking, setUnlinking] = useState(false);
   const messageLog = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   const activeThreadId = useRef(selectedId);
@@ -60,7 +62,7 @@ export function AdminChat({ inbox, selectedId, demo, onSelect, onChanged }: {
     stickToBottom.current = true;
     setMessages([]); setHasMore(false); setLoading(true); setError(''); setNotice(''); setCopied(false); setImage(null);
     if (imageInput.current) imageInput.current.value = '';
-    void db.from('messages').select('id,user_id,sender_id,body,attachment_path,created_at')
+    const loadLatest = () => void db.from('unified_chat_messages').select('id,user_id,sender_id,body,attachment_path,created_at,source,external_thread_id')
       .eq('user_id', selectedId).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(PAGE_SIZE)
       .then(({ data, error: loadError }) => {
         if (!alive) return;
@@ -74,11 +76,28 @@ export function AdminChat({ inbox, selectedId, demo, onSelect, onChanged }: {
         });
         setHasMore((data ?? []).length === PAGE_SIZE);
       });
+    loadLatest();
     const channel = db.channel(`admin-chat-${selectedId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `user_id=eq.${selectedId}` }, payload => {
         const message = payload.new as Message;
-        setMessages(old => old.some(item => item.id === message.id) ? old : [...old, message]);
-      }).subscribe();
+        setMessages(old => old.some(item => item.id === message.id) ? old : [...old, { ...message, source: 'app' }]);
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'external_chat_messages' }, () => loadLatest())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'external_chat_threads' }, () => loadLatest())
+      .subscribe();
+    return () => { alive = false; void db.removeChannel(channel); };
+  }, [selectedId, demo]);
+
+  useEffect(() => {
+    if (!selectedId || demo || !supabase) { setExternalLinks([]); return; }
+    const db = supabase;
+    let alive = true;
+    const refreshLinks = () => void db.from('external_chat_threads').select('id,nickname').eq('linked_user_id', selectedId)
+      .then(({ data }) => { if (alive) setExternalLinks((data ?? []) as { id: string; nickname: string }[]); });
+    refreshLinks();
+    const channel = db.channel(`admin-chat-links-${selectedId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'external_chat_threads' }, refreshLinks)
+      .subscribe();
     return () => { alive = false; void db.removeChannel(channel); };
   }, [selectedId, demo]);
 
@@ -93,7 +112,7 @@ export function AdminChat({ inbox, selectedId, demo, onSelect, onChanged }: {
     const oldest = messages[0];
     const viewport = messageLog.current;
     const previousHeight = viewport?.scrollHeight ?? 0;
-    const result = await supabase.from('messages').select('id,user_id,sender_id,body,attachment_path,created_at')
+    const result = await supabase.from('unified_chat_messages').select('id,user_id,sender_id,body,attachment_path,created_at,source,external_thread_id')
       .eq('user_id', selectedId)
       .or(`created_at.lt.${oldest.created_at},and(created_at.eq.${oldest.created_at},id.lt.${oldest.id})`)
       .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(PAGE_SIZE);
@@ -174,6 +193,19 @@ export function AdminChat({ inbox, selectedId, demo, onSelect, onChanged }: {
     else setNotice('Conversación reabierta. Ya podés responder.');
   }
 
+  async function unlinkExternal(threadId: string, nickname: string) {
+    if (!supabase || demo || unlinking || !canManageExternalLinks) return;
+    if (!window.confirm(`¿Desvincular el chat externo ${nickname} de este jugador? Los mensajes nuevos volverán a Chat externo.`)) return;
+    setUnlinking(true); setError(''); setNotice('');
+    const { error: unlinkError } = await supabase.rpc('unlink_external_chat', { p_thread_id: threadId });
+    setUnlinking(false);
+    if (unlinkError) { setError('No pudimos desvincular este chat. Intentá de nuevo.'); return; }
+    setExternalLinks(old => old.filter(item => item.id !== threadId));
+    setMessages(old => old.filter(item => item.external_thread_id !== threadId));
+    setNotice('Chat externo desvinculado. Ya aparece en su bandeja original.');
+    onChanged();
+  }
+
   const query = search.trim().toLocaleLowerCase('es');
   const visible = inbox.filter(row => {
     if (filter === 'pending' && !needsChatReply(row)) return false;
@@ -197,7 +229,7 @@ export function AdminChat({ inbox, selectedId, demo, onSelect, onChanged }: {
         <div className="admin-chat-list">
           {visible.length ? visible.map(row => <button type="button" key={row.user_id} className={`admin-chat-item${selectedId === row.user_id ? ' active' : ''}`} aria-current={selectedId === row.user_id ? 'true' : undefined} onClick={() => onSelect(row.user_id)}>
             <span className="admin-chat-avatar">{title(row).slice(0, 1).toUpperCase()}</span>
-            <span className="admin-chat-item-main"><span className="admin-chat-item-top"><strong>{title(row)}</strong><time dateTime={row.last_created_at}>{shortDate(row.last_created_at)}</time></span><span className="admin-chat-preview">{row.completed_at ? 'Completado · ' : row.last_sender_id !== row.user_id ? 'Soporte: ' : ''}{row.last_body}</span></span>
+            <span className="admin-chat-item-main"><span className="admin-chat-item-top"><strong>{title(row)}</strong><time dateTime={row.last_created_at}>{shortDate(row.last_created_at)}</time></span><span className="admin-chat-preview">{row.completed_at ? 'Completado · ' : ''}{row.last_source === 'external' ? 'Burbuja · ' : ''}{row.last_sender_id !== row.user_id ? 'Soporte: ' : ''}{row.last_body}</span></span>
             {needsChatReply(row) && <span className="admin-chat-unanswered" aria-label="Por responder" />}
           </button>) : <p className="admin-chat-list-empty">{query ? 'No encontramos conversaciones con esa búsqueda.' : filter === 'pending' ? 'No hay consultas por responder.' : filter === 'completed' ? 'No hay conversaciones completadas.' : 'Todavía no hay conversaciones.'}</p>}
         </div>
@@ -206,7 +238,8 @@ export function AdminChat({ inbox, selectedId, demo, onSelect, onChanged }: {
         {selected ? <>
           <header className="admin-chat-thread-header"><button type="button" className="admin-chat-back" aria-label="Volver a conversaciones" onClick={() => onSelect('')}><ArrowLeft size={19} /></button><span className="admin-chat-avatar">{title(selected).slice(0, 1).toUpperCase()}</span><div><strong>{title(selected)}</strong>{selectedSubtitle && <small>{selectedSubtitle}</small>}</div>{selected.username && <button type="button" className="admin-chat-copy" onClick={() => void copyUsername()} aria-label="Copiar nombre de usuario">{copied ? <Check size={16} /> : <Copy size={16} />}<span>{copied ? 'Copiado' : 'Copiar usuario'}</span></button>}</header>
           <div className="admin-chat-actions"><button type="button" className={selected.completed_at ? 'admin-chat-reopen' : 'admin-chat-complete'} disabled={demo || updatingStatus || sending} onClick={() => void updateStatus(!selected.completed_at)}>{selected.completed_at ? <RotateCcw size={16} /> : <CircleCheck size={16} />}{updatingStatus ? 'Guardando…' : selected.completed_at ? 'Reabrir chat' : 'Marcar como completado'}</button></div>
-          <div className="admin-chat-messages" ref={messageLog} role="log" aria-live="polite" aria-relevant="additions text" onScroll={event => { const element = event.currentTarget; stickToBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80; }}>{hasMore && <button type="button" className="admin-chat-older" disabled={loadingOlder} onClick={() => void loadOlder()}>{loadingOlder ? 'Cargando…' : 'Ver mensajes anteriores'}</button>}{loading && <p className="admin-chat-list-empty">Cargando conversación…</p>}{messages.map(message => <div className={`message ${message.sender_id !== message.user_id ? 'mine' : ''}`} key={message.id}><p>{message.body === 'Imagen adjunta' && message.attachment_path ? '' : message.body}{message.attachment_path && <ChatImage path={message.attachment_path} />}</p><small>{message.sender_id !== message.user_id ? 'Soporte · ' : ''}{date(message.created_at)}</small></div>)}</div>
+          {!!externalLinks.length && <div className="admin-chat-linked"><div><Link2 size={16} /><strong>Burbuja vinculada</strong></div>{externalLinks.map(link => <span key={link.id}><small>{link.nickname}</small>{canManageExternalLinks && <button type="button" disabled={demo || unlinking} onClick={() => void unlinkExternal(link.id, link.nickname)}><Unlink2 size={14} /> Desvincular</button>}</span>)}</div>}
+          <div className="admin-chat-messages" ref={messageLog} role="log" aria-live="polite" aria-relevant="additions text" onScroll={event => { const element = event.currentTarget; stickToBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80; }}>{hasMore && <button type="button" className="admin-chat-older" disabled={loadingOlder} onClick={() => void loadOlder()}>{loadingOlder ? 'Cargando…' : 'Ver mensajes anteriores'}</button>}{loading && <p className="admin-chat-list-empty">Cargando conversación…</p>}{messages.map(message => <div className={`message ${message.sender_id !== message.user_id ? 'mine' : ''}`} key={message.id}><p>{message.body === 'Imagen adjunta' && message.attachment_path ? '' : message.body}{message.attachment_path && <ChatImage path={message.attachment_path} source={message.source} />}</p><small>{message.source === 'external' ? 'Burbuja · ' : ''}{message.sender_id !== message.user_id ? 'Soporte · ' : ''}{date(message.created_at)}</small></div>)}</div>
           {(error || notice) && <p className={`admin-chat-feedback${error ? ' is-error' : ''}`} role={error ? 'alert' : 'status'}>{error || notice}</p>}
           {!selected.completed_at && <form className="admin-chat-composer" onSubmit={event => void send(event)}><label htmlFor="admin-chat-message" className="sr-only">Responder a {title(selected)}</label>{imagePreview && <div className="chat-image-preview"><img src={imagePreview} alt="Imagen seleccionada" /><span>{image?.name}</span><button type="button" aria-label="Quitar imagen" onClick={() => { setImage(null); if (imageInput.current) imageInput.current.value = ''; }}><X size={16} /></button></div>}<textarea id="admin-chat-message" name="message" placeholder="Escribí tu respuesta…" maxLength={2000} rows={2} required={!image} disabled={sending || demo || updatingStatus} onKeyDown={onComposerKeyDown} /><input ref={imageInput} className="chat-file-input" type="file" accept="image/*" disabled={sending || demo || updatingStatus} onChange={event => setImage(event.target.files?.[0] ?? null)} /><button type="button" className="admin-chat-image-button" aria-label="Adjuntar imagen de la galería" disabled={sending || demo || updatingStatus} onClick={() => imageInput.current?.click()}><Images size={18} /></button><button type="submit" disabled={sending || demo || updatingStatus} aria-label="Enviar respuesta"><Send size={18} /> Enviar</button><small>Enter para enviar · Shift + Enter para nueva línea</small></form>}
         </> : <div className="admin-chat-placeholder"><MessageCircle size={38} /><h2>Elegí una conversación</h2><p>Vas a ver el historial y responder desde acá.</p></div>}

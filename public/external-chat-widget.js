@@ -19,6 +19,7 @@
   var token = null;
   var sessionKey = 'gana777_external_chat_v1';
   var messages = [];
+  var linkVersion;
   var isOpen = false;
   var busy = false;
   var timer = null;
@@ -249,6 +250,16 @@
 
   draw();
 
+  function mergeLinked(data) {
+    var nextVersion = data.link_version || null;
+    if (linkVersion !== nextVersion) {
+      linkVersion = nextVersion;
+      messages = [];
+      draw();
+    }
+    merge(data.messages);
+  }
+
   function merge(incoming) {
     if (!Array.isArray(incoming)) return;
     var seen = new Set(messages.map(function (message) { return message.id; }));
@@ -274,7 +285,7 @@
   async function refresh() {
     if (busy) return;
     busy = true;
-    try { var data = await call('read'); merge(data.messages); status.textContent = ''; }
+    try { var data = await call('read'); mergeLinked(data); status.textContent = ''; }
     catch (error) { status.textContent = error.message || 'No pudimos actualizar el chat.'; }
     finally { busy = false; }
     if (isOpen && !timer) timer = setInterval(refresh, 5000);
@@ -283,7 +294,7 @@
   async function start() {
     var data = await call('start'); token = data.token;
     localStorage.setItem(sessionKey, JSON.stringify({ token: token }));
-    merge(data.messages);
+    mergeLinked(data);
   }
 
   function ensureSession() {
@@ -337,7 +348,7 @@
   form.addEventListener('submit', async function (event) {
     event.preventDefault(); var body = input.value.trim(); if ((!body && !selectedImage) || busy) return;
     busy = true; send.disabled = true; status.textContent = '';
-    try { await ensureSession(); var attachment = selectedImage ? await prepareImage(selectedImage) : null; var data = await call('send', { body: body, attachment: attachment }); input.value = ''; clearImage(); merge(data.messages); }
+    try { await ensureSession(); var attachment = selectedImage ? await prepareImage(selectedImage) : null; var data = await call('send', { body: body, attachment: attachment }); input.value = ''; clearImage(); mergeLinked(data); }
     catch (error) { status.textContent = error.message || 'No pudimos enviar el mensaje.'; }
     finally { busy = false; send.disabled = false; input.focus(); }
   });

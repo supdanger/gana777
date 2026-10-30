@@ -39,20 +39,20 @@ export function useChatImagePreview(file: File | null): string {
   return url;
 }
 
-export function ChatImage({ path }: { path: string }) {
+export function ChatImage({ path, source = 'app' }: { path: string; source?: 'app' | 'external' }) {
   const [url, setUrl] = useState('');
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     if (!supabase) return;
     let alive = true;
     setUrl(''); setFailed(false);
-    void supabase.storage.from(bucket).createSignedUrl(path, 86400).then(({ data, error }) => {
+    void supabase.storage.from(source === 'external' ? 'external-chat-files' : bucket).createSignedUrl(path, 86400).then(({ data, error }) => {
       if (!alive) return;
       if (error || !data?.signedUrl) setFailed(true);
       else setUrl(data.signedUrl);
     });
     return () => { alive = false; };
-  }, [path]);
+  }, [path, source]);
   if (failed) return <span className="chat-image-error">No pudimos abrir la imagen.</span>;
   if (!url) return <span className="chat-image-loading"><ImageIcon size={18} /> Cargando imagen…</span>;
   return <a className="chat-image" href={url} target="_blank" rel="noreferrer" aria-label="Abrir imagen adjunta"><img src={url} alt="Imagen adjunta" loading="lazy" /></a>;

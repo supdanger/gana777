@@ -383,7 +383,7 @@ function App() {
         return { ...second, data: (second.data ?? []).map(row => ({ ...row, bonus_amount: 0 })) };
       })();
       const messageQuery = adminApp ? Promise.resolve({ data: [] as Message[], error: null })
-        : db.from('messages').select('id,user_id,sender_id,body,attachment_path,created_at').eq('user_id', session!.user.id).order('created_at');
+        : db.from('unified_chat_messages').select('id,user_id,sender_id,body,attachment_path,created_at,source,external_thread_id').eq('user_id', session!.user.id).order('created_at').order('id');
       const pendingWithdrawalsQuery = adminApp
         ? db.from('request_summaries').select('id', { count: 'exact', head: true }).eq('kind', 'withdrawal').eq('status', 'pending')
         : Promise.resolve({ count: 0, error: null });
@@ -445,6 +445,8 @@ function App() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'deposit_credits' }, () => setLeaderboardReload(value => value + 1))
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'withdrawal_parts' }, () => void refresh())
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => { if (!adminApp) void refresh(); })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'external_chat_messages' }, () => { if (!adminApp) void refresh(); })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'external_chat_threads' }, () => { if (!adminApp) void refresh(); })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'admin_permissions', filter: `user_id=eq.${session.user.id}` }, () => void refresh())
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'cashier_profiles', filter: `user_id=eq.${session.user.id}` }, () => void refresh()).subscribe();
     return () => { alive = false; window.removeEventListener('focus', onFocus); void db.removeChannel(channel); };
@@ -460,7 +462,7 @@ function App() {
       const pageSize = 500;
       for (let offset = 0; alive; offset += pageSize) {
         const { data, error } = await db.from('chat_inbox')
-          .select('user_id,username,display_name,last_message_id,last_sender_id,last_body,last_created_at,completed_at,completed_by')
+          .select('user_id,username,display_name,last_message_id,last_sender_id,last_body,last_created_at,completed_at,completed_by,last_source')
           .order('last_created_at', { ascending: false }).order('last_message_id', { ascending: false })
           .range(offset, offset + pageSize - 1);
         if (!alive || version !== requestVersion) return;
@@ -475,6 +477,8 @@ function App() {
     window.addEventListener('focus', onFocus);
     const channel = db.channel(`admin-chat-inbox-${session.user.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => void refreshInbox())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'external_chat_messages' }, () => void refreshInbox())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'external_chat_threads' }, () => void refreshInbox())
       .subscribe();
     return () => { alive = false; window.removeEventListener('focus', onFocus); void db.removeChannel(channel); };
   }, [session?.user.id, chatReload]);
@@ -1081,8 +1085,8 @@ function App() {
       {adminApp && page === 'accounts' && <AccountAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'shifts' && <ShiftAdmin demo={demo} busy={busy} action={action} station={sacStation} onStation={chooseSac} />}
       {adminApp && page === 'cashiers' && staffContext.superAdmin && <CashierAdmin demo={demo} busy={busy} action={action} />}
-      {adminApp && page === 'chat' && <AdminChat inbox={chatInbox} selectedId={thread} demo={demo} onSelect={setThread} onChanged={() => setChatReload(value => value + 1)} />}
-      {adminApp && page === 'external-chat' && <AdminExternalChat inbox={externalChatInbox} selectedId={externalThread} demo={demo} onSelect={setExternalThread} onChanged={() => setExternalChatReload(value => value + 1)} />}
+      {adminApp && page === 'chat' && <AdminChat inbox={chatInbox} selectedId={thread} demo={demo} canManageExternalLinks={staffContext.superAdmin || staffContext.permissions.external_chat} onSelect={setThread} onChanged={() => setChatReload(value => value + 1)} />}
+      {adminApp && page === 'external-chat' && <AdminExternalChat inbox={externalChatInbox} selectedId={externalThread} demo={demo} canLink={staffContext.superAdmin || staffContext.permissions.chat} onSelect={setExternalThread} onChanged={() => setExternalChatReload(value => value + 1)} onLinked={linkedUserId => { setExternalThread(''); setThread(linkedUserId); setChatReload(value => value + 1); setExternalChatReload(value => value + 1); navigate('chat'); }} />}
       {adminApp && page === 'external-chat-admin' && (demo || staffContext.superAdmin) && <AdminExternalChatSettings demo={demo} />}
     </>}
   </>;
