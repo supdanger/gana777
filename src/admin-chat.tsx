@@ -215,7 +215,7 @@ export function AdminChat({ inbox, selectedId, demo, canManageExternalLinks, onS
       .some(value => value?.toLocaleLowerCase('es').includes(query));
   });
 
-  return <section className={`admin-chat${selectedId ? ' has-selection' : ''}`} aria-label="Bandeja de conversaciones">
+  return <section className={`admin-chat regular-chat-admin-view${selectedId ? ' has-selection' : ''}`} aria-label="Bandeja de conversaciones">
     <div className="admin-chat-heading"><div><h1>Chat</h1><p>Respondé las consultas de los jugadores desde una sola bandeja.</p></div><span>{pending} por responder</span></div>
     <div className="admin-chat-layout">
       <aside className="admin-chat-inbox" aria-label="Conversaciones">

@@ -149,7 +149,7 @@ export function AdminExternalChat({ inbox, selectedId, demo, canLink, onSelect, 
     onLinked(data);
   }
 
-  return <section className={`admin-chat${selectedId ? ' has-selection' : ''}`} aria-label="Bandeja de chats externos">
+  return <section className={`admin-chat external-chat-admin-view${selectedId ? ' has-selection' : ''}`} aria-label="Bandeja de chats externos">
     <div className="admin-chat-heading"><div><h1>Chat externo</h1><p>Atendé las consultas que llegan desde la burbuja de gana777bet.com.</p></div><span>{pending} por responder</span></div>
     <div className="admin-chat-layout">
       <aside className="admin-chat-inbox" aria-label="Conversaciones externas">
