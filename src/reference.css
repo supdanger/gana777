@@ -1649,40 +1649,47 @@ html.player-portal :is(img, video) {
 .user-app.page-home.theme-card-tutorial-image .action-card[data-theme-card='tutorial']::after { display: none; }
 
 .home-tutorial-backdrop { position: fixed; z-index: 2147483000; inset: 0; display: grid; place-items: center; padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)); background: #050209dc; backdrop-filter: blur(8px); font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
-.home-tutorial-dialog { width: min(440px, 100%); max-height: 100%; overflow-y: auto; padding: 0; border: 1px solid #9c42bf; border-radius: 22px; background: radial-gradient(circle at 80% 0, #572063 0, #211027 29%, #0d0a12 70%); color: #fff; box-shadow: 0 24px 70px #000e, 0 0 40px #a829c03d; outline: none; }
+.home-tutorial-dialog { --tutorial-accent: #d56bff; width: min(440px, 100%); max-height: 100%; overflow-y: auto; padding: 0; border: 1px solid #9c42bf; border-radius: 22px; background: radial-gradient(circle at 80% 0, #572063 0, #211027 29%, #0d0a12 70%); color: #fff; box-shadow: 0 24px 70px #000e, 0 0 40px #a829c03d; outline: none; }
 .home-tutorial-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 0; padding: 15px 18px 10px; }
 .home-tutorial-brand { display: inline-flex; align-items: center; gap: 9px; color: #f3d3ff; font-size: 11px; font-weight: 900; letter-spacing: .13em; }
 .home-tutorial-required { padding: 6px 8px; border: 1px solid #a757c6; border-radius: 7px; background: #3b174a; color: #efd0fa; font-size: 9px; font-weight: 900; letter-spacing: .08em; white-space: nowrap; }
 .home-tutorial-close { display: grid; place-items: center; width: 36px; height: 36px; min-height: 36px; padding: 0; border: 1px solid #754184; border-radius: 10px; background: #1d1124; color: #e8c8f1; }
-.home-tutorial-progress { display: grid; gap: 8px; padding: 0 22px; }
-.home-tutorial-progress > span { color: #bf95ce; font-size: 10px; font-weight: 800; letter-spacing: .16em; }
+.home-tutorial-chapters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 2px 18px 0; }
+.home-tutorial-chapters button { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 34px; padding: 4px 7px; border: 1px solid #5a3268; border-radius: 9px; background: #140d1a; color: #c9b0d4; font-size: 11px; font-weight: 800; }
+.home-tutorial-chapters button b { display: grid; place-items: center; flex: 0 0 18px; width: 18px; height: 18px; border-radius: 6px; background: #2a1834; color: #f4e7fa; font-size: 10px; }
+.home-tutorial-chapters button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-tutorial-chapters button.seen { border-color: color-mix(in srgb, var(--tutorial-accent) 55%, #5a3268); color: #f3e7f8; }
+.home-tutorial-chapters button.active { border-color: var(--tutorial-accent); background: #24162c; color: #fff; box-shadow: inset 0 0 0 1px var(--tutorial-accent); }
+.home-tutorial-chapters button.active b { background: var(--tutorial-accent); color: #1a0d12; }
+.home-tutorial-chapters button:disabled { opacity: .42; cursor: default; }
+.home-tutorial-progress { display: grid; gap: 8px; padding: 12px 22px 0; }
+.home-tutorial-progress > span { color: var(--tutorial-accent); font-size: 11px; font-weight: 900; letter-spacing: .12em; }
 .home-tutorial-progress-track { height: 4px; overflow: hidden; border-radius: 999px; background: #5a2b68; }
-.home-tutorial-progress-track i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #a641df, #e7a9ff); transition: width .22s ease; }
-.home-tutorial-visual { position: relative; height: clamp(139px, 38vw, 174px); margin: 10px 18px 0; overflow: hidden; border: 1px solid #7d3c95; border-radius: 16px; background: radial-gradient(circle at center, #291331, #09060d 75%); }
+.home-tutorial-progress-track i { display: block; height: 100%; border-radius: inherit; background: var(--tutorial-accent); transition: width .22s ease; }
+.home-tutorial-visual { position: relative; height: clamp(128px, 34vw, 160px); margin: 10px 18px 0; overflow: hidden; border: 1px solid color-mix(in srgb, var(--tutorial-accent) 70%, #3a1848); border-radius: 16px; background: radial-gradient(circle at center, #291331, #09060d 75%); }
 .home-tutorial-artwork { position: absolute; inset: 9px 9px 30px; display: grid; place-items: center; overflow: hidden; border: 1px solid #703c81; border-radius: 11px; background: #09060d; }
 .home-tutorial-artwork > img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .home-tutorial-artwork.is-collage { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 5px; border: 0; background: transparent; }
-.home-tutorial-artwork.is-collage > img,
-.home-tutorial-artwork.is-collage > .home-tutorial-art-fallback { min-width: 0; min-height: 0; border: 1px solid #713d84; border-radius: 7px; background: #09060d; }
+.home-tutorial-tile { position: relative; display: grid; min-width: 0; min-height: 0; overflow: hidden; border: 1px solid #713d84; border-radius: 8px; background: #09060d; }
+.home-tutorial-tile > img,
+.home-tutorial-tile > .home-tutorial-art-fallback { grid-area: 1 / 1; width: 100%; height: 100%; object-fit: contain; }
+.home-tutorial-tile figcaption { grid-area: 1 / 1; z-index: 1; align-self: end; justify-self: start; margin: 4px; padding: 2px 6px; border-radius: 5px; background: #120a19ee; color: #fff; font-size: 9px; font-weight: 900; letter-spacing: .08em; }
 .home-tutorial-art-fallback { display: grid; place-items: center; width: 100%; height: 100%; padding: 6px; color: #f4dbff; font-size: 15px; font-weight: 900; text-align: center; }
-.home-tutorial-visual-number { position: absolute; top: 15px; right: 16px; padding: 4px 7px; border: 1px solid #ad62ca; border-radius: 7px; background: #120a19dc; color: #f6ddff; font-size: 12px; font-weight: 900; letter-spacing: .1em; }
+.home-tutorial-topic { position: absolute; top: 12px; left: 12px; padding: 4px 8px; border: 1px solid var(--tutorial-accent); border-radius: 7px; background: #120a19ee; color: var(--tutorial-accent); font-size: 12px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
 .home-tutorial-visual-caption { position: absolute; right: 10px; bottom: 5px; left: 10px; color: #deb5ec; font-size: 11px; font-weight: 700; text-align: center; }
-.home-tutorial-copy { min-height: 192px; padding: 18px 22px 8px; }
-.home-tutorial-label { color: #dda2f7; font-size: 10px; font-weight: 900; letter-spacing: .14em; }
+.home-tutorial-copy { min-height: 168px; padding: 16px 22px 8px; }
+.home-tutorial-label { color: var(--tutorial-accent); font-size: 11px; font-weight: 900; letter-spacing: .14em; }
 .home-tutorial-copy h2 { display: block; margin: 6px 0 9px; color: #fff; font-size: clamp(23px, 6vw, 28px); font-weight: 850; line-height: 1.12; letter-spacing: -.045em; }
 .home-tutorial-copy p { margin: 0; color: #e2d4e7; font-size: 15px; line-height: 1.48; }
 .home-tutorial-tip { display: flex; align-items: flex-start; gap: 8px; margin-top: 14px; padding: 10px 11px; border: 1px solid #654073; border-radius: 11px; background: #2c1934b8; color: #efd9f6; font-size: 12px; line-height: 1.35; }
 .home-tutorial-tip svg { flex: 0 0 auto; color: #e6a65c; }
 .home-tutorial-footer { display: block; margin: 0; padding: 10px 22px 20px; }
-.home-tutorial-dots { display: flex; justify-content: center; gap: 6px; margin-bottom: 15px; }
-.home-tutorial-dots span { width: 6px; height: 6px; border-radius: 999px; background: #774985; }
-.home-tutorial-dots span.active { width: 22px; background: #cb69ed; }
 .home-tutorial-actions { display: flex; justify-content: space-between; gap: 12px; }
 .home-tutorial-actions > button:only-child { margin-left: auto; }
 .home-tutorial-actions button { display: inline-flex; justify-content: center; align-items: center; gap: 7px; min-height: 44px; padding: 10px 15px; border-radius: 11px; font-size: 14px; font-weight: 750; }
 .home-tutorial-back, .home-tutorial-skip { border: 1px solid #70417e; background: #1c1123; color: #e0c6e9; }
 .home-tutorial-next { min-width: 132px; border: 1px solid #d575f2; background: linear-gradient(135deg, #ae3ddd, #72169f); color: #fff; box-shadow: 0 6px 18px #7e1fa955; }
-.home-tutorial-actions button:focus-visible, .home-tutorial-close:focus-visible { outline: 2px solid #f2c7ff; outline-offset: 3px; }
+.home-tutorial-actions button:focus-visible, .home-tutorial-close:focus-visible, .home-tutorial-chapters button:focus-visible { outline: 2px solid #f2c7ff; outline-offset: 3px; }
 @media (max-height: 620px) { .home-tutorial-visual { height: 120px; } .home-tutorial-copy { min-height: 0; } }
 @media (max-width: 350px) { .user-app.page-home .action-card[data-theme-card='tutorial'] { padding: 6px; gap: 5px; } .user-app.page-home .action-card[data-theme-card='tutorial'] .icon-circle { width: 28px; height: 28px; } .user-app.page-home .action-card[data-theme-card='tutorial'] strong { font-size: 14px; } .user-app.page-home .action-card[data-theme-card='tutorial'] small { display: none; } .home-tutorial-copy { padding-left: 18px; padding-right: 18px; } }
 @media (prefers-reduced-motion: reduce) { .home-tutorial-progress-track i { transition: none; } }
