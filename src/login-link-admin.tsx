@@ -110,7 +110,7 @@ export function LoginLinkAdmin({ demo, busy, action }: { demo: boolean; busy: bo
     <form className="player-create" onSubmit={event => void createLink(event)}>
       <div className="player-create-fields">
         <label>Nombre de usuario<input name="username" minLength={3} maxLength={32} pattern={'[a-zA-Z0-9._\\-]+'} autoCapitalize="none" spellCheck={false} placeholder="juanito" required /></label>
-        <label className="login-link-casino">URL personal del casino<input name="casino_url" type="text" inputMode="url" maxLength={8192} placeholder="https://gana777bet.com/?auth=…" spellCheck={false} value={casinoUrl} onChange={event => setCasinoUrl(casinoUrlFieldValue(event.target.value))} onPaste={onCasinoPaste} required /><small>Abre «Ir al casino» solamente para este jugador. Si pegás el enlace con texto alrededor, se guarda solo la dirección https.</small></label>
+        <label className="login-link-casino">URL personal del casino<input name="casino_url" type="text" inputMode="url" maxLength={8192} placeholder="https://gana777bet.com/?auth=…" spellCheck={false} value={casinoUrl} onChange={event => setCasinoUrl(casinoUrlFieldValue(event.target.value))} onPaste={onCasinoPaste} required /><small>El enlace personal abre «Ir al casino» solo para este jugador. Si pegás solo https://gana777bet.com, se puede usar en varios y el banner queda con el enlace general.</small></label>
       </div>
       <p className="login-link-note">El enlace de ingreso abre {redirectTo}. Dura cerca de una hora, funciona una sola vez y hay que pasarlo en privado. La contraseña se muestra después, por si el enlace ya venció.</p>
       <button className="cashier-create-submit" disabled={busy}><Link2 size={16} aria-hidden="true" /> Crear usuario y generar enlace</button>

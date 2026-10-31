@@ -39,6 +39,12 @@ function casinoUrl(value: unknown): string {
   if (url.href.length > 2048) throw new HttpError(400, 'La URL personal es demasiado larga.');
   return url.href;
 }
+function sharedPortalUrl(href: string): boolean {
+  const url = new URL(href);
+  const host = url.hostname;
+  if (host !== 'gana777bet.com' && host !== 'www.gana777bet.com') return false;
+  return (url.pathname === '/' || url.pathname === '') && url.search === '' && url.hash === '';
+}
 function slot(value: unknown): number {
   const result = Number(value);
   if (!Number.isInteger(result) || result < 1 || result > 50) throw new HttpError(400, 'Principal de WhatsApp no válido.');
@@ -147,14 +153,17 @@ Deno.serve(async request => {
       const playerUsername = username(payload.username);
       const password = text(payload.password, 'Contraseña', 8, 72);
       const playerCasinoUrl = casinoUrl(payload.casino_url);
+      const sharedPortal = sharedPortalUrl(playerCasinoUrl);
       const redirectTo = playerRedirect(payload.redirect_to);
       const [existingName, usedLink] = await Promise.all([
         server.from('user_profiles').select('user_id').eq('username', playerUsername).maybeSingle(),
-        server.from('player_casino_links').select('user_id').eq('url', playerCasinoUrl).maybeSingle(),
+        sharedPortal
+          ? Promise.resolve({ data: null, error: null })
+          : server.from('player_casino_links').select('user_id').eq('url', playerCasinoUrl).maybeSingle(),
       ]);
       if (existingName.error || usedLink.error) throw new HttpError(400, 'No pudimos comprobar el usuario y el enlace.');
       if (existingName.data) throw new HttpError(409, 'Ese nombre de usuario ya existe.');
-      if (usedLink.data) throw new HttpError(409, 'Esa URL personal ya está asignada a otro jugador.');
+      if (!sharedPortal && usedLink.data) throw new HttpError(409, 'Esa URL personal ya está asignada a otro jugador.');
       const email = `${playerUsername}@players.gana777.internal`;
       const { data: created, error: createError } = await server.auth.admin.createUser({
         email, password, email_confirm: true,
@@ -169,11 +178,13 @@ Deno.serve(async request => {
         phone: null, external_user_id: null, whatsapp_principal_slot: null, updated_at: new Date().toISOString(),
       }).eq('user_id', created.user.id);
       if (saveError) { await server.auth.admin.deleteUser(created.user.id); throw profileError(saveError); }
-      const { error: casinoError } = await server.from('player_casino_links').insert({ user_id: created.user.id, url: playerCasinoUrl });
-      if (casinoError) {
-        await server.auth.admin.deleteUser(created.user.id);
-        if (casinoError.code === '23505') throw new HttpError(409, 'Esa URL personal ya está asignada a otro jugador.');
-        throw new HttpError(400, 'No se pudo guardar el enlace del casino. La cuenta no quedó guardada.');
+      if (!sharedPortal) {
+        const { error: casinoError } = await server.from('player_casino_links').insert({ user_id: created.user.id, url: playerCasinoUrl });
+        if (casinoError) {
+          await server.auth.admin.deleteUser(created.user.id);
+          if (casinoError.code === '23505') throw new HttpError(409, 'Esa URL personal ya está asignada a otro jugador.');
+          throw new HttpError(400, 'No se pudo guardar el enlace del casino. La cuenta no quedó guardada.');
+        }
       }
       const { data: link, error: linkError } = await server.auth.admin.generateLink({
         type: 'magiclink', email, options: { redirectTo },
