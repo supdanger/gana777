@@ -66,14 +66,16 @@ export function PlayerBonuses({ demo, onClaim }: { demo: boolean; onClaim: (id: 
         setAvailability(Object.fromEntries(rows.map(item => [item.promotion_id, item])));
       }
     }
+    const onVisible = () => { if (document.visibilityState === 'visible') void refresh(); };
     void refresh();
     window.addEventListener('focus', refresh);
-    const poll = window.setInterval(refresh, 15000);
+    document.addEventListener('visibilitychange', onVisible);
+    const poll = window.setInterval(() => { if (document.visibilityState !== 'hidden') void refresh(); }, 60_000);
     const channel = db.channel('player-bonus-availability')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'special_bonus_uses' }, () => void refresh())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'deposit_credits' }, () => void refresh())
       .subscribe();
-    return () => { alive = false; window.removeEventListener('focus', refresh); window.clearInterval(poll); void db.removeChannel(channel); };
+    return () => { alive = false; window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', onVisible); window.clearInterval(poll); void db.removeChannel(channel); };
   }, [demo, timedOffers.length]);
 
   return <section className="player-bonuses" aria-label="Bonos disponibles">

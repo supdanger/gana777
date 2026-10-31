@@ -457,15 +457,18 @@ function App() {
     const signedInAt = Date.parse(session.user.last_sign_in_at ?? session.user.created_at ?? '');
     let alive = true;
     const check = async () => {
+      if (document.visibilityState === 'hidden') return;
       const { data, error } = await db.rpc('get_my_session_revoked_at');
       if (!alive || error || !data || !signedInAt) return;
       if (Date.parse(String(data)) > signedInAt) {
         await db.auth.signOut();
       }
     };
+    const onVisible = () => { if (document.visibilityState === 'visible') void check(); };
     void check();
-    const timer = window.setInterval(() => void check(), 15_000);
-    return () => { alive = false; window.clearInterval(timer); };
+    const timer = window.setInterval(() => void check(), 60_000);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { alive = false; window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
   }, [adminApp, demo, session?.user.id, session?.user.last_sign_in_at, session?.user.created_at]);
   useEffect(() => {
     if (!adminApp || page !== 'withdrawal' || !session || !supabase) return;
@@ -602,7 +605,7 @@ function App() {
     const db = supabase;
     const refreshBankState = () => setBankReload(value => value + 1);
     const operationChanged = () => { setBank(null); refreshBankState(); };
-    const timer = window.setInterval(refreshBankState, 5000);
+    const timer = window.setInterval(() => { if (document.visibilityState !== 'hidden') refreshBankState(); }, 30_000);
     const channel = db.channel(`bank-operation-${session.user.id}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bank_operation_state' }, operationChanged)
       .subscribe();

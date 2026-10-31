@@ -372,5 +372,5 @@
     }
   }
   void checkAvailability();
-  setInterval(checkAvailability, 15000);
+  setInterval(checkAvailability, 60000);
 })();

@@ -91,7 +91,7 @@ export function PlayerNotifications({ userId, settingsPage, onOpenChat, onOpenWh
       if (alive && data) setNotifications(data as UserNotification[]);
     }
     void refresh();
-    const timer = window.setInterval(refresh, 30000);
+    const timer = window.setInterval(() => { if (document.visibilityState !== 'hidden') void refresh(); }, 180_000);
     const channel = db.channel(`player-notifications-${userId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'user_notifications', filter: `user_id=eq.${userId}` }, payload => {
         void refresh();
@@ -140,7 +140,9 @@ export function PlayerNotifications({ userId, settingsPage, onOpenChat, onOpenWh
       }
     }
     const onFocus = () => { void refresh(); void reconnectPush(); };
+    const onVisible = () => { if (document.visibilityState === 'visible') void refresh(); };
     window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisible);
     if (canPush) {
       void (async () => {
         const previous = await navigator.serviceWorker.getRegistration('/');
@@ -161,7 +163,7 @@ export function PlayerNotifications({ userId, settingsPage, onOpenChat, onOpenWh
         if (alive && devicePreference() === 'on') setError('No se pudieron preparar los avisos. Apagá y volvé a encender el interruptor para reintentar.');
       });
     }
-    return () => { alive = false; window.removeEventListener('focus', onFocus); window.clearInterval(timer); void db.removeChannel(channel); };
+    return () => { alive = false; window.removeEventListener('focus', onFocus); document.removeEventListener('visibilitychange', onVisible); window.clearInterval(timer); void db.removeChannel(channel); };
   }, [userId]);
 
   async function activate() {
