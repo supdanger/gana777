@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type MouseEvent, type ReactNode } from 'react';
-import { Check, ChevronDown, ChevronRight, ClipboardPaste, Clock3, Copy, Eye, WalletCards, X } from 'lucide-react';
+import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type FormEvent, type MouseEvent, type ReactNode } from 'react';
+import { Check, ChevronDown, ChevronRight, ClipboardPaste, Clock3, Copy, Edit3, Eye, WalletCards, X } from 'lucide-react';
 import { date, money, type RequestRow, type WithdrawalPart } from './lib';
 import { compressReceipt } from './image-compression';
 import { BankTransferCard } from './bank-transfer-card';
@@ -9,12 +9,13 @@ import { cooldownLabel, cooldownSeconds, type WithdrawalSourceAccount } from './
 type ReviewStatus = 'rejected';
 const PAGE_SIZE = 10;
 
-export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay, onViewReceipt }: {
+export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onAdjust, onPay, onViewReceipt }: {
   requests: RequestRow[];
   parts: WithdrawalPart[];
   busy: boolean;
   demo: boolean;
   onReview: (request: RequestRow, status: ReviewStatus) => void;
+  onAdjust: (request: RequestRow, amount: number) => Promise<{ ok: boolean; error?: string }>;
   onPay: (request: RequestRow, part: WithdrawalPart, file: File, sourceAccount: WithdrawalSourceAccount) => Promise<{ ok: boolean; error?: string }>;
   onViewReceipt: (part: WithdrawalPart) => void;
 }) {
@@ -37,6 +38,8 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay,
   const [selectedSourceId, setSelectedSourceId] = useState('');
   const [paymentError, setPaymentError] = useState('');
   const [now, setNow] = useState(Date.now);
+  const [editingAmountId, setEditingAmountId] = useState<string | null>(null);
+  const [amountError, setAmountError] = useState('');
   const trigger = useRef<HTMLButtonElement | null>(null);
   const inspectionTrigger = useRef<HTMLButtonElement | null>(null);
   const inspectionRef = useRef(inspection);
@@ -209,12 +212,24 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onPay,
     </div>;
   }
 
+  async function adjustAmount(request: RequestRow, event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const amount = Number(String(form.get('amount') ?? '').replace(',', '.'));
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 10000000) { setAmountError('Ingresá un monto válido, hasta $10.000.000.'); return; }
+    if (!window.confirm(`¿Cambiar el retiro de ${money(request.amount)} a ${money(amount)}?`)) return;
+    setAmountError('');
+    const result = await onAdjust(request, amount);
+    if (result.ok) setEditingAmountId(null); else setAmountError(result.error || 'No pudimos modificar el monto.');
+  }
+
   function card(request: RequestRow) {
     const isPending = request.status === 'pending';
     const payments = parts.filter(part => part.request_id === request.id).sort((a, b) => a.part_number - b.part_number);
     const paid = payments.filter(part => part.paid_at);
     return <article className={`withdrawal-review-card${isPending ? ' is-pending' : ''}`} key={request.id}>
-      <header className="withdrawal-review-header"><div><span className={`badge ${request.status}`}>{isPending ? 'En proceso' : request.status === 'approved' ? 'Realizado' : 'Rechazado'}</span><small>Solicitado el {date(request.created_at)}</small></div><strong>{money(request.amount)}</strong></header>
+      <header className="withdrawal-review-header"><div><span className={`badge ${request.status}`}>{isPending ? 'En proceso' : request.status === 'approved' ? 'Realizado' : 'Rechazado'}</span><small>Solicitado el {date(request.created_at)}</small></div><div className="withdrawal-review-amount"><strong>{money(request.amount)}</strong>{isPending && paid.length === 0 && <button type="button" disabled={busy || demo} onClick={() => { setAmountError(''); setEditingAmountId(request.id); }}><Edit3 size={14} /> Modificar</button>}</div></header>
+      {editingAmountId === request.id && isPending && paid.length === 0 && <form className="withdrawal-amount-editor" onSubmit={event => void adjustAmount(request, event)}><label>Nuevo monto<input name="amount" type="number" min="1" max="10000000" step="0.01" defaultValue={request.amount} autoFocus /></label><button type="submit" disabled={busy}>Guardar monto</button><button type="button" disabled={busy} onClick={() => setEditingAmountId(null)}>Cancelar</button>{amountError && <small role="alert">{amountError}</small>}</form>}
       <div className="withdrawal-review-fields">
         {field(request, 'Nombre de usuario', request.user_name, 'user')}
         {field(request, 'Titular de la cuenta', request.holder, 'holder', false)}

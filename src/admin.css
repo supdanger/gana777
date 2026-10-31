@@ -990,7 +990,13 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .withdrawal-review-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin: 0; padding: 16px 18px; border-bottom: 1px solid var(--panel-border-soft); }
 .withdrawal-review-header .badge { display: inline-block; }
 .withdrawal-review-header small { margin-top: 8px; color: var(--panel-muted); }
-.withdrawal-review-header > strong { color: #fff; font-size: 27px; white-space: nowrap; }
+.withdrawal-review-header > strong, .withdrawal-review-amount > strong { color: #fff; font-size: 27px; white-space: nowrap; }
+.withdrawal-review-amount { display: flex; align-items: center; gap: 8px; }
+.withdrawal-review-amount button { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 6px 9px; border: 1px solid #8a4aa8; border-radius: 8px; background: #1b1024; color: #f0d4ff; font-size: 11px; font-weight: 800; }
+.withdrawal-amount-editor { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; margin: 0; padding: 12px 18px; border-bottom: 1px solid var(--panel-border-soft); }
+.withdrawal-amount-editor label { display: grid; gap: 4px; color: var(--panel-muted); font-size: 12px; font-weight: 700; }
+.withdrawal-amount-editor input { min-height: 40px; }
+.withdrawal-amount-editor small { flex-basis: 100%; color: #ff8d9a; }
 .withdrawal-review-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 16px 18px; }
 .withdrawal-field { min-width: 0; padding: 11px 12px; border: 1px solid #35556c; border-radius: 9px; background: #0b1d2a; }
 .withdrawal-field > span { color: #9db5c9; font-size: 11px; font-weight: 700; text-transform: uppercase; }
@@ -1108,7 +1114,7 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
   .withdrawal-modal { width: 100%; max-height: calc(100dvh - 24px); }
   .withdrawal-inspection { width: 100%; height: calc(100dvh - 24px); }
   .withdrawal-modal .withdrawal-review-header { padding-right: 50px; }
-  .withdrawal-review-header > strong { font-size: 22px; }
+  .withdrawal-review-header > strong, .withdrawal-review-amount > strong { font-size: 22px; }
   .withdrawal-review-fields { grid-template-columns: 1fr; padding: 12px; }
   .withdrawal-review-actions { padding: 12px; }
   .withdrawal-review-actions > div button { flex: 1 1 180px; }

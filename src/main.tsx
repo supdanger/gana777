@@ -1063,7 +1063,19 @@ function App() {
       {!adminApp && page === 'profile' && <>{history('deposit')}{history('withdrawal')}<ReferralBonusHistory userId={userId} demo={demo} /></>}
       {(page === 'deposit' || page === 'withdrawal') && !adminApp && <RequestForm key={`${page}:${selectedBonusId}`} kind={page} requests={requests.filter(r => r.user_id === userId)} bank={bank} bankOperation={bankOperation} retryAt={page === 'deposit' ? depositRetryAt : 0} initialBonusId={page === 'deposit' ? selectedBonusId : ''} busy={busy} demo={demo} feedback={feedback} onSubmit={submitRequest} onCopy={(text, label) => void action(async () => { await navigator.clipboard.writeText(text); setNotice(`${label} copiado.`); })} onBrowseBonuses={() => navigate('bonuses')} onOpenWithdrawalHistory={() => { setUserHistoryOpen(old => ({ ...old, withdrawal: true })); setProfileHistoryTarget('withdrawal'); navigate('profile'); }} />}
       {adminApp && page === 'deposit' && depositList()}
-      {adminApp && page === 'withdrawal' && <AdminWithdrawals requests={requests} parts={withdrawalParts} busy={busy} demo={demo} onViewReceipt={part => void viewWithdrawalPart(part)} onPay={async (request, part, file, sourceAccount) => {
+      {adminApp && page === 'withdrawal' && <AdminWithdrawals requests={requests} parts={withdrawalParts} busy={busy} demo={demo} onAdjust={async (request, amount) => {
+        try {
+          if (!supabase || demo || !canOpenAdminPage('withdrawal', staffContext.permissions, staffContext.superAdmin)) throw new InputError('No tenés permiso para modificar retiros.');
+          const result = await supabase.rpc('adjust_withdrawal_amount', { p_request_id: request.id, p_amount: amount });
+          if (result.error) throw result.error;
+          const nextParts = await supabase.from('withdrawal_parts').select('request_id,part_number,amount,receipt_path,paid_at,paid_by,source_bank_account_id,source_bank_name,source_alias').eq('request_id', request.id).order('part_number');
+          if (nextParts.error) throw nextParts.error;
+          setRequests(old => old.map(item => item.id === request.id ? { ...item, amount } : item));
+          setWithdrawalParts(old => [...old.filter(item => item.request_id !== request.id), ...((nextParts.data ?? []) as WithdrawalPart[])]);
+          setNotice(`Monto del retiro actualizado a ${money(amount)}.`);
+          return { ok: true };
+        } catch (cause) { const message = publicError(cause); setError(message); return { ok: false, error: message }; }
+      }} onViewReceipt={part => void viewWithdrawalPart(part)} onPay={async (request, part, file, sourceAccount) => {
         setBusy(true); setError(''); setNotice('');
         try {
           if (!supabase || demo || !canOpenAdminPage('withdrawal', staffContext.permissions, staffContext.superAdmin)) throw new InputError('No tenés permiso para acreditar retiros.');
