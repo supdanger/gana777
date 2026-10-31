@@ -380,7 +380,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
           {preview ? <img className="receipt-preview" src={preview} alt="Vista previa del comprobante seleccionado" /> : file ? <FileText className="camera-icon" size={30} /> : null}
           {(file || compressing) && <div className="receipt-file-copy" aria-live="polite"><strong>{compressing ? 'Optimizando imagen…' : file?.name}</strong><small>{compressing ? 'Esperá un momento' : file ? `Listo para enviar · ${readableFileSize(file.size)}` : ''}</small></div>}
           <div className="receipt-source-actions">
-            <label className="receipt-source-button"><FileText size={20} /><span>Mandar comprobante</span><input ref={receiptInput} type="file" accept="image/*,application/pdf" onChange={event => void selectReceipt(event)} /></label>
+            <label className="receipt-source-button"><FileText size={20} /><span>Mandar comprobante</span><input ref={receiptInput} type="file" accept="image/*" onChange={event => void selectReceipt(event)} /></label>
           </div>
           {file && <button className="receipt-remove" type="button" onClick={clearReceipt} aria-label="Eliminar comprobante"><Trash2 size={18} /></button>}
           {receiptError && <small className="receipt-error" role="alert">{receiptError}</small>}
