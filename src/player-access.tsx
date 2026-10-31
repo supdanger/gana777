@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { ArrowLeft, Dices, LogIn, Send, UserRound } from 'lucide-react';
+import { ArrowLeft, LogIn, Send, UserRound } from 'lucide-react';
 import { InputError } from '../supabase/functions/_shared/validation';
 import { deviceFootprint } from './device-footprint';
 import { supabase } from './lib';
@@ -8,8 +8,6 @@ const tokenKey = 'gana777-access-chat-token';
 const deviceKey = 'gana777-access-device-id';
 type AccessMessage = { id: number; sender: 'player' | 'admin'; body: string; created_at: string };
 type AccessThread = { id: string; username: string; referral_code: string | null; status: 'pending' | 'approved' | 'rejected'; created_at: string; updated_at: string };
-const casinoNames = ['jackpot', 'ruleta', 'fichero', 'triple777', 'dama', 'blackjack', 'comodin', 'fortuna', 'ganador', 'poker'];
-
 function secret() {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   return btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
@@ -18,11 +16,6 @@ function localSecret(key: string) {
   let value = localStorage.getItem(key);
   if (!value || value.length < 32) { value = secret(); localStorage.setItem(key, value); }
   return value;
-}
-function generatedName() {
-  const word = casinoNames[crypto.getRandomValues(new Uint32Array(1))[0] % casinoNames.length];
-  const number = 100 + crypto.getRandomValues(new Uint32Array(1))[0] % 900;
-  return `${word}${number}`;
 }
 async function callAccess(body: Record<string, unknown>) {
   if (!supabase) throw new InputError('El portal no está conectado. Volvé a intentar más tarde.');
@@ -123,7 +116,7 @@ export function PlayerAccessRequest({ onBack, onCredentialsReady }: { onBack: ()
     <header className="player-access-heading"><span className="player-access-heading-icon"><UserRound size={21} /></span><div><small className="player-access-eyebrow">{thread ? 'SEGUIMIENTO' : 'SOLICITUD DE ACCESO'}</small><h2>{thread ? `Solicitud de @${thread.username}` : 'Crear tu usuario'}</h2><p>{thread ? 'Hablá con el equipo de Gana777 desde este dispositivo.' : 'Elegí un nombre para iniciar tu solicitud.'}</p></div><button type="button" className="player-access-back" onClick={onBack} aria-label="Volver al ingreso"><ArrowLeft size={18} /></button></header>
     {!thread ? <form className="player-access-form" onSubmit={event => void createRequest(event)}>
       <div className="player-access-step"><span>1</span><div><strong>Tus datos</strong><small>Nombre de usuario y referido opcional</small></div><b>1 paso</b></div>
-      <label>Nombre de usuario<div className="player-access-name"><UserRound size={18} /><input name="username" value={username} onChange={event => setUsername(event.target.value.toLowerCase())} minLength={3} maxLength={32} pattern="[a-zA-Z0-9._-]+" autoCapitalize="none" autoComplete="username" placeholder="Ej.: jackpot777" required /><button type="button" onClick={() => setUsername(generatedName())}><Dices size={17} />Generar</button></div><small className="player-access-field-hint">Usá de 3 a 32 letras, números, puntos o guiones.</small></label>
+      <label>Nombre de usuario<div className="player-access-name"><UserRound size={18} /><input name="username" value={username} onChange={event => setUsername(event.target.value.toLowerCase())} minLength={3} maxLength={32} pattern="[a-zA-Z0-9._-]+" autoCapitalize="none" autoComplete="username" placeholder="Ej.: jackpot777" required /></div><small className="player-access-field-hint">Usá de 3 a 32 letras, números, puntos o guiones.</small></label>
       <label>Código de recomendado <span>· opcional</span><input name="referral_code" maxLength={33} autoCapitalize="none" spellCheck={false} placeholder="Usuario de quien te recomendó" /><small className="player-access-field-hint">Si nadie te invitó, podés dejarlo vacío.</small></label>
       <label className="player-access-honeypot" aria-hidden="true">Dejar vacío<input name="website" tabIndex={-1} autoComplete="off" /></label>
       {error && <p className="player-access-error" role="alert">{error}</p>}
