@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import {
-  ArrowDownToLine, ArrowUpFromLine, Clock3, Disc, Gift, History, Landmark,
+  ArrowDownToLine, ArrowUpFromLine, Clock3, Disc, Gift, History, Landmark, Link2,
   LayoutDashboard, LogOut, Menu, MessagesSquare, MessageCircle, PhoneCall, UserCog, Users, X, PanelsTopLeft, UserRound, Layers3, BellRing, Palette, Settings2,
 } from 'lucide-react';
 import { Brand, titles, type Page } from './user-views';
@@ -19,6 +19,7 @@ const groups: Array<{ label: string; items: Array<{ page: Page; Icon: typeof Lay
     { page: 'announcements', Icon: BellRing },
     { page: 'access-requests', Icon: UserRound, count: 'access' },
     { page: 'users', Icon: Users },
+    { page: 'link', Icon: Link2 },
     { page: 'platform', Icon: Layers3 },
     { page: 'shifts', Icon: Clock3 },
     { page: 'referrals', Icon: Gift },

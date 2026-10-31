@@ -62,6 +62,7 @@ export function canOpenAdminPage(page: Page, permissions: StaffPermissions, supe
   if (page === 'platform') return superAdmin || permissions.platform;
   if (page === 'referrals') return superAdmin || permissions.referrals;
   if (page === 'wheel') return superAdmin || permissions.wheel;
+  if (page === 'link') return superAdmin || permissions.users;
   return superAdmin || (isStaffPermissionPage(page) && permissions[page]);
 }
 

@@ -36,6 +36,32 @@ function slot(value: unknown): number {
   if (!Number.isInteger(result) || result < 1 || result > 50) throw new HttpError(400, 'Principal de WhatsApp no válido.');
   return result;
 }
+const playerRedirects = new Set([
+  'https://gana777bet.com/',
+  'https://www.gana777bet.com/',
+  'https://gana777bet.online/',
+  'https://gana777.vercel.app/',
+  'http://localhost:5173/',
+  'http://localhost:5174/',
+  'http://localhost:5175/',
+  'http://127.0.0.1:5173/',
+  'http://127.0.0.1:5174/',
+  'http://127.0.0.1:5175/',
+  'http://[::1]:5173/',
+  'http://[::1]:5174/',
+  'http://[::1]:5175/',
+]);
+function playerRedirect(value: unknown): string {
+  const raw = text(value, 'Destino', 12, 120);
+  let url: URL;
+  try { url = new URL(raw); } catch { throw new HttpError(400, 'Destino del enlace no válido.'); }
+  if (url.username || url.password || url.search || url.hash || (url.pathname !== '/' && url.pathname !== '')) {
+    throw new HttpError(400, 'Destino del enlace no válido.');
+  }
+  const normalized = `${url.origin}/`;
+  if (!playerRedirects.has(normalized)) throw new HttpError(400, 'Ese destino no está permitido para el enlace.');
+  return normalized;
+}
 function profileError(error: { message?: string; code?: string } | null): HttpError {
   const message = error?.message ?? '';
   if (/phone|player_phone_unique/i.test(message)) return new HttpError(409, 'Ese número de teléfono ya pertenece a otro jugador.');
@@ -107,6 +133,41 @@ Deno.serve(async request => {
         }
       }
       return json({ user_id: created.user.id, referral_registered: Boolean(referrerId) });
+    }
+
+    if (action === 'login-link') {
+      const playerUsername = username(payload.username);
+      const playerPhone = phone(payload.phone);
+      const password = text(payload.password, 'Contraseña', 8, 72);
+      const principalSlot = slot(payload.whatsapp_principal_slot);
+      const redirectTo = playerRedirect(payload.redirect_to);
+      const { data: principal } = await server.from('whatsapp_principals').select('slot').eq('slot', principalSlot).eq('active', true).maybeSingle();
+      if (!principal) throw new HttpError(400, 'Seleccioná un principal de WhatsApp activo.');
+      const { data: existingPhone } = await server.from('user_profiles').select('user_id').eq('phone', playerPhone).maybeSingle();
+      if (existingPhone) throw new HttpError(409, 'Ese número de teléfono ya pertenece a otro jugador.');
+      const email = `${playerUsername}@players.gana777.internal`;
+      const { data: created, error: createError } = await server.auth.admin.createUser({
+        email, password, email_confirm: true,
+        user_metadata: { display_name: playerUsername, username: playerUsername, player: true },
+      });
+      if (createError || !created.user) {
+        if (/already|registered|exists/i.test(createError?.message ?? '')) throw new HttpError(409, 'Ese nombre de usuario ya existe.');
+        throw new HttpError(400, 'No se pudo crear el jugador. Revisá el usuario y la contraseña.');
+      }
+      const { error: saveError } = await server.from('user_profiles').update({
+        username: playerUsername, display_name: playerUsername, phone: playerPhone,
+        external_user_id: null, whatsapp_principal_slot: principalSlot, updated_at: new Date().toISOString(),
+      }).eq('user_id', created.user.id);
+      if (saveError) { await server.auth.admin.deleteUser(created.user.id); throw profileError(saveError); }
+      const { data: link, error: linkError } = await server.auth.admin.generateLink({
+        type: 'magiclink', email, options: { redirectTo },
+      });
+      const actionLink = link?.properties?.action_link;
+      if (linkError || !actionLink) {
+        await server.auth.admin.deleteUser(created.user.id);
+        throw new HttpError(400, 'No se pudo crear el enlace. La cuenta no quedó guardada.');
+      }
+      return json({ user_id: created.user.id, username: playerUsername, action_link: actionLink });
     }
 
     if (action === 'update') {

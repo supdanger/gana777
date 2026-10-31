@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { createPortal } from 'react-dom';
 import {
   Activity, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUpFromLine, BellRing, BookOpen,
-  Check, Clock3, Disc, Gift, History, Landmark, Layers3, Lightbulb,
+  Check, Clock3, Disc, Gift, History, Landmark, Layers3, Lightbulb, Link2,
   MessageCircle, MessagesSquare, PanelsTopLeft, Palette, PhoneCall, Settings2,
   UserCog, UserRound, Users, X,
 } from 'lucide-react';
@@ -58,6 +58,12 @@ const guides: Partial<Record<Page, Guide>> = {
     steps: ['Abrí Nuevo jugador y completá usuario, contraseña, teléfono y WhatsApp principal.', 'Si corresponde, buscá y elegí quién lo recomendó antes de crear la cuenta.', 'Buscá luego en el directorio para editar datos o cambiar la contraseña.'],
     visuals: [{ title: 'Nuevo jugador', detail: 'Usuario, clave, teléfono y principal' }, { title: 'Recomendador', detail: 'Elegilo antes de crear la cuenta' }, { title: 'Directorio', detail: 'Buscá, editá o cambiá la clave' }],
     tip: 'El recomendador queda vinculado al crear al jugador; revisalo antes porque después no se puede cambiar.',
+  },
+  link: {
+    intro: 'Creá un jugador y copiá un enlace temporal para que entre sin escribir la contraseña.',
+    steps: ['Completá usuario, teléfono y WhatsApp principal.', 'Generá el enlace y copialo junto con la contraseña.', 'Pasalo en privado. Quien lo abra entra directo a esa cuenta.'],
+    visuals: [{ title: 'Datos del jugador', detail: 'Usuario, teléfono y principal' }, { title: 'Enlace temporal', detail: 'Se copia una sola vez' }, { title: 'Ingreso directo', detail: 'Abre la app ya adentro' }],
+    tip: 'El enlace dura cerca de una hora y funciona una sola vez. La contraseña queda por si el enlace ya venció.',
   },
   platform: {
     intro: 'Consultá la ficha Platform del jugador: cuenta, acceso al casino y actividad.',
@@ -148,7 +154,7 @@ export function AdminPageGuide({ page }: { page: Page }) {
   const pageIcons: Partial<Record<Page, typeof BookOpen>> = {
     home: Activity, deposit: ArrowDownToLine, withdrawal: ArrowUpFromLine, chat: MessagesSquare,
     'external-chat': MessageCircle, announcements: BellRing, 'access-requests': UserRound,
-    users: Users, platform: Layers3, shifts: Clock3, referrals: Gift, wheel: Disc,
+    users: Users, link: Link2, platform: Layers3, shifts: Clock3, referrals: Gift, wheel: Disc,
     history: History, contacts: PhoneCall, portal: PanelsTopLeft, themes: Palette,
     bonuses: Gift, accounts: Landmark, telegram: BellRing, cashiers: UserCog,
     'external-chat-admin': Settings2,

@@ -217,6 +217,14 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .player-referrer-results p { margin: 6px; font-size: 13px; }
 .player-referrer-field > .player-referrer-selected { color: #6de4bb; font-weight: 700; }
 .player-form-warning { margin: 0; padding: 9px 11px; border: 1px solid #74542d; border-radius: 8px; background: #24190c; color: #ffd28c; font-size: 12px; }
+.login-link-note { margin: 0; color: #9db5ca; font-size: 13px; line-height: 1.45; }
+.login-link-result { display: grid; gap: 12px; }
+.login-link-row { display: grid; gap: 6px; min-width: 0; }
+.login-link-row > span { color: #8aa9c9; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.login-link-row div { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.login-link-row input { flex: 1 1 180px; min-width: 0; margin: 0; }
+.login-link-row button { flex: 0 0 auto; margin: 0; }
+.login-link-admin .cashier-create-submit { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .player-list, .principal-list { display: grid; gap: 12px; }
 .player-card { overflow: hidden; border: 1px solid #24517d; border-radius: 10px; background: #000; }
 .player-card-header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 11px; margin: 0; padding: 13px 14px; border-bottom: 1px solid #173d5a; }

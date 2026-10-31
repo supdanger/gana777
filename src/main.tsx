@@ -40,6 +40,7 @@ import { pendingChatCount, pendingRequestCount } from './admin-navigation';
 import { CashierAdmin } from './cashier-admin';
 import { ContactAdmin } from './contact-admin';
 import { PlayerAdmin } from './player-admin';
+import { LoginLinkAdmin } from './login-link-admin';
 import { PortalAdmin } from './portal-admin';
 import { AdminWithdrawals } from './admin-withdrawals';
 import { AdminChat, type ChatInboxRow } from './admin-chat';
@@ -1125,6 +1126,7 @@ function App() {
       })} />}
       {adminApp && page === 'history' && history()}
       {adminApp && page === 'users' && <PlayerAdmin demo={demo} busy={busy} action={action} />}
+      {adminApp && page === 'link' && <LoginLinkAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'platform' && <PlatformAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'access-requests' && <AdminPlayerAccess demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'contacts' && <ContactAdmin demo={demo} busy={busy} action={action} />}
