@@ -60,7 +60,8 @@ export function LoginLinkAdmin({ demo, busy, action }: { demo: boolean; busy: bo
   const [password, setPassword] = useState(newPassword);
   const [casinoUrl, setCasinoUrl] = useState('');
   const [created, setCreated] = useState<CreatedLink | null>(null);
-  const [copied, setCopied] = useState<'password' | 'link' | null>(null);
+  const [renewed, setRenewed] = useState<{ username: string; actionLink: string } | null>(null);
+  const [copied, setCopied] = useState<'password' | 'link' | 'renewed' | null>(null);
   const redirectTo = playerLoginRedirect();
 
   function onCasinoPaste(event: ClipboardEvent<HTMLInputElement>) {
@@ -70,7 +71,7 @@ export function LoginLinkAdmin({ demo, busy, action }: { demo: boolean; busy: bo
     setCasinoUrl(link);
   }
 
-  async function copyValue(value: string, field: 'password' | 'link') {
+  async function copyValue(value: string, field: 'password' | 'link' | 'renewed') {
     await navigator.clipboard.writeText(value);
     setCopied(field);
     window.setTimeout(() => setCopied(current => current === field ? null : current), 2000);
@@ -105,6 +106,23 @@ export function LoginLinkAdmin({ demo, busy, action }: { demo: boolean; busy: bo
     });
   }
 
+  async function renewLink(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const element = event.currentTarget;
+    const form = new FormData(element);
+    await action(async () => {
+      if (demo || !supabase) throw new InputError('La vista previa no crea enlaces.');
+      const result = await supabase.functions.invoke('manage-players', {
+        body: { action: 'login-link-again', username: form.get('username'), redirect_to: redirectTo },
+      });
+      if (result.error || typeof result.data?.action_link !== 'string' || typeof result.data?.username !== 'string') {
+        throw await functionError(result.error, result.data, 'No se pudo crear el enlace.');
+      }
+      setRenewed({ username: result.data.username, actionLink: result.data.action_link });
+      element.reset();
+    });
+  }
+
   return <section className="player-admin login-link-admin" aria-labelledby="login-link-title">
     <div className="account-heading"><div><h1 id="login-link-title">Link</h1><p>Creá el usuario con su enlace de casino y copiá un ingreso temporal. Quien lo abra entra directo a esa cuenta.</p></div></div>
     <form className="player-create" onSubmit={event => void createLink(event)}>
@@ -120,5 +138,15 @@ export function LoginLinkAdmin({ demo, busy, action }: { demo: boolean; busy: bo
       <div className="login-link-row"><span>Contraseña</span><div><input readOnly value={created.password} aria-label="Contraseña del jugador" /><button type="button" onClick={() => void copyValue(created.password, 'password')}>{copied === 'password' ? <><Check size={15} /> Copiado</> : <><Copy size={15} /> Copiar</>}</button></div></div>
       <div className="login-link-row"><span>Enlace temporal</span><div><input readOnly value={created.actionLink} aria-label="Enlace temporal de ingreso" /><button type="button" onClick={() => void copyValue(created.actionLink, 'link')}>{copied === 'link' ? <><Check size={15} /> Copiado</> : <><Copy size={15} /> Copiar</>}</button></div></div>
     </div>}
+    <form className="player-create login-link-renew" onSubmit={event => void renewLink(event)}>
+      <div className="account-heading"><div><h2>Usuario ya creado</h2><p>Generá otro ingreso para una cuenta que ya existe. No crea otro usuario y no cambia la contraseña ni el enlace del casino.</p></div></div>
+      <label>Nombre de usuario<input name="username" minLength={3} maxLength={32} pattern={'[a-zA-Z0-9._\\-]+'} autoCapitalize="none" spellCheck={false} placeholder="juanito" required /></label>
+      <p className="login-link-note">El enlace abre el portal en {redirectTo}. Dura cerca de una hora, funciona una sola vez y hay que pasarlo en privado.</p>
+      <button className="cashier-create-submit" disabled={busy}><Link2 size={16} aria-hidden="true" /> Generar enlace de nuevo</button>
+      {renewed && <div className="login-link-result">
+        <p className="login-link-note">Listo, @{renewed.username}. La contraseña sigue siendo la que ya tenía.</p>
+        <div className="login-link-row"><span>Enlace temporal</span><div><input readOnly value={renewed.actionLink} aria-label="Enlace temporal para el usuario existente" /><button type="button" onClick={() => void copyValue(renewed.actionLink, 'renewed')}>{copied === 'renewed' ? <><Check size={15} /> Copiado</> : <><Copy size={15} /> Copiar</>}</button></div></div>
+      </div>}
+    </form>
   </section>;
 }

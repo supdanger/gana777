@@ -197,6 +197,25 @@ Deno.serve(async request => {
       return json({ user_id: created.user.id, username: playerUsername, action_link: actionLink });
     }
 
+    if (action === 'login-link-again') {
+      const playerUsername = username(payload.username);
+      const redirectTo = playerRedirect(payload.redirect_to);
+      const { data: profile, error: profileLookupError } = await server.from('user_profiles').select('user_id, username').eq('username', playerUsername).maybeSingle();
+      if (profileLookupError) throw new HttpError(400, 'No pudimos comprobar el usuario.');
+      if (!profile) throw new HttpError(404, 'Ese jugador no existe.');
+      const { data: admin } = await server.from('admin_users').select('user_id').eq('user_id', profile.user_id).maybeSingle();
+      if (admin) throw new HttpError(400, 'La cuenta seleccionada pertenece al personal del panel.');
+      const { data: authUser, error: authError } = await server.auth.admin.getUserById(profile.user_id);
+      const email = authUser.user?.email ?? '';
+      if (authError || !authUser.user || !email.endsWith('@players.gana777.internal')) throw new HttpError(400, 'No se pudo preparar el ingreso de ese jugador.');
+      const { data: link, error: linkError } = await server.auth.admin.generateLink({
+        type: 'magiclink', email, options: { redirectTo },
+      });
+      const actionLink = link?.properties?.action_link;
+      if (linkError || !actionLink) throw new HttpError(400, 'No se pudo crear el enlace.');
+      return json({ user_id: profile.user_id, username: profile.username, action_link: actionLink });
+    }
+
     if (action === 'update') {
       const userId = uuid(payload.user_id);
       const playerPhone = phone(payload.phone);

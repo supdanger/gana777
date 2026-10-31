@@ -60,8 +60,8 @@ const guides: Partial<Record<Page, Guide>> = {
     tip: 'El recomendador queda vinculado al crear al jugador; revisalo antes porque después no se puede cambiar.',
   },
   link: {
-    intro: 'Creá un jugador y copiá un ingreso temporal para que entre sin escribir la contraseña.',
-    steps: ['Completá el usuario y la URL. Puede ser la personal o solo https://gana777bet.com.', 'Generá el enlace de ingreso y copialo junto con la contraseña.', 'Pasalo en privado. Quien lo abra entra directo al portal.'],
+    intro: 'Creá un jugador y copiá un ingreso temporal para que entre sin escribir la contraseña. Si la cuenta ya existe, generá otro enlace sin crear un usuario nuevo.',
+    steps: ['Completá el usuario y la URL. Puede ser la personal o solo https://gana777bet.com.', 'Generá el enlace de ingreso y copialo junto con la contraseña.', 'Si el usuario ya existe, escribí el nombre en «Usuario ya creado» y generá el enlace de nuevo.', 'Pasalo en privado. Quien lo abra entra directo al portal.'],
     visuals: [{ title: 'Usuario y URL', detail: 'Sin teléfono ni principal' }, { title: 'Sitio pelado', detail: 'Se puede repetir' }, { title: 'Enlace personal', detail: 'El banner abre su URL' }],
     tip: 'El enlace dura cerca de una hora y funciona una sola vez. La contraseña queda por si el enlace ya venció.',
   },
