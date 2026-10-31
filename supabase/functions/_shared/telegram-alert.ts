@@ -37,9 +37,7 @@ export function telegramAlertText(alert: TelegramAlert, notice: TelegramNotice =
   const data = alert.payload;
   if (alert.event_type === 'shift_start' || alert.event_type === 'shift_end') {
     const action = alert.event_type === 'shift_start' ? 'inició' : 'finalizó';
-    const phones = Array.isArray(data.phones) ? data.phones.filter(phone => Number.isInteger(phone)).join(', ') : '';
     const lines = [`🔔 <b>TURNO ${action.toUpperCase()}</b>`, '━━━━━━━━━━━━━━', `👤 <b>Operador:</b> ${label(data.operator_name)}`, field('🏢', 'SAC', escapeHtml(String(data.sac)))];
-    if (phones) lines.push(field('📞', 'Teléfonos', escapeHtml(phones)));
     return lines.join('\n');
   }
   if (alert.event_type === 'withdrawal') {

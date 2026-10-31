@@ -37,8 +37,9 @@ test('el retiro usa el mismo orden y no incluye referencia', () => {
   assert.equal(message, ['💸 <b>RETIRO PENDIENTE</b>', '━━━━━━━━━━━━━━', '👤 <b>Usuario:</b> Max', '💰 <b>Monto:</b> <b>$20.000</b>', '', '⚠️ Revisar y procesar desde el panel.'].join('\n'));
 });
 
-test('el aviso de cierre informa el operador y los teléfonos del SAC', () => {
+test('el aviso de cierre informa el operador y el SAC', () => {
   const message = telegramAlertText({ id: 'b', route: 'shifts', event_type: 'shift_end', attempts: 1,
     payload: { operator_name: 'Ana', sac: 3, phones: [4, 9] } });
-  assert.equal(message, ['🔔 <b>TURNO FINALIZÓ</b>', '━━━━━━━━━━━━━━', '👤 <b>Operador:</b> Ana', '🏢 <b>SAC:</b> 3', '📞 <b>Teléfonos:</b> 4, 9'].join('\n'));
+  assert.equal(message, ['🔔 <b>TURNO FINALIZÓ</b>', '━━━━━━━━━━━━━━', '👤 <b>Operador:</b> Ana', '🏢 <b>SAC:</b> 3'].join('\n'));
+  assert.equal(message.includes('Teléfonos'), false);
 });
