@@ -31,6 +31,14 @@ function phone(value: unknown): string {
   if (!/^[1-9][0-9]{7,14}$/.test(normalized)) throw new HttpError(400, 'Ingresá el teléfono con código de país, entre 8 y 15 números.');
   return normalized;
 }
+function casinoUrl(value: unknown): string {
+  const raw = text(value, 'URL personal del casino', 12, 2048);
+  let url: URL;
+  try { url = new URL(raw); } catch { throw new HttpError(400, 'Ingresá una URL personal válida.'); }
+  if (url.protocol !== 'https:' || url.username || url.password) throw new HttpError(400, 'La URL personal debe usar HTTPS y no incluir usuario ni contraseña en la dirección.');
+  if (url.href.length > 2048) throw new HttpError(400, 'La URL personal es demasiado larga.');
+  return url.href;
+}
 function slot(value: unknown): number {
   const result = Number(value);
   if (!Number.isInteger(result) || result < 1 || result > 50) throw new HttpError(400, 'Principal de WhatsApp no válido.');
@@ -137,14 +145,16 @@ Deno.serve(async request => {
 
     if (action === 'login-link') {
       const playerUsername = username(payload.username);
-      const playerPhone = phone(payload.phone);
       const password = text(payload.password, 'Contraseña', 8, 72);
-      const principalSlot = slot(payload.whatsapp_principal_slot);
+      const playerCasinoUrl = casinoUrl(payload.casino_url);
       const redirectTo = playerRedirect(payload.redirect_to);
-      const { data: principal } = await server.from('whatsapp_principals').select('slot').eq('slot', principalSlot).eq('active', true).maybeSingle();
-      if (!principal) throw new HttpError(400, 'Seleccioná un principal de WhatsApp activo.');
-      const { data: existingPhone } = await server.from('user_profiles').select('user_id').eq('phone', playerPhone).maybeSingle();
-      if (existingPhone) throw new HttpError(409, 'Ese número de teléfono ya pertenece a otro jugador.');
+      const [existingName, usedLink] = await Promise.all([
+        server.from('user_profiles').select('user_id').eq('username', playerUsername).maybeSingle(),
+        server.from('player_casino_links').select('user_id').eq('url', playerCasinoUrl).maybeSingle(),
+      ]);
+      if (existingName.error || usedLink.error) throw new HttpError(400, 'No pudimos comprobar el usuario y el enlace.');
+      if (existingName.data) throw new HttpError(409, 'Ese nombre de usuario ya existe.');
+      if (usedLink.data) throw new HttpError(409, 'Esa URL personal ya está asignada a otro jugador.');
       const email = `${playerUsername}@players.gana777.internal`;
       const { data: created, error: createError } = await server.auth.admin.createUser({
         email, password, email_confirm: true,
@@ -155,10 +165,16 @@ Deno.serve(async request => {
         throw new HttpError(400, 'No se pudo crear el jugador. Revisá el usuario y la contraseña.');
       }
       const { error: saveError } = await server.from('user_profiles').update({
-        username: playerUsername, display_name: playerUsername, phone: playerPhone,
-        external_user_id: null, whatsapp_principal_slot: principalSlot, updated_at: new Date().toISOString(),
+        username: playerUsername, display_name: playerUsername, account_origin: 'platform',
+        phone: null, external_user_id: null, whatsapp_principal_slot: null, updated_at: new Date().toISOString(),
       }).eq('user_id', created.user.id);
       if (saveError) { await server.auth.admin.deleteUser(created.user.id); throw profileError(saveError); }
+      const { error: casinoError } = await server.from('player_casino_links').insert({ user_id: created.user.id, url: playerCasinoUrl });
+      if (casinoError) {
+        await server.auth.admin.deleteUser(created.user.id);
+        if (casinoError.code === '23505') throw new HttpError(409, 'Esa URL personal ya está asignada a otro jugador.');
+        throw new HttpError(400, 'No se pudo guardar el enlace del casino. La cuenta no quedó guardada.');
+      }
       const { data: link, error: linkError } = await server.auth.admin.generateLink({
         type: 'magiclink', email, options: { redirectTo },
       });

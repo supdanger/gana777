@@ -225,6 +225,8 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .login-link-row input { flex: 1 1 180px; min-width: 0; margin: 0; }
 .login-link-row button { flex: 0 0 auto; margin: 0; }
 .login-link-admin .cashier-create-submit { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.login-link-casino { grid-column: 1 / -1; }
+.login-link-casino small { display: block; margin-top: 6px; color: #9db5ca; font-size: 12px; line-height: 1.45; }
 .player-list, .principal-list { display: grid; gap: 12px; }
 .player-card { overflow: hidden; border: 1px solid #24517d; border-radius: 10px; background: #000; }
 .player-card-header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 11px; margin: 0; padding: 13px 14px; border-bottom: 1px solid #173d5a; }

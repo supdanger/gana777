@@ -1,9 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Check, Copy, Link2 } from 'lucide-react';
 import { InputError } from '../supabase/functions/_shared/validation';
 import { supabase } from './lib';
 
-type Principal = { slot: number; phone: string; active: boolean };
 type CreatedLink = { username: string; password: string; actionLink: string; redirectTo: string };
 
 const passwordAlphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
@@ -37,30 +36,10 @@ async function functionError(error: unknown, data: unknown, fallback: string): P
 }
 
 export function LoginLinkAdmin({ demo, busy, action }: { demo: boolean; busy: boolean; action: (task: () => Promise<void>) => Promise<void> }) {
-  const [principals, setPrincipals] = useState<Principal[]>([]);
-  const [loading, setLoading] = useState(!demo && !!supabase);
-  const [loadError, setLoadError] = useState('');
   const [password, setPassword] = useState(newPassword);
   const [created, setCreated] = useState<CreatedLink | null>(null);
   const [copied, setCopied] = useState<'password' | 'link' | null>(null);
   const redirectTo = playerLoginRedirect();
-
-  useEffect(() => {
-    if (demo || !supabase) {
-      setPrincipals(demo ? [{ slot: 1, phone: '595900000000', active: true }] : []);
-      setLoading(false);
-      return;
-    }
-    let alive = true;
-    void supabase.from('whatsapp_principals').select('slot,phone,active').order('slot').then(({ data, error }) => {
-      if (!alive) return;
-      setLoading(false);
-      if (error) { setLoadError('No pudimos cargar los principales. Revisá Contactos.'); return; }
-      setLoadError('');
-      setPrincipals((data ?? []) as Principal[]);
-    });
-    return () => { alive = false; };
-  }, [demo]);
 
   async function copyValue(value: string, field: 'password' | 'link') {
     await navigator.clipboard.writeText(value);
@@ -80,8 +59,7 @@ export function LoginLinkAdmin({ demo, busy, action }: { demo: boolean; busy: bo
           action: 'login-link',
           username: form.get('username'),
           password: nextPassword,
-          phone: form.get('phone'),
-          whatsapp_principal_slot: form.get('whatsapp_principal_slot'),
+          casino_url: form.get('casino_url'),
           redirect_to: redirectTo,
         },
       });
@@ -94,19 +72,15 @@ export function LoginLinkAdmin({ demo, busy, action }: { demo: boolean; busy: bo
     });
   }
 
-  const activePrincipals = principals.filter(item => item.active);
   return <section className="player-admin login-link-admin" aria-labelledby="login-link-title">
-    <div className="account-heading"><div><h1 id="login-link-title">Link</h1><p>Creá el usuario y copiá un enlace temporal. Quien lo abra entra directo a esa cuenta.</p></div></div>
+    <div className="account-heading"><div><h1 id="login-link-title">Link</h1><p>Creá el usuario con su enlace de casino y copiá un ingreso temporal. Quien lo abra entra directo a esa cuenta.</p></div></div>
     <form className="player-create" onSubmit={event => void createLink(event)}>
       <div className="player-create-fields">
         <label>Nombre de usuario<input name="username" minLength={3} maxLength={32} pattern={'[a-zA-Z0-9._\\-]+'} autoCapitalize="none" spellCheck={false} placeholder="juanito" required /></label>
-        <label>Teléfono del jugador<input name="phone" type="tel" maxLength={30} placeholder="Ej.: +595981123456" required /></label>
-        <label>WhatsApp principal<select name="whatsapp_principal_slot" required defaultValue=""><option value="" disabled>Seleccionar principal</option>{activePrincipals.map(item => <option key={item.slot} value={item.slot}>Principal {item.slot} · +{item.phone}</option>)}</select></label>
+        <label className="login-link-casino">URL personal del casino<input name="casino_url" type="url" inputMode="url" maxLength={2048} placeholder="https://gana777bet.com/acceso/…" spellCheck={false} required /><small>Abre «Ir al casino» solamente para este jugador, igual que en Solicitudes.</small></label>
       </div>
-      <p className="login-link-note">El enlace abre {redirectTo}. Dura cerca de una hora, funciona una sola vez y hay que pasarlo en privado. La contraseña se muestra después, por si el enlace ya venció.</p>
-      {loadError && <p className="player-form-warning">{loadError}</p>}
-      {!loadError && !activePrincipals.length && <p className="player-form-warning">Primero cargá al menos un número en Contactos.</p>}
-      <button className="cashier-create-submit" disabled={busy || loading || !activePrincipals.length}><Link2 size={16} aria-hidden="true" /> Crear usuario y generar enlace</button>
+      <p className="login-link-note">El enlace de ingreso abre {redirectTo}. Dura cerca de una hora, funciona una sola vez y hay que pasarlo en privado. La contraseña se muestra después, por si el enlace ya venció.</p>
+      <button className="cashier-create-submit" disabled={busy}><Link2 size={16} aria-hidden="true" /> Crear usuario y generar enlace</button>
     </form>
     {created && <div className="player-create login-link-result">
       <p className="login-link-note">Listo, @{created.username}. Copiá el enlace y pasalo solo a esa persona.</p>
