@@ -53,14 +53,16 @@ export function AdminShell({ page, counts, permissions, superAdmin, staffName, a
   children: ReactNode;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [panelTheme, setPanelTheme] = useState(() => window.localStorage.getItem('gana777:panel-theme') ?? 'violeta');
   useEffect(() => setMenuOpen(false), [page]);
+  useEffect(() => { window.localStorage.setItem('gana777:panel-theme', panelTheme); }, [panelTheme]);
 
   function go(next: Page) {
     navigate(next);
     setMenuOpen(false);
   }
 
-  return <div className="admin-shell">
+  return <div className={`admin-shell admin-theme-${panelTheme}`}>
     <button className={`admin-menu-backdrop ${menuOpen ? 'visible' : ''}`} aria-label="Cerrar menú" tabIndex={menuOpen ? 0 : -1} onClick={() => setMenuOpen(false)} />
     <aside className={`admin-sidebar ${menuOpen ? 'open' : ''}`} aria-label="Menú del panel">
       <div className="admin-sidebar-brand"><Brand panel /><button className="admin-sidebar-close" aria-label="Cerrar menú" onClick={() => setMenuOpen(false)}><X /></button></div>
@@ -88,6 +90,7 @@ export function AdminShell({ page, counts, permissions, superAdmin, staffName, a
       <header className="admin-topbar">
         <button className="admin-menu-toggle" aria-label="Abrir menú" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}><Menu /></button>
         <div><small>{sectionLabel(page)}</small><strong>{titles[page]}</strong></div>
+        <label className="admin-theme-picker"><Palette size={15} aria-hidden="true" /><span className="sr-only">Tema del panel</span><select value={panelTheme} onChange={event => setPanelTheme(event.target.value)} aria-label="Tema del panel"><option value="violeta">Violeta</option><option value="negro">Negro intenso</option><option value="azul">Azul noche</option><option value="esmeralda">Esmeralda</option><option value="dorado">Dorado</option></select></label>
         <div className="admin-staff-identity">
           <span className="admin-staff-avatar">{avatarUrl ? <img src={avatarUrl} alt="" /> : staffName.slice(0, 1).toUpperCase()}</span>
           <span><strong>{staffName}</strong><small>{superAdmin ? 'Superadministrador' : 'Cajero'}</small></span>
