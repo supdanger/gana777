@@ -37,7 +37,7 @@ export function casinoUrlFieldValue(value: string): string {
 export function playerLoginRedirect(location: Pick<Location, 'hostname' | 'port'> = window.location): string {
   const host = location.hostname;
   const local = host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
-  if (!local) return 'https://gana777bet.com/';
+  if (!local) return 'https://gana777bet.online/';
   const userPort = location.port === '5174' ? '5173' : '5174';
   const hostname = host === '127.0.0.1' || host === '[::1]' ? host : 'localhost';
   return `http://${hostname}:${userPort}/`;
@@ -112,7 +112,7 @@ export function LoginLinkAdmin({ demo, busy, action }: { demo: boolean; busy: bo
         <label>Nombre de usuario<input name="username" minLength={3} maxLength={32} pattern={'[a-zA-Z0-9._\\-]+'} autoCapitalize="none" spellCheck={false} placeholder="juanito" required /></label>
         <label className="login-link-casino">URL personal del casino<input name="casino_url" type="text" inputMode="url" maxLength={8192} placeholder="https://gana777bet.com/?auth=…" spellCheck={false} value={casinoUrl} onChange={event => setCasinoUrl(casinoUrlFieldValue(event.target.value))} onPaste={onCasinoPaste} required /><small>El enlace personal abre «Ir al casino» solo para este jugador. Si pegás solo https://gana777bet.com, se puede usar en varios y el banner queda con el enlace general.</small></label>
       </div>
-      <p className="login-link-note">El enlace de ingreso abre {redirectTo}. Dura cerca de una hora, funciona una sola vez y hay que pasarlo en privado. La contraseña se muestra después, por si el enlace ya venció.</p>
+      <p className="login-link-note">El enlace de ingreso abre el portal en {redirectTo}. gana777bet.com solo se usa si el jugador toca «Ir al casino». Dura cerca de una hora, funciona una sola vez y hay que pasarlo en privado. La contraseña se muestra después, por si el enlace ya venció.</p>
       <button className="cashier-create-submit" disabled={busy}><Link2 size={16} aria-hidden="true" /> Crear usuario y generar enlace</button>
     </form>
     {created && <div className="player-create login-link-result">
