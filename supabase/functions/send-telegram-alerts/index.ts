@@ -161,7 +161,7 @@ async function deliver(token: string, chatId: string, text: string, file: Receip
       : await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+        body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true }),
         signal: AbortSignal.timeout(8000),
       });
     if (!response.ok) return { ok: false, messageId: null, errorCode: `telegram_${response.status}` };
@@ -177,6 +177,7 @@ function telegramFile(chatId: string, text: string, file: ReceiptFile): FormData
   const body = new FormData();
   body.set('chat_id', chatId);
   body.set('caption', text);
+  body.set('parse_mode', 'HTML');
   body.set(file.field, new Blob([file.bytes], { type: file.mime }), file.filename);
   return body;
 }
