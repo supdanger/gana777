@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type ClipboardEvent, type FormEvent } from 'react';
 import { Check, Copy, Link2 } from 'lucide-react';
 import { InputError } from '../supabase/functions/_shared/validation';
 import { supabase } from './lib';
+import { safeHttpsLink } from './security';
 
 type CreatedLink = { username: string; password: string; actionLink: string; redirectTo: string };
 
@@ -11,6 +12,26 @@ function newPassword(): string {
   const bytes = new Uint8Array(12);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, byte => passwordAlphabet[byte % passwordAlphabet.length]).join('');
+}
+
+export function pastedCasinoUrl(value: string): string | null {
+  const trimmed = value.trim();
+  const direct = safeHttpsLink(trimmed);
+  if (direct) return direct;
+  const found = trimmed.match(/https:\/\/[^\s<>"'`\])]+/g) ?? [];
+  for (const match of found) {
+    const link = safeHttpsLink(match.replace(/[),.;]+$/g, ''));
+    if (link) return link;
+  }
+  return null;
+}
+
+export function casinoUrlFieldValue(value: string): string {
+  const link = pastedCasinoUrl(value);
+  if (!link) return value;
+  const trimmed = value.trim();
+  if (trimmed === link || link.startsWith(trimmed)) return trimmed === value ? value : trimmed;
+  return link;
 }
 
 export function playerLoginRedirect(location: Pick<Location, 'hostname' | 'port'> = window.location): string {
@@ -37,9 +58,17 @@ async function functionError(error: unknown, data: unknown, fallback: string): P
 
 export function LoginLinkAdmin({ demo, busy, action }: { demo: boolean; busy: boolean; action: (task: () => Promise<void>) => Promise<void> }) {
   const [password, setPassword] = useState(newPassword);
+  const [casinoUrl, setCasinoUrl] = useState('');
   const [created, setCreated] = useState<CreatedLink | null>(null);
   const [copied, setCopied] = useState<'password' | 'link' | null>(null);
   const redirectTo = playerLoginRedirect();
+
+  function onCasinoPaste(event: ClipboardEvent<HTMLInputElement>) {
+    const link = pastedCasinoUrl(event.clipboardData.getData('text'));
+    if (!link) return;
+    event.preventDefault();
+    setCasinoUrl(link);
+  }
 
   async function copyValue(value: string, field: 'password' | 'link') {
     await navigator.clipboard.writeText(value);
@@ -52,14 +81,17 @@ export function LoginLinkAdmin({ demo, busy, action }: { demo: boolean; busy: bo
     const element = event.currentTarget;
     const form = new FormData(element);
     const nextPassword = password;
+    const link = pastedCasinoUrl(String(form.get('casino_url') ?? ''));
+    if (link) setCasinoUrl(link);
     await action(async () => {
+      if (!link) throw new InputError('Pegá la URL personal completa, la que empieza con https://.');
       if (demo || !supabase) throw new InputError('La vista previa no crea enlaces.');
       const result = await supabase.functions.invoke('manage-players', {
         body: {
           action: 'login-link',
           username: form.get('username'),
           password: nextPassword,
-          casino_url: form.get('casino_url'),
+          casino_url: link,
           redirect_to: redirectTo,
         },
       });
@@ -68,6 +100,7 @@ export function LoginLinkAdmin({ demo, busy, action }: { demo: boolean; busy: bo
       }
       setCreated({ username: result.data.username, password: nextPassword, actionLink: result.data.action_link, redirectTo });
       setPassword(newPassword());
+      setCasinoUrl('');
       element.reset();
     });
   }
@@ -77,7 +110,7 @@ export function LoginLinkAdmin({ demo, busy, action }: { demo: boolean; busy: bo
     <form className="player-create" onSubmit={event => void createLink(event)}>
       <div className="player-create-fields">
         <label>Nombre de usuario<input name="username" minLength={3} maxLength={32} pattern={'[a-zA-Z0-9._\\-]+'} autoCapitalize="none" spellCheck={false} placeholder="juanito" required /></label>
-        <label className="login-link-casino">URL personal del casino<input name="casino_url" type="url" inputMode="url" maxLength={2048} placeholder="https://gana777bet.com/acceso/…" spellCheck={false} required /><small>Abre «Ir al casino» solamente para este jugador, igual que en Solicitudes.</small></label>
+        <label className="login-link-casino">URL personal del casino<input name="casino_url" type="text" inputMode="url" maxLength={8192} placeholder="https://gana777bet.com/?auth=…" spellCheck={false} value={casinoUrl} onChange={event => setCasinoUrl(casinoUrlFieldValue(event.target.value))} onPaste={onCasinoPaste} required /><small>Abre «Ir al casino» solamente para este jugador. Si pegás el enlace con texto alrededor, se guarda solo la dirección https.</small></label>
       </div>
       <p className="login-link-note">El enlace de ingreso abre {redirectTo}. Dura cerca de una hora, funciona una sola vez y hay que pasarlo en privado. La contraseña se muestra después, por si el enlace ya venció.</p>
       <button className="cashier-create-submit" disabled={busy}><Link2 size={16} aria-hidden="true" /> Crear usuario y generar enlace</button>
