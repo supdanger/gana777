@@ -452,6 +452,22 @@ function App() {
     return () => { alive = false; window.removeEventListener('focus', onFocus); void db.removeChannel(channel); };
   }, [session, sacStation, adminApp]);
   useEffect(() => {
+    if (adminApp || demo || !session || !supabase) return;
+    const db = supabase;
+    const signedInAt = Date.parse(session.user.last_sign_in_at ?? session.user.created_at ?? '');
+    let alive = true;
+    const check = async () => {
+      const { data, error } = await db.rpc('get_my_session_revoked_at');
+      if (!alive || error || !data || !signedInAt) return;
+      if (Date.parse(String(data)) > signedInAt) {
+        await db.auth.signOut();
+      }
+    };
+    void check();
+    const timer = window.setInterval(() => void check(), 15_000);
+    return () => { alive = false; window.clearInterval(timer); };
+  }, [adminApp, demo, session?.user.id, session?.user.last_sign_in_at, session?.user.created_at]);
+  useEffect(() => {
     if (!adminApp || page !== 'withdrawal' || !session || !supabase) return;
     let alive = true;
     void (async () => {

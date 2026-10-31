@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { ChevronDown, KeyRound, Pencil, Phone, Search, UserPlus, UserRound, X } from 'lucide-react';
+import { ChevronDown, KeyRound, LogOut, Pencil, Phone, Search, UserPlus, UserRound, X } from 'lucide-react';
 import { InputError } from '../supabase/functions/_shared/validation';
 import { supabase } from './lib';
 
@@ -106,6 +106,14 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
       setPasswordId(null);
     });
   }
+  async function forceLogout(player: Player) {
+    if (!window.confirm(`¿Forzar la salida de ${player.username ? `@${player.username}` : player.display_name}? Se cerrará su sesión activa.`)) return;
+    await action(async () => {
+      if (demo || !supabase) throw new InputError('La vista previa no modifica jugadores.');
+      const result = await supabase.rpc('force_player_logout', { target_user_id: player.user_id });
+      if (result.error) throw new InputError('No se pudo forzar la salida. Aplicá la migración 084 y revisá tus permisos.');
+    });
+  }
   const activePrincipals = principals.filter(item => item.active);
   const normalizedPlayerQuery = playerQuery.trim().replace(/^@/, '').toLocaleLowerCase('es');
   const phoneQuery = playerQuery.replace(/\D/g, '');
@@ -155,7 +163,7 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
       <p className="player-referrer">{player.referrer_user_id ? <>Recomendado por <strong>{player.referrer_name || 'Jugador registrado'}</strong></> : 'Sin recomendador registrado · No genera premios por recomendación.'}</p>
       {editId === player.user_id && <form className="player-edit-form" onSubmit={event => void updatePlayer(event, player)}><label>Teléfono<input name="phone" type="tel" maxLength={30} defaultValue={player.phone ? `+${player.phone}` : ''} required /></label><label>ID de la plataforma<input name="external_user_id" maxLength={80} defaultValue={player.external_user_id ?? ''} /></label><label>WhatsApp principal<select name="whatsapp_principal_slot" defaultValue={player.whatsapp_principal_slot ?? ''} required><option value="" disabled>Seleccionar principal</option>{activePrincipals.map(item => <option key={item.slot} value={item.slot}>Principal {item.slot} · +{item.phone}</option>)}</select></label><div><button disabled={busy}>Guardar datos</button><button type="button" onClick={() => setEditId(null)}>Cancelar</button></div></form>}
       {passwordId === player.user_id && <form className="player-password-form" onSubmit={event => void changePassword(event, player)}><input name="password" type="password" minLength={8} maxLength={72} autoComplete="new-password" placeholder="Nueva contraseña" required /><button disabled={busy}>Guardar contraseña</button><button type="button" onClick={() => setPasswordId(null)}>Cancelar</button></form>}
-      <div className="player-card-actions"><button type="button" onClick={() => { setPasswordId(null); setEditId(player.user_id); }}><Pencil />Editar datos</button><button type="button" onClick={() => { setEditId(null); setPasswordId(player.user_id); }}><KeyRound />Cambiar contraseña</button><a href={player.whatsapp_principal_phone ? `https://wa.me/${player.whatsapp_principal_phone}` : undefined} aria-disabled={!player.whatsapp_principal_phone} target="_blank" rel="noopener noreferrer"><Phone />Abrir principal</a></div>
+      <div className="player-card-actions"><button type="button" onClick={() => { setPasswordId(null); setEditId(player.user_id); }}><Pencil />Editar datos</button><button type="button" onClick={() => { setEditId(null); setPasswordId(player.user_id); }}><KeyRound />Cambiar contraseña</button><button type="button" onClick={() => void forceLogout(player)} disabled={busy || demo}><LogOut />Forzar salida</button><a href={player.whatsapp_principal_phone ? `https://wa.me/${player.whatsapp_principal_phone}` : undefined} aria-disabled={!player.whatsapp_principal_phone} target="_blank" rel="noopener noreferrer"><Phone />Abrir principal</a></div>
     </article>)}</div>}
   </section>;
 }
