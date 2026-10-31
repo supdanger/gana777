@@ -130,7 +130,7 @@ export function PlayerAccessRequest({ onBack, onCredentialsReady }: { onBack: ()
       <button className="primary" disabled={busy || restoring}>{restoring ? 'Cargando…' : busy ? 'Enviando solicitud…' : 'Enviar solicitud'}</button>
     </form> : <>
       <div className="player-access-status"><strong>{thread.status === 'approved' ? 'Usuario creado' : thread.status === 'rejected' ? 'Solicitud cerrada' : 'Esperando al equipo'}</strong><span>Usuario solicitado: @{thread.username}</span>{thread.referral_code && <small>Recomendado por @{thread.referral_code}</small>}</div>
-      {thread.status === 'approved' && <div className="player-access-login"><button type="button" onClick={continueToLogin}><LogIn size={18} />Cargar acceso e ir al ingreso</button><small>El usuario y la contraseña se completan en el login para que solo tengas que tocar «Ingresar».</small></div>}
+      {thread.status === 'approved' && <div className="player-access-login"><button type="button" onClick={continueToLogin}><LogIn size={18} />Ir a usuario</button><small>El usuario y la contraseña se completan en el login para que solo tengas que tocar «Ingresar».</small></div>}
       <div className="player-access-messages" ref={log} role="log" aria-live="polite">
         {messages.map(message => <article key={message.id} className={`player-access-message${message.sender === 'admin' ? ' from-admin' : ''}`}><p>{message.body}</p><time>{new Intl.DateTimeFormat('es', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(message.created_at))}</time></article>)}
       </div>
