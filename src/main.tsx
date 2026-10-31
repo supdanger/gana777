@@ -440,19 +440,16 @@ function App() {
     void refresh();
     const onFocus = () => void refresh();
     window.addEventListener('focus', onFocus);
-    // El canal de Realtime actualiza al instante; este respaldo mantiene el contador
-    // sincronizado aunque el navegador suspenda temporalmente WebSocket.
-    const refreshTimer = adminApp ? window.setInterval(() => void refresh(), 5000) : null;
     const channel = db.channel(`updates-${session.user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => { void refresh(); if (adminApp && currentPageRef.current === 'withdrawal') setWithdrawalReload(value => value + 1); setDepositReload(value => value + 1); setHistoryReload(value => value + 1); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => { void refresh(); if (adminApp) setWithdrawalReload(value => value + 1); setDepositReload(value => value + 1); setHistoryReload(value => value + 1); })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'deposit_credits' }, () => setLeaderboardReload(value => value + 1))
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'withdrawal_parts' }, () => { void refresh(); if (adminApp && currentPageRef.current === 'withdrawal') setWithdrawalReload(value => value + 1); })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'withdrawal_parts' }, () => { void refresh(); if (adminApp) setWithdrawalReload(value => value + 1); })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => { if (!adminApp) void refresh(); })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'external_chat_messages' }, () => { if (!adminApp) void refresh(); })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'external_chat_threads' }, () => { if (!adminApp) void refresh(); })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'admin_permissions', filter: `user_id=eq.${session.user.id}` }, () => void refresh())
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'cashier_profiles', filter: `user_id=eq.${session.user.id}` }, () => void refresh()).subscribe();
-    return () => { alive = false; window.removeEventListener('focus', onFocus); if (refreshTimer) window.clearInterval(refreshTimer); void db.removeChannel(channel); };
+    return () => { alive = false; window.removeEventListener('focus', onFocus); void db.removeChannel(channel); };
   }, [session, sacStation, adminApp]);
   useEffect(() => {
     if (adminApp || demo || !session || !supabase) return;
