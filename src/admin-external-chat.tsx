@@ -4,6 +4,8 @@ import { date, supabase } from './lib';
 import { ChatImage } from './chat-images';
 import { parseMessage } from '../supabase/functions/_shared/validation';
 import { InputError } from '../supabase/functions/_shared/validation';
+import { ChatMessageText, EntryLinkBar, createEntryMessage } from './chat-entry';
+import { entryPreview, isEntryBody } from './entry-link';
 
 export type ExternalChatInboxRow = {
   thread_id: string; nickname: string; origin: string; created_at: string; last_seen_at: string;
@@ -34,6 +36,8 @@ export function AdminExternalChat({ inbox, selectedId, demo, canLink, onSelect, 
   const [linkUsername, setLinkUsername] = useState('');
   const [linkMatch, setLinkMatch] = useState<{ user_id: string; username: string; display_name: string | null } | null>(null);
   const [linkBusy, setLinkBusy] = useState(false);
+  const [entryUser, setEntryUser] = useState('');
+  const [sendingEntry, setSendingEntry] = useState(false);
   const log = useRef<HTMLDivElement>(null);
   const activeId = useRef(selectedId);
   activeId.current = selectedId;
@@ -43,7 +47,7 @@ export function AdminExternalChat({ inbox, selectedId, demo, canLink, onSelect, 
     if (filter === 'pending' && (row.completed_at || row.last_sender_type !== 'visitor')) return false;
     if (filter === 'completed' && !row.completed_at) return false;
     const needle = search.trim().toLocaleLowerCase();
-    return !needle || `${row.nickname} ${row.last_body}`.toLocaleLowerCase().includes(needle);
+    return !needle || `${row.nickname} ${entryPreview(row.last_body)}`.toLocaleLowerCase().includes(needle);
   });
 
   useEffect(() => {
@@ -73,7 +77,7 @@ export function AdminExternalChat({ inbox, selectedId, demo, canLink, onSelect, 
 
   async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!supabase || demo || sending || !selected || selected.completed_at) return;
+    if (!supabase || demo || sending || sendingEntry || !selected || selected.completed_at) return;
     const data = new FormData(event.currentTarget);
     let body: string;
     try { body = parseMessage(data.get('message')); }
@@ -90,6 +94,26 @@ export function AdminExternalChat({ inbox, selectedId, demo, canLink, onSelect, 
     if (result.error || !result.data) { setError(result.error?.message.includes('vinculada') ? 'Esta conversación ya está vinculada. Abrila desde Chat.' : 'No pudimos enviar la respuesta. Intentá nuevamente.'); onChanged(); return; }
     setMessages(old => old.some(item => item.id === result.data.id) ? old : [...old, result.data as ExternalMessage]);
     form.reset(); onChanged();
+  }
+
+  async function sendEntry() {
+    if (!supabase || demo || sending || sendingEntry || !selected || selected.completed_at) return;
+    const threadId = selected.thread_id;
+    setSendingEntry(true); setError(''); setNotice('');
+    try {
+      const body = await createEntryMessage(entryUser);
+      const auth = await supabase.auth.getUser();
+      if (!auth.data.user) throw new InputError('Tu sesión venció. Volvé a ingresar.');
+      const result = await supabase.from('external_chat_messages').insert({ thread_id: threadId, sender_type: 'staff', sender_id: auth.data.user.id, body })
+        .select('id,thread_id,sender_type,sender_id,body,attachment_path,created_at').single();
+      if (activeId.current !== threadId) return;
+      if (result.error || !result.data) throw new InputError(result.error?.message.includes('vinculada') ? 'Esta conversación ya está vinculada. Abrila desde Chat.' : 'No pudimos mandar el botón Entrar. Intentá nuevamente.');
+      setMessages(old => old.some(item => item.id === result.data.id) ? old : [...old, result.data as ExternalMessage]);
+      setNotice('Listo. Le mandamos el botón Entrar.');
+      onChanged();
+    } catch (cause) {
+      if (activeId.current === threadId) setError(cause instanceof InputError ? cause.message : 'No pudimos mandar el botón Entrar. Intentá nuevamente.');
+    } finally { setSendingEntry(false); }
   }
 
   async function setCompleted(complete: boolean) {
@@ -150,7 +174,7 @@ export function AdminExternalChat({ inbox, selectedId, demo, canLink, onSelect, 
         <div className="admin-chat-list">
           {visible.length ? visible.map(row => <button type="button" key={row.thread_id} className={`admin-chat-item${selectedId === row.thread_id ? ' active' : ''}`} aria-current={selectedId === row.thread_id ? 'true' : undefined} onClick={() => onSelect(row.thread_id)}>
             <span className="admin-chat-avatar">{row.nickname.slice(0, 1).toUpperCase()}</span>
-            <span className="admin-chat-item-main"><span className="admin-chat-item-top"><strong>{['https://gana777.vercel.app', 'https://gana777bet.online'].includes(row.origin) ? `PRUEBA · ${row.nickname}` : row.nickname}</strong><time dateTime={row.last_message_at}>{shortDate(row.last_message_at)}</time></span><span className="admin-chat-preview">{row.completed_at ? 'Completado · ' : row.last_sender_type === 'staff' ? 'Soporte: ' : ''}{row.last_body}</span></span>
+            <span className="admin-chat-item-main"><span className="admin-chat-item-top"><strong>{['https://gana777.vercel.app', 'https://gana777bet.online'].includes(row.origin) ? `PRUEBA · ${row.nickname}` : row.nickname}</strong><time dateTime={row.last_message_at}>{shortDate(row.last_message_at)}</time></span><span className="admin-chat-preview">{row.completed_at ? 'Completado · ' : row.last_sender_type === 'staff' ? 'Soporte: ' : ''}{entryPreview(row.last_body)}</span></span>
             {!row.completed_at && row.last_sender_type === 'visitor' && <span className="admin-chat-unanswered" aria-label="Por responder" />}
           </button>) : <p className="admin-chat-list-empty">{search ? 'No encontramos apodos con esa búsqueda.' : filter === 'pending' ? 'No hay consultas por responder.' : filter === 'completed' ? 'No hay conversaciones completadas.' : 'Todavía no hay chats externos.'}</p>}
         </div>
@@ -158,11 +182,12 @@ export function AdminExternalChat({ inbox, selectedId, demo, canLink, onSelect, 
       <section className="admin-chat-thread" aria-label={selected ? `Conversación con ${selected.nickname}` : 'Seleccioná una conversación'}>
         {selected ? <>
           <header className="admin-chat-thread-header"><button type="button" className="admin-chat-back" aria-label="Volver a conversaciones" onClick={() => onSelect('')}><ArrowLeft size={19} /></button><span className="admin-chat-avatar">{selected.nickname.slice(0, 1).toUpperCase()}</span><div><strong>{['https://gana777.vercel.app', 'https://gana777bet.online'].includes(selected.origin) ? `PRUEBA · ${selected.nickname}` : selected.nickname}</strong><small>{selected.completed_at ? 'Conversación completada' : ['https://gana777.vercel.app', 'https://gana777bet.online'].includes(selected.origin) ? 'Chat desde la página de prueba' : 'Chat de la plataforma externa'}</small></div></header>
-          <div className="admin-chat-actions"><button type="button" className={selected.completed_at ? 'admin-chat-reopen' : 'admin-chat-complete'} disabled={demo || updating || sending || linkBusy} onClick={() => void setCompleted(!selected.completed_at)}>{selected.completed_at ? <RotateCcw size={16} /> : <CircleCheck size={16} />}{updating ? 'Guardando…' : selected.completed_at ? 'Reabrir chat' : 'Marcar como completado'}</button></div>
+          <div className="admin-chat-actions"><button type="button" className={selected.completed_at ? 'admin-chat-reopen' : 'admin-chat-complete'} disabled={demo || updating || sending || sendingEntry || linkBusy} onClick={() => void setCompleted(!selected.completed_at)}>{selected.completed_at ? <RotateCcw size={16} /> : <CircleCheck size={16} />}{updating ? 'Guardando…' : selected.completed_at ? 'Reabrir chat' : 'Marcar como completado'}</button></div>
           {canLink && <div className="external-chat-link"><div><Link2 size={18} /><strong>Vincular con un jugador</strong></div><p>Buscá el usuario que te indicó. Al vincularlo, este chat seguirá en la bandeja Chat junto con los mensajes de la app.</p><form onSubmit={event => void findPlayer(event)}><input aria-label="Usuario del jugador" value={linkUsername} onChange={event => { setLinkUsername(event.target.value); setLinkMatch(null); }} placeholder="Nombre de usuario exacto" autoCapitalize="none" spellCheck={false} maxLength={32} disabled={demo || linkBusy} /><button type="submit" disabled={demo || linkBusy || !linkUsername.trim()}>Buscar</button></form>{linkMatch && <div className="external-chat-link-match"><span><strong>@{linkMatch.username}</strong><small>{linkMatch.display_name || 'Jugador registrado'}</small></span><button type="button" disabled={demo || linkBusy} onClick={() => void linkPlayer()}>{linkBusy ? 'Vinculando…' : 'Vincular y abrir Chat'}</button></div>}</div>}
-          <div className="admin-chat-messages" ref={log} role="log" aria-live="polite" aria-relevant="additions text">{loading && <p className="admin-chat-list-empty">Cargando conversación…</p>}{messages.map(message => <div className={`message${message.sender_type === 'staff' ? ' mine' : ''}`} key={message.id}>{message.body !== 'Imagen adjunta' && <p>{message.body}</p>}{message.attachment_path && <ChatImage path={message.attachment_path} source="external" />}<small>{message.sender_type === 'staff' ? 'Soporte · ' : ''}{date(message.created_at)}</small></div>)}</div>
+          <div className="admin-chat-messages" ref={log} role="log" aria-live="polite" aria-relevant="additions text">{loading && <p className="admin-chat-list-empty">Cargando conversación…</p>}{messages.map(message => <div className={`message${message.sender_type === 'staff' ? ' mine' : ''}`} key={message.id}>{message.body !== 'Imagen adjunta' && <p className={isEntryBody(message.body) ? 'is-entry' : undefined}><ChatMessageText body={message.body} interactive={false} /></p>}{message.attachment_path && <ChatImage path={message.attachment_path} source="external" />}<small>{message.sender_type === 'staff' ? 'Soporte · ' : ''}{date(message.created_at)}</small></div>)}</div>
           {(error || notice) && <p className={`admin-chat-feedback${error ? ' is-error' : ''}`} role={error ? 'alert' : 'status'}>{error || notice}</p>}
-          {!selected.completed_at && <form className="admin-chat-composer" onSubmit={event => void send(event)}><label htmlFor="external-chat-message" className="sr-only">Responder a {selected.nickname}</label><textarea id="external-chat-message" name="message" placeholder="Escribí tu respuesta…" maxLength={2000} rows={2} required disabled={sending || demo || updating} /><button type="submit" disabled={sending || demo || updating} aria-label="Enviar respuesta"><Send size={18} /> Enviar</button><small>Enter para enviar · Shift + Enter para nueva línea</small></form>}
+          {!selected.completed_at && <EntryLinkBar id="external-chat-entry-user" username={entryUser} onUsername={setEntryUser} disabled={demo || sending || sendingEntry || updating} onSend={() => void sendEntry()} />}
+          {!selected.completed_at && <form className="admin-chat-composer" onSubmit={event => void send(event)}><label htmlFor="external-chat-message" className="sr-only">Responder a {selected.nickname}</label><textarea id="external-chat-message" name="message" placeholder="Escribí tu respuesta…" maxLength={2000} rows={2} required disabled={sending || sendingEntry || demo || updating} /><button type="submit" disabled={sending || sendingEntry || demo || updating} aria-label="Enviar respuesta"><Send size={18} /> Enviar</button><small>Enter para enviar · Shift + Enter para nueva línea</small></form>}
         </> : <div className="admin-chat-placeholder"><MessageCircle size={38} /><h2>Elegí una conversación</h2><p>Vas a ver el historial y responder desde acá.</p></div>}
       </section>
     </div>

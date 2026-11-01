@@ -937,7 +937,17 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .admin-content .admin-chat-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex-shrink: 0; min-height: 34px; padding: 7px 11px; font-size: 11px; font-weight: 700; }
 .admin-content .admin-chat-actions .admin-chat-complete { border-color: #2c937e; background: #104b43; color: #8af1d1; }
 .admin-content .admin-chat-actions .admin-chat-reopen { border-color: #42718b; background: #17394c; color: #a9dff6; }
+.admin-chat-entry { display: flex; align-items: center; gap: 8px; padding: 10px 16px 0; border-top: 1px solid var(--panel-border); background: #102838; }
+.admin-content .admin-chat-entry input { min-width: 0; flex: 1; margin: 0; min-height: 36px; padding: 8px 11px; border: 1px solid #644273; border-radius: 8px; background: #100c13; color: #f5e9fa; font-size: 12px; }
+.admin-content .admin-chat-entry button { min-height: 36px; padding: 8px 12px; border: 1px solid #a33bc5; border-radius: 8px; background: #70208c; color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap; }
+.admin-content .admin-chat-entry button:hover:not(:disabled) { border-color: #d16aeb; background: #8a2ca8; }
+.admin-chat-messages .message p.is-entry,
+.admin-shell .admin-chat .admin-chat-messages .message.mine p.is-entry { margin: 0 0 5px; padding: 0; border: 0; background: transparent; box-shadow: none; }
+.chat-entry-link { display: inline-flex; align-items: center; justify-content: center; min-width: 96px; min-height: 36px; padding: 8px 16px; border: 1px solid #f2d0ff; border-radius: 999px; background: linear-gradient(145deg, #d56bff, #7a18b8); color: #fff !important; font-size: 13px; font-weight: 800; letter-spacing: .02em; text-decoration: none; box-shadow: 0 6px 14px #4e126c55; }
+.chat-entry-link.is-static { cursor: default; }
+a.chat-entry-link:hover { filter: brightness(1.08); }
 .admin-chat-composer { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; gap: 8px 10px; padding: 12px 16px; border-top: 1px solid var(--panel-border); background: #102838; }
+.admin-chat-entry + .admin-chat-composer { border-top: 0; padding-top: 8px; }
 .admin-chat-composer .chat-image-preview { grid-column: 1 / -1; }
 .admin-content .admin-chat-composer textarea { display: block; width: 100%; min-height: 48px; max-height: 145px; resize: vertical; padding: 12px; border: 1px solid #35576d; border-radius: 9px; background: #081a27; color: #fff; font: inherit; font-size: 13px; }
 .admin-content .admin-chat-composer textarea:focus-visible { outline: 2px solid #49cfff; outline-offset: 2px; }
@@ -968,6 +978,7 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
   .external-chat-link, .admin-chat-linked { padding: 10px; }
   .admin-chat-linked { padding: 4px 10px; }
   .external-chat-link form, .external-chat-link-match { flex-wrap: wrap; }
+  .admin-chat-entry { padding-right: 9px; padding-left: 9px; }
   .admin-chat-composer { padding: 9px; }
   .admin-chat-composer > small { display: none; }
 }
@@ -2002,9 +2013,11 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .admin-shell .admin-chat .admin-chat-thread-header,
 .admin-shell .admin-chat .admin-chat-actions,
 .admin-shell .admin-chat .admin-chat-messages,
+.admin-shell .admin-chat .admin-chat-entry,
 .admin-shell .admin-chat .admin-chat-composer { background: #050507; }
 .admin-shell .admin-chat .admin-chat-search { color: #c58bd8; }
 .admin-shell .admin-chat .admin-chat-search input,
+.admin-shell .admin-chat .admin-chat-entry input,
 .admin-shell .admin-chat .admin-chat-composer textarea { border-color: #493653; background: #100c13; }
 .admin-shell .admin-chat .admin-chat-filters { border-bottom-color: #35263f; }
 .admin-shell .admin-chat .admin-chat-item { border-bottom-color: #2d2234; }
@@ -2120,7 +2133,7 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .admin-shell.admin-theme-negro .admin-content .admin-page-guide button, .admin-shell.admin-theme-negro .admin-content .admin-page-guide a { border-color: #e6e6e6; background: #f2f2f2; color: #080808; }
 .admin-shell.admin-theme-negro .admin-content h2, .admin-shell.admin-theme-negro .admin-content h3 { color: #f4f4f4; }
 .admin-shell.admin-theme-negro .admin-chat-layout { background: #080808; border-color: #303030; }
-.admin-shell.admin-theme-negro .admin-chat-inbox, .admin-shell.admin-theme-negro .admin-chat-thread-header, .admin-shell.admin-theme-negro .admin-chat-actions, .admin-shell.admin-theme-negro .admin-chat-composer { background: #101010; }
+.admin-shell.admin-theme-negro .admin-chat-inbox, .admin-shell.admin-theme-negro .admin-chat-thread-header, .admin-shell.admin-theme-negro .admin-chat-actions, .admin-shell.admin-theme-negro .admin-chat-entry, .admin-shell.admin-theme-negro .admin-chat-composer { background: #101010; }
 .admin-shell.admin-theme-negro .admin-chat-item { background: #080808; border-bottom-color: #292929; color: #f5f5f5; }
 .admin-shell.admin-theme-negro .admin-chat-item:hover, .admin-shell.admin-theme-negro .admin-chat-item.active { background: #242424; color: #fff; box-shadow: inset 3px 0 #fff; }
 .admin-shell.admin-theme-negro .admin-chat-item-top strong, .admin-shell.admin-theme-negro .admin-chat-preview { color: #f5f5f5; }

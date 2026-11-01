@@ -21,6 +21,8 @@ import { referralShareMessage, referralShareUrl } from './share-referral';
 import referralBannerUrl from './assets/home-casino-banner-v3.png';
 import { PlayerAccessRequest } from './player-access';
 import { ChatImage, useChatImagePreview } from './chat-images';
+import { ChatMessageText } from './chat-entry';
+import { isEntryBody } from './entry-link';
 import { HomeTutorial, useHomeTutorial } from './home-tutorial';
 
 export type Page = 'home' | 'profile' | 'deposit' | 'withdrawal' | 'referrals' | 'wheel' | 'history' | 'users' | 'link' | 'platform' | 'access-requests' | 'contacts' | 'portal' | 'themes' | 'bonuses' | 'accounts' | 'shifts' | 'chat' | 'external-chat' | 'external-chat-admin' | 'cashiers' | 'announcements' | 'telegram';
@@ -493,7 +495,7 @@ export function Conversation({ messages, userId, busy, disabled, open, onOpenCha
       <section ref={log} className="player-chat-log" role="log" aria-label="Conversación con soporte" aria-live="polite" onScroll={e => { const el = e.currentTarget; nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }}>
         <div className="chat-date"><span>Tu conversación</span></div>
         {!messages.length && <p className="player-chat-welcome">¡Hola! Bienvenido a GANA777.<br />¿En qué podemos ayudarte?</p>}
-        {messages.map(m => <div className={`message ${m.sender_id === userId ? 'mine' : ''}`} key={m.id}><p>{m.body === 'Imagen adjunta' && m.attachment_path ? '' : m.body}{m.attachment_path && <ChatImage path={m.attachment_path} source={m.source} />}</p><small>{m.source === 'external' ? 'Chat externo · ' : ''}{date(m.created_at)}</small></div>)}
+        {messages.map(m => <div className={`message ${m.sender_id === userId ? 'mine' : ''}`} key={m.id}><p className={isEntryBody(m.body) ? 'is-entry' : undefined}>{m.body === 'Imagen adjunta' && m.attachment_path ? '' : <ChatMessageText body={m.body} interactive={m.sender_id !== userId} />}{m.attachment_path && <ChatImage path={m.attachment_path} source={m.source} />}</p><small>{m.source === 'external' ? 'Chat externo · ' : ''}{date(m.created_at)}</small></div>)}
       </section>
       <form className="composer chat-composer" onSubmit={onSubmit} onReset={() => setImage(null)}>{imagePreview && <div className="chat-image-preview"><img src={imagePreview} alt="Imagen seleccionada" /><span>{image?.name}</span><button type="button" aria-label="Quitar imagen" onClick={() => { setImage(null); if (imageInput.current) imageInput.current.value = ''; }}><Trash2 size={16} /></button></div>}<input ref={imageInput} className="chat-file-input" name="image" type="file" accept="image/*" disabled={busy || disabled} onChange={event => setImage(event.target.files?.[0] ?? null)} /><button type="button" className="chat-gallery-button" aria-label="Adjuntar imagen de la galería" disabled={busy || disabled} onClick={() => imageInput.current?.click()}><Images size={20} /></button><input ref={messageInput} className="player-chat-message" name="message" aria-label="Mensaje" placeholder="Escribí un mensaje…" maxLength={2000} autoComplete="off" enterKeyHint="send" required={!image} disabled={busy || disabled} /><button className="send" aria-label="Enviar mensaje" disabled={busy || disabled}><Send size={21} /></button></form>
     </section>

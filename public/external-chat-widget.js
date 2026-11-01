@@ -40,11 +40,11 @@
   root.innerHTML = `<style>
     :host{all:initial;color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#f8f3ff}
     *{box-sizing:border-box}
-    .launcher{position:absolute;right:0;bottom:0;display:flex;align-items:center;justify-content:center;gap:8px;width:108px;height:50px;padding:0 13px;border:1px solid #dc8dff;border-radius:17px;background:linear-gradient(145deg,#b43df0,#7412bd);color:#fff;box-shadow:0 10px 28px #19072899,0 0 0 5px #a52eea20;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;font:900 12px/1 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:.1em;transition:transform .18s ease,box-shadow .18s ease}
-    .launcher.dragging{cursor:grabbing;transition:none;transform:scale(1.04);box-shadow:0 14px 34px #190728bb,0 0 0 8px #a52eea35}
-    .launcher:hover{transform:translateY(-2px);box-shadow:0 14px 34px #190728bb,0 0 0 7px #a52eea2c}
-    .launcher:focus-visible,.close:focus-visible,.composer button:focus-visible{outline:2px solid #edc5ff;outline-offset:3px}
-    .launcher svg{flex:0 0 auto;width:22px;height:22px}
+    .launcher{position:absolute;right:0;bottom:0;display:grid;place-items:center;width:54px;height:54px;padding:0;border:1px solid #f0c6ff;border-radius:50%;background:radial-gradient(circle at 32% 28%,#e7a6ff,#b43df0 42%,#6d14b4);color:#fff;box-shadow:0 10px 22px #190728aa,inset 0 1px 0 #fff7,0 0 0 4px #c45cf022;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;transition:transform .18s ease,box-shadow .18s ease}
+    .launcher.dragging{cursor:grabbing;transition:none;transform:scale(1.06);box-shadow:0 14px 28px #190728cc,inset 0 1px 0 #fff7,0 0 0 7px #c45cf033}
+    .launcher:hover{transform:translateY(-2px) scale(1.04);box-shadow:0 14px 28px #190728cc,inset 0 1px 0 #fff8,0 0 0 6px #c45cf02e}
+    .launcher:focus-visible,.close:focus-visible,.composer button:focus-visible,.entry-link:focus-visible{outline:2px solid #edc5ff;outline-offset:3px}
+    .launcher svg{width:26px;height:26px;filter:drop-shadow(0 1px 1px #3a0a5588)}
     .panel{position:absolute;right:0;bottom:66px;display:none;flex-direction:column;width:min(390px,calc(100vw - 28px));height:min(560px,calc(100vh - 96px));overflow:hidden;border:1px solid #572b70;border-radius:21px;background:#050407;box-shadow:0 22px 70px #000b,0 0 24px #8d27bb18}
     .panel.open{display:flex;animation:chat-in .2s cubic-bezier(.2,.8,.2,1)}
     .panel.menu-mode{width:min(280px,calc(100vw - 36px));height:auto;max-height:calc(100vh - 96px)}
@@ -106,6 +106,9 @@
     .bubble time{display:block;margin-top:5px;color:#b7aaba;font-size:10px;line-height:1.2}
     .bubble.staff time{color:#b9aabe}
     .bubble.visitor time{color:#efcef9}
+    .bubble.entry{padding:8px 8px 6px;border-color:transparent;background:transparent;box-shadow:none}
+    .entry-link{display:inline-flex;align-items:center;justify-content:center;min-width:96px;min-height:36px;padding:8px 16px;border:1px solid #f2d0ff;border-radius:999px;background:linear-gradient(145deg,#d56bff,#7a18b8);color:#fff;font-size:13px;font-weight:800;letter-spacing:.02em;text-decoration:none;box-shadow:0 6px 14px #4e126c66}
+    a.entry-link:hover{filter:brightness(1.08)}
     .status{min-height:0;padding:0 15px;color:#f0b5ff;font-size:11px}
     .status:not(:empty){padding-top:7px}
     .composer{display:flex;align-items:flex-end;gap:9px;padding:11px 12px 12px;border-top:1px solid #2c1c35;background:linear-gradient(180deg,#0d0a10,#08060a)}
@@ -126,12 +129,12 @@
     .composer button:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.08)}
     .composer button:disabled{opacity:.55;cursor:wait}
     .composer button svg{width:20px;height:20px}
-    .panel.align-left{right:auto;left:-108px}
+    .panel.align-left{right:auto;left:-54px}
     .panel.align-below{bottom:auto;top:66px}
     @media(max-width:480px){.panel{width:calc(100vw - 24px);height:min(580px,calc(100vh - 156px));height:min(580px,calc(100dvh - 156px));border-radius:19px}.panel.menu-mode{width:min(280px,calc(100vw - 36px));height:auto;max-height:calc(100dvh - 156px);border-radius:17px}}
     @media(prefers-reduced-motion:reduce){.panel.open,.bubble{animation:none}.launcher,.close,.composer textarea,.composer button{transition:none}}
   </style>
-  <button class="launcher" type="button" aria-label="Abrir opciones de cargas y chat; arrastrá para mover" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.2 11.2a7.9 7.9 0 0 1-.8 3.6 8.1 8.1 0 0 1-7.3 4.5 8 8 0 0 1-3.6-.8L3 20l1.5-5.2a8 8 0 0 1-.8-3.6 8.1 8.1 0 0 1 4.5-7.3 8 8 0 0 1 3.6-.8h.5a8.1 8.1 0 0 1 7.8 7.6z"/><path d="M8.8 11h.01M12 11h.01M15.2 11h.01" stroke-width="2.5"/></svg><span>CHAT</span></button>
+  <button class="launcher" type="button" aria-label="Abrir opciones de cargas y chat; arrastrá para mover" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.2 11.2a7.9 7.9 0 0 1-.8 3.6 8.1 8.1 0 0 1-7.3 4.5 8 8 0 0 1-3.6-.8L3 20l1.5-5.2a8 8 0 0 1-.8-3.6 8.1 8.1 0 0 1 4.5-7.3 8 8 0 0 1 3.6-.8h.5a8.1 8.1 0 0 1 7.8 7.6z"/><path d="M8.8 11h.01M12 11h.01M15.2 11h.01" stroke-width="2.5"/></svg></button>
   <section class="panel" aria-label="Chat de soporte">
     <header class="head">
       <img class="support-avatar" src="https://gana777bet.online/support-chat-avatar.webp" alt="Avatar de soporte GANA777" />
@@ -142,7 +145,7 @@
       <p class="home-actions-title">¿Qué querés hacer?</p>
       <a class="home-action charge-image" href="https://gana777bet.online/" target="_blank" rel="noopener noreferrer" aria-label="Ir a cargar en gana777bet.online"><img src="https://gana777bet.online/carga-chat-transparent.png" alt="IR A CARGAR" decoding="async" /></a>
       <button class="home-action chat-art chat-option" type="button" aria-label="Abrir el chat de soporte"><img src="https://gana777bet.online/chat-soporte-transparent.png" alt="CHAT SOPORTE" decoding="async" /></button>
-      <p class="home-actions-hint">Podés arrastrar el botón CHAT para moverlo de lugar.</p>
+      <p class="home-actions-hint">Podés arrastrar el botón para moverlo de lugar.</p>
     </div>
     <div class="chat-view"><button class="chat-back" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6M9 12h11"/></svg>Volver a opciones</button>
     <div class="log" role="log" aria-live="polite"></div>
@@ -178,17 +181,17 @@
   var suppressLauncherClick = false;
 
   function clampPosition() {
-    position.right = Math.min(Math.max(8, position.right), Math.max(8, window.innerWidth - 116));
-    position.bottom = Math.min(Math.max(8, position.bottom), Math.max(8, window.innerHeight - 58));
+    position.right = Math.min(Math.max(8, position.right), Math.max(8, window.innerWidth - 62));
+    position.bottom = Math.min(Math.max(8, position.bottom), Math.max(8, window.innerHeight - 62));
   }
   function applyPosition(save) {
     clampPosition();
     host.style.right = position.right + 'px';
     host.style.bottom = position.bottom + 'px';
-    var left = window.innerWidth - position.right - 108;
-    var top = window.innerHeight - position.bottom - 50;
-    panel.classList.toggle('align-left', left + 54 < window.innerWidth / 2);
-    panel.classList.toggle('align-below', top + 25 < window.innerHeight / 2);
+    var left = window.innerWidth - position.right - 54;
+    var top = window.innerHeight - position.bottom - 54;
+    panel.classList.toggle('align-left', left + 27 < window.innerWidth / 2);
+    panel.classList.toggle('align-below', top + 27 < window.innerHeight / 2);
     if (save) { try { localStorage.setItem(positionKey, JSON.stringify(position)); } catch (_) {} }
   }
   applyPosition(false);
@@ -225,9 +228,51 @@
   launcher.addEventListener('pointerup', finishDrag);
   launcher.addEventListener('pointercancel', finishDrag);
 
+  var verifyHost = '';
+  try { verifyHost = new URL(api).hostname.toLowerCase(); } catch (_) {}
+  var entryRedirects = {
+    'https://gana777bet.com': true, 'https://www.gana777bet.com': true, 'https://gana777bet.online': true, 'https://gana777.vercel.app': true,
+    'http://localhost:5173': true, 'http://localhost:5174': true, 'http://localhost:5175': true,
+    'http://127.0.0.1:5173': true, 'http://127.0.0.1:5174': true, 'http://127.0.0.1:5175': true,
+    'http://[::1]:5173': true, 'http://[::1]:5174': true, 'http://[::1]:5175': true
+  };
+  function entryHref(body, staff) {
+    var prefix = '[[gana777-entrar]]\n';
+    if (!staff || !verifyHost || body.indexOf(prefix) !== 0) return '';
+    var raw = body.slice(prefix.length);
+    if (!raw || raw.length > 1900 || /[\s<>"']/.test(raw)) return '';
+    try {
+      var url = new URL(raw);
+      if (url.protocol !== 'https:' || url.username || url.password || url.hash) return '';
+      if (url.hostname.toLowerCase() !== verifyHost || url.pathname !== '/auth/v1/verify') return '';
+      var names = [];
+      url.searchParams.forEach(function (_, name) { names.push(name); });
+      if (names.length !== 3 || names.indexOf('token') < 0 || names.indexOf('type') < 0 || names.indexOf('redirect_to') < 0) return '';
+      if (url.searchParams.get('type') !== 'magiclink') return '';
+      var token = url.searchParams.get('token') || '';
+      if (token.length < 8 || token.length > 1800) return '';
+      var redirect = new URL(url.searchParams.get('redirect_to') || '');
+      if (redirect.username || redirect.password || redirect.search || redirect.hash) return '';
+      if (redirect.pathname !== '/' && redirect.pathname !== '') return '';
+      if (!entryRedirects[redirect.origin]) return '';
+      return raw;
+    } catch (_) { return ''; }
+  }
   function renderMessage(message) {
     var bubble = document.createElement('div'); bubble.className = 'bubble ' + (message.sender_type === 'staff' ? 'staff' : 'visitor');
-    if (message.body && !(message.attachment_path && message.body === 'Imagen adjunta')) { var text = document.createElement('span'); text.textContent = message.body; bubble.appendChild(text); }
+    if (message.body && !(message.attachment_path && message.body === 'Imagen adjunta')) {
+      if (message.body.indexOf('[[gana777-entrar]]') === 0) {
+        bubble.classList.add('entry');
+        var href = entryHref(message.body, message.sender_type === 'staff');
+        var control = document.createElement(href ? 'a' : 'span');
+        control.className = 'entry-link';
+        control.textContent = 'Entrar';
+        if (href) { control.href = href; control.target = '_blank'; control.rel = 'noopener noreferrer'; }
+        bubble.appendChild(control);
+      } else {
+        var text = document.createElement('span'); text.textContent = message.body; bubble.appendChild(text);
+      }
+    }
     if (message.attachment_path) {
       var image = document.createElement('img'); image.className = 'chat-image'; image.alt = 'Imagen adjunta'; image.loading = 'lazy'; image.src = '';
       image.addEventListener('click', function () { if (image.src) window.open(image.src, '_blank', 'noopener'); });

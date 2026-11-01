@@ -1644,6 +1644,9 @@ html.player-portal :is(img, video) {
 .player-chat-log .message.mine { align-self: flex-end; }
 .player-chat-log .message p { margin: 0 0 4px; padding: 10px 12px; border: 1px solid #4a3157; border-radius: 15px 15px 15px 5px; background: linear-gradient(145deg, #1c1721, #120f16); color: #f4edf8 !important; box-shadow: 0 4px 12px #0005; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
 .player-chat-log .message.mine p { border-color: #9f37d2; border-radius: 15px 15px 5px 15px; background: linear-gradient(145deg, #7920a5, #4c126f); color: #fff !important; }
+.player-chat-log .message p.is-entry, .player-chat-log .message.mine p.is-entry { padding: 0; border: 0; background: transparent !important; box-shadow: none; }
+.player-chat-log .chat-entry-link { display: inline-flex; align-items: center; justify-content: center; min-width: 96px; min-height: 36px; padding: 8px 16px; border: 1px solid #f2d0ff; border-radius: 999px; background: linear-gradient(145deg, #d56bff, #7a18b8); color: #fff !important; font-size: 13px; font-weight: 800; letter-spacing: .02em; text-decoration: none; box-shadow: 0 6px 14px #4e126c66; }
+.player-chat-log a.chat-entry-link:hover { filter: brightness(1.08); }
 .player-chat-log .message small { display: block; padding: 0 3px; color: #b7aaba; font-size: 10px; }
 .player-chat-log .message.mine small { text-align: right; }
 .player-chat-log .chat-image img { max-width: min(260px, 62vw); max-height: 220px; border: 1px solid #8d39ad; border-radius: 9px; }
