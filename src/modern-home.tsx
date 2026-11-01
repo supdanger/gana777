@@ -10,19 +10,41 @@ export function ModernAccountButton({ onClick }: { onClick?: () => void }) {
 }
 
 function WalletPlusIcon() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2.4" y="6" width="14.2" height="11.2" rx="2" /><path d="M2.4 10.1h14.2" /><circle cx="17.6" cy="16.4" r="3.5" /><path d="M17.6 14.6v3.6M15.8 16.4h3.6" /></svg>;
+  return <svg viewBox="0 0 128 128" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="m21 33 58-21a9 9 0 0 1 12 6l5 17M62 100H23a11 11 0 0 1-11-11V46a11 11 0 0 1 11-11h73a11 11 0 0 1 11 11v8" />
+    <circle cx="92" cy="89" r="27" /><path d="M92 77v24M80 89h24" />
+  </svg>;
 }
 function CardsIcon() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="8" y="3.2" width="11" height="14.2" rx="1.6" transform="rotate(14 13.5 10.3)" /><rect x="3.4" y="6.2" width="11.2" height="14.2" rx="1.6" fill="none" /><path d="M8.2 11.2c.9-1.7 1.6-1.7 2.5 0-.5.7-1.25 1.15-1.25 1.7 0-.55-.75-1-1.25-1.7Z" fill="currentColor" stroke="none" /></svg>;
+  return <svg viewBox="0 0 128 128" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="m81 25 29 6a10 10 0 0 1 8 12l-15 66a10 10 0 0 1-12 8l-40-10" />
+    <g transform="rotate(-15 52 61)">
+      <rect x="18" y="15" width="68" height="92" rx="9" />
+      <path d="M52 39c-4 8-18 17-18 27 0 7 10 12 17 4-1 7-5 12-9 16h20c-4-4-8-9-9-16 7 8 17 3 17-4 0-10-14-19-18-27Z" fill="currentColor" stroke="none" />
+    </g>
+  </svg>;
 }
 function BankIcon() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3.2 9.2 11 4.4l7.8 4.8" /><path d="M4.4 9.4v6.2M7.6 9.4v6.2M10.8 9.4v6.2M14 9.4v6.2" /><path d="M3 15.8h12.2" /><circle cx="17.7" cy="16.5" r="3.3" /><path d="M16.4 16.5h2.5M17.7 15.1l1.3 1.4-1.3 1.4" /></svg>;
+  return <svg viewBox="0 0 128 128" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M10 43 54 13a4 4 0 0 1 4 0l44 30a2 2 0 0 1-1 4H11a2 2 0 0 1-1-4Z" />
+    <path d="M21 57v30M43 57v30M65 57v14M87 57v6M10 97h53" />
+    <circle cx="91" cy="89" r="27" />
+    <path d="M79 89h23M92 79l10 10-10 10" />
+  </svg>;
 }
 function GiftIcon() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="9.2" rx="1.4" /><path d="M4 14.2h16M12 10v9.2" /><path d="M12 10c0-2.2-1.5-3.6-3.1-3.6-1.4 0-2.3 1-2.3 2 0 1.5 2.1 1.6 5.4 1.6s5.4-.1 5.4-1.6c0-1-.9-2-2.3-2-1.6 0-3.1 1.4-3.1 3.6Z" /></svg>;
+  return <svg viewBox="0 0 128 128" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M64 40C64 22 54 10 43 10c-11 0-20 9-20 19 0 9 8 15 19 15h22M64 40c0-18 10-30 21-30 11 0 20 9 20 19 0 9-8 15-19 15H64" />
+    <rect x="14" y="44" width="100" height="24" rx="7" />
+    <path d="M21 68v39a9 9 0 0 0 9 9h68a9 9 0 0 0 9-9V68M64 44v72" />
+  </svg>;
 }
 function HeadsetIcon() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5a7 7 0 0 1 14 0" /><rect x="3.4" y="12.2" width="3.6" height="6.2" rx="1.4" /><rect x="17" y="12.2" width="3.6" height="6.2" rx="1.4" /><path d="M17.2 18.2c0 1.6-1.6 2.8-4 2.8h-1.4" /></svg>;
+  return <svg viewBox="0 0 128 128" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M22 43a43 43 0 0 1 84 0M24 42H17A10 10 0 0 0 7 52v16a10 10 0 0 0 10 10h13M104 42h7a10 10 0 0 1 10 10v16a10 10 0 0 1-10 10H98" />
+    <path d="M24 42v34l11 10-6 24 23-13a43 43 0 0 0 52-42V42" />
+    <g fill="currentColor" stroke="none"><circle cx="44" cy="57" r="6" /><circle cx="64" cy="57" r="6" /><circle cx="84" cy="57" r="6" /></g>
+  </svg>;
 }
 
 function ModernCard({ id, title, description, icon, href, onClick }: { id: string; title: string; description: string; icon: ReactNode; href?: string | null; onClick?: () => void }) {

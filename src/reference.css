@@ -467,14 +467,16 @@ a.social.instagram:hover { border-color: #ff8ab8; }
   background: linear-gradient(100deg, #7c3aed 0%, #6d28d9 100%) !important;
 }
 .user-app.page-home.theme-modern .action-card .icon-circle {
-  width: 36px;
-  height: 36px;
+  width: 48px;
+  height: 48px;
   border: 0 !important;
   border-radius: 0;
   background: transparent !important;
   color: #d8b4fe;
 }
-.user-app.page-home.theme-modern .action-card .icon-circle svg { width: 28px; height: 28px; }
+.user-app.page-home.theme-modern .action-card .icon-circle svg { width: 44px; height: 44px; flex-shrink: 0; color: #fff; stroke-width: 8; }
+.user-app.page-home.theme-modern .action-card[data-theme-card='games'] .icon-circle svg { width: 44px; height: 44px; flex-shrink: 0; color: #f8f8fb; }
+.user-app.page-home.theme-modern .action-card[data-theme-card='withdrawal'] .icon-circle svg { width: 44px; height: 44px; flex-shrink: 0; color: #f8f8fb; }
 .user-app.page-home.theme-modern .action-card[data-theme-card='deposit'] .icon-circle,
 .user-app.page-home.theme-modern .action-card[data-theme-card='deposit'] strong,
 .user-app.page-home.theme-modern .action-card[data-theme-card='deposit'] > svg { color: #fff; }
