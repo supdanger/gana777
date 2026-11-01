@@ -9,9 +9,12 @@
 .theme-current-label { flex: 0 0 auto; padding: 6px 10px; border: 1px solid #326381; border-radius: 999px; background: #102a3b; color: #84d9fa; font-size: 11px; font-weight: 750; }
 .theme-presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .theme-preset { display: flex; align-items: center; gap: 13px; width: 100%; min-width: 0; min-height: 84px; padding: 13px 15px; border: 1px solid #304a60; border-radius: 11px; background: #0c1b27; color: #f5f8fc; text-align: left; }
-button.theme-preset { cursor: pointer; }
-button.theme-preset:hover:not(:disabled) { border-color: #3e9dcc; background: #102b3c; }
-button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 3px; }
+article.theme-preset:hover:not(.active) { border-color: #3e9dcc; background: #102b3c; }
+.theme-preset-pick { display: flex; align-items: center; gap: 13px; flex: 1; min-width: 0; margin: 0; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.theme-preset-pick:hover { background: transparent; }
+.theme-preset-pick:focus-visible { outline: 3px solid #5ddaff; outline-offset: 3px; }
+.theme-preset-apply { flex: 0 0 auto; margin-left: auto; padding: 5px 8px; border: 1px solid #42617b; border-radius: 7px; background: #0b2434; color: #cce8f6; font-size: 11px; font-weight: 750; cursor: pointer; }
+.theme-preset-apply:disabled { opacity: .55; cursor: not-allowed; }
 .theme-preset.active { border-color: #28a8e8; background: #0b2940; box-shadow: inset 3px 0 #00b8f6; }
 .theme-preset-christmas.active { border-color: #9cc46f; background: #102920; box-shadow: inset 3px 0 #d0b374; }
 .theme-preset-new-year.active { border-color: #d4b566; background: #1d1c32; box-shadow: inset 3px 0 #e4c875; }
@@ -24,12 +27,20 @@ button.theme-preset:focus-visible { outline: 3px solid #5ddaff; outline-offset: 
 .theme-preset-christmas.active .theme-preset-status { border-color: #7eac75; background: #173b2d; color: #e2eec4; }
 .theme-preset-new-year.active .theme-preset-status { border-color: #ad8f50; background: #3a2f42; color: #f6dda2; }
 .theme-preset-halloween.active .theme-preset-status { border-color: #9c36be; background: #3a1746; color: #ecc3ff; }
+.theme-preset-modern.active { border-color: #8a4ad4; background: #1a1230; box-shadow: inset 3px 0 #b44cff; }
+.theme-preset-modern.active .theme-preset-status { border-color: #8a4ad4; background: #2a1848; color: #f0d9ff; }
+.theme-live-preview { display: grid; gap: 12px; margin-top: 16px; }
+.theme-live-preview-frame { width: min(390px, 100%); max-height: 640px; overflow: auto; border: 1px solid #304a60; border-radius: 28px; background: #05070c; box-shadow: 0 16px 40px #0008; }
+.theme-live-preview-host { display: block; }
+.theme-live-preview-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.theme-live-preview-actions .primary { width: auto; min-width: 180px; margin: 0; }
 .theme-swatch { display: grid; place-items: center; width: 40px; height: 40px; flex: 0 0 auto; border: 1px solid #3b617e; border-radius: 10px; color: #8edfff; background: linear-gradient(145deg, #061b27, #0c65b5); }
 .theme-swatch svg { width: 20px; height: 20px; }
 .theme-swatch.dark { background: linear-gradient(145deg, #05070b, #293240); color: #b7c3da; }
 .theme-swatch.christmas { background: linear-gradient(145deg, #07533f, #9c1f39); color: #fff; }
 .theme-swatch.new-year { background: linear-gradient(145deg, #16254d, #8e6818); color: #ffe6a2; }
 .theme-swatch.halloween { background: linear-gradient(145deg, #053327, #501075); color: #ecb5ff; }
+.theme-swatch.modern { background: linear-gradient(145deg, #15171d, #5517b9); color: #e4d4ff; }
 .theme-swatch.custom { background: linear-gradient(145deg, #152a40, #623386); color: #efd2ff; }
 .theme-create { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #304a60; }
 .theme-create label { display: grid; gap: 5px; min-width: 170px; flex: 1; color: #d8eafa; font-size: 12px; }
@@ -2170,3 +2181,7 @@ a.chat-entry-link:hover { filter: brightness(1.08); }
 .admin-shell.admin-theme-dorado .admin-navigation .admin-nav-group button.active { border-color: #a98235; background: linear-gradient(100deg, #4a3518, #332512); box-shadow: inset 3px 0 #e5b84b, 0 8px 22px #b47a2633; }
 .admin-shell.admin-theme-dorado .admin-content .card, .admin-shell.admin-theme-dorado .cashier-create, .admin-shell.admin-theme-dorado .cashier-card, .admin-shell.admin-theme-dorado .player-create, .admin-shell.admin-theme-dorado .player-card, .admin-shell.admin-theme-dorado .load-request-button { border-color: #79602e; background: linear-gradient(145deg, #402e17, #302314); }
 @media (max-width: 700px) { .admin-theme-picker { margin-left: auto; } .admin-theme-picker select { max-width: 80px; } }
+.admin-shell .admin-content .themes-admin button.theme-preset-pick,
+.admin-shell .admin-content .themes-admin button.theme-preset-pick:hover:not(:disabled) { border: 0; background: transparent; color: inherit; box-shadow: none; }
+.admin-shell.admin-theme-negro .admin-content .themes-admin button.theme-preset-apply { border-color: #8a8a8a; background: #1b1b1b; color: #f4f4f4; }
+.admin-shell.admin-theme-negro .admin-content .themes-admin button.theme-preset-apply:hover:not(:disabled) { border-color: #fff; background: #2a2a2a; color: #fff; box-shadow: none; }

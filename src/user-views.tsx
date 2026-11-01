@@ -24,6 +24,7 @@ import { ChatImage, useChatImagePreview } from './chat-images';
 import { ChatMessageText } from './chat-entry';
 import { isEntryBody } from './entry-link';
 import { HomeTutorial, useHomeTutorial } from './home-tutorial';
+import { ModernAccountButton, ModernBrand, ModernHomeBody } from './modern-home';
 
 export type Page = 'home' | 'profile' | 'deposit' | 'withdrawal' | 'referrals' | 'wheel' | 'history' | 'users' | 'link' | 'platform' | 'access-requests' | 'contacts' | 'portal' | 'themes' | 'bonuses' | 'accounts' | 'shifts' | 'chat' | 'external-chat' | 'external-chat-admin' | 'cashiers' | 'announcements' | 'telegram';
 export const titles = { home: 'Inicio', profile: 'Mi perfil', deposit: 'Cargas', withdrawal: 'Retiros', referrals: 'Recomendados', wheel: 'Ruleta', history: 'Historial', users: 'Usuarios', link: 'Link', platform: 'Platform', 'access-requests': 'Solicitudes', contacts: 'Contactos', portal: 'Portal', themes: 'Temas', bonuses: 'Bonos', accounts: 'Cuentas', shifts: 'Turnos', chat: 'Chat', 'external-chat': 'Chat externo', 'external-chat-admin': 'Admin', cashiers: 'Cajeros', announcements: 'Mensajes', telegram: 'Telegram' };
@@ -82,8 +83,10 @@ export function LoginView({ admin, busy, configured, feedback, onLogin, onDemo, 
   </main>;
 }
 export function UserHeader({ page, navigate, name = 'Mi perfil' }: { page: Page; navigate: (page: Page) => void; name?: string }) {
+  const { settings } = useContent();
+  const modernHome = page === 'home' && themeBase(settings) === 'modern';
   return <header className={page === 'home' ? 'home-header' : 'inner-header'}>
-    {page === 'home' ? <><Brand homeHeader /><button className="home-profile-button" onClick={() => navigate('profile')} aria-label={`Ver perfil e historial de ${name}`}><span className="user-avatar"><StorageImage path="avatars/panda-user-avatar.png" alt="" /></span><span className="home-profile-name">{name}</span><ChevronRight size={16} aria-hidden="true" /></button></> : <><button className="back-button" aria-label="Volver al inicio" onClick={() => navigate('home')}><ArrowLeft /></button><h1>{titles[page]}</h1><Brand /></>}
+    {modernHome ? <><ModernBrand /><ModernAccountButton onClick={() => navigate('profile')} /></> : page === 'home' ? <><Brand homeHeader /><button className="home-profile-button" onClick={() => navigate('profile')} aria-label={`Ver perfil e historial de ${name}`}><span className="user-avatar"><StorageImage path="avatars/panda-user-avatar.png" alt="" /></span><span className="home-profile-name">{name}</span><ChevronRight size={16} aria-hidden="true" /></button></> : <><button className="back-button" aria-label="Volver al inicio" onClick={() => navigate('home')}><ArrowLeft /></button><h1>{titles[page]}</h1><Brand /></>}
   </header>;
 }
 function WhatsAppMark() {
@@ -178,12 +181,18 @@ export function UserHome({ name, navigate, onClaimSpecialBonus, onOpenChat, what
     window.addEventListener('focus', load);
     return () => { alive = false; window.removeEventListener('focus', load); void db.removeChannel(channel); };
   }, [demo, userId, settings.wheel_enabled, wheelEligible]);
+  const modern = themeBase(settings) === 'modern';
+  const gamesUrl = homeBannerLink(settings, casinoUrl) ?? safeHttpsLink(casinoUrl) ?? safeHttpsLink(settings.home_banner_url);
   const contacts = [
     { name: 'WhatsApp', url: safeHttpsLink(whatsappUrl === undefined ? settings.whatsapp_url : whatsappUrl, ['wa.me', 'api.whatsapp.com']), mark: <WhatsAppMark />, className: 'whatsapp', animation: contactAnimations.whatsapp, visible: settings.show_whatsapp },
     { name: 'Recomendar', url: shareUrl, mark: <Send />, className: 'recommend', animation: null, visible: !!shareUrl && settings.show_whatsapp },
     { name: 'Telegram', url: safeHttpsLink(settings.telegram_url, ['t.me']), mark: <TelegramMark />, className: 'telegram', animation: contactAnimations.telegram, visible: settings.show_telegram },
     { name: 'Instagram', url: safeHttpsLink(settings.instagram_url, ['instagram.com', 'www.instagram.com']), mark: <InstagramMark />, className: 'instagram', animation: contactAnimations.instagram, visible: settings.show_instagram },
   ].filter(contact => contact.visible);
+  if (modern) return <>
+    <ModernHomeBody name={name} gamesUrl={gamesUrl} onDeposit={() => navigate('deposit')} onWithdraw={() => navigate('withdrawal')} onBonuses={() => navigate('bonuses')} onChat={onOpenChat} />
+    <HomeTutorial open={tutorial.open} required={tutorial.required} onClose={tutorial.close} onFinish={tutorial.finish} />
+  </>;
   return <>
     <h1 className="home-welcome">¡{greeting}, <span className="home-welcome-name">{name}!</span></h1>
     {settings.home_banners_visible !== false && <HomeBonusCarousel onClaim={onClaimSpecialBonus} />}

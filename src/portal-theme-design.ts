@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 
-export const builtInThemes = ['base', 'dark', 'christmas', 'new-year', 'halloween'] as const;
+export const builtInThemes = ['base', 'dark', 'christmas', 'new-year', 'halloween', 'modern'] as const;
 export type BuiltInTheme = typeof builtInThemes[number];
 export type PortalTheme = BuiltInTheme | `custom-${string}`;
 export const isBuiltInTheme = (value: string): value is BuiltInTheme => builtInThemes.some(theme => theme === value);
@@ -70,6 +70,7 @@ const palettes: Record<BuiltInTheme, { background: string; borderColor: string }
   christmas: { background: '#080605', borderColor: '#d1181d' },
   'new-year': { background: '#171b35', borderColor: '#626281' },
   halloween: { background: '#09080c', borderColor: '#8b2ca8' },
+  modern: { background: '#15171d', borderColor: '#343942' },
 };
 
 export function themeBase(settings: ThemeSettings, theme = settings.portal_theme): BuiltInTheme {

@@ -7,6 +7,7 @@ import { defaultBonusBannerLayout, normalizeBonusBannerLayout } from './bonus-ba
 import type { HomeBannerLayout } from './home-banner';
 import { builtInThemes, isCustomTheme, type BuiltInTheme, type ThemeDesigns } from './portal-theme-design';
 import { ThemeDesignAdmin } from './theme-design-admin';
+import { ThemeHomePreview } from './theme-home-preview';
 import { PortalBannersAdmin } from './portal-banners-admin';
 
 const maxMediaSize = 20 * 1024 * 1024;
@@ -20,6 +21,7 @@ const themes = [
   { id: 'christmas', name: 'Navidad', description: 'Verde, rojo y dorado', Icon: Snowflake },
   { id: 'new-year', name: 'Año Nuevo', description: 'Medianoche y dorado', Icon: Sparkles },
   { id: 'halloween', name: 'Halloween', description: 'Bosque oscuro y violeta', Icon: Ghost },
+  { id: 'modern', name: 'Inicio moderno', description: 'Limpio, oscuro y directo', Icon: Palette },
 ] as const;
 type BonusLayouts = Record<string, HomeBannerLayout>;
 function bonusDefault(theme: PortalTheme, designs: ThemeDesigns): HomeBannerLayout {
@@ -45,6 +47,7 @@ export function ThemesAdmin({ demo }: { demo: boolean }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const input = useRef<HTMLInputElement>(null);
+  const previewTouched = useRef(false);
   const [newName, setNewName] = useState('');
   const [newBase, setNewBase] = useState<BuiltInTheme>('base');
   const [createBusy, setCreateBusy] = useState(false);
@@ -54,7 +57,7 @@ export function ThemesAdmin({ demo }: { demo: boolean }) {
   useEffect(() => setPath(settings.home_bonus_media_path), [settings.home_bonus_media_path]);
   useEffect(() => setHalloweenPath(settings.home_bonus_halloween_media_path), [settings.home_bonus_halloween_media_path]);
   useEffect(() => setDesigns(settings.portal_theme_designs ?? {}), [settings.portal_theme_designs]);
-  useEffect(() => setTheme(settings.portal_theme), [settings.portal_theme]);
+  useEffect(() => { if (!previewTouched.current) setTheme(settings.portal_theme); }, [settings.portal_theme]);
   useEffect(() => setLayouts(loadedLayouts(settings.home_bonus_layouts, [...builtInThemes, ...Object.keys(settings.portal_theme_designs ?? {}).filter(isCustomTheme) as PortalTheme[]], settings.portal_theme_designs ?? {})), [settings.home_bonus_layouts, settings.portal_theme_designs]);
   useEffect(() => {
     if (!file) { setPreview(''); return; }
@@ -62,6 +65,15 @@ export function ThemesAdmin({ demo }: { demo: boolean }) {
     setPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [file]);
+
+  function pickPreview(next: PortalTheme) {
+    previewTouched.current = true;
+    if (next === theme) return;
+    setFile(null);
+    if (input.current) input.current.value = '';
+    setThemeError('');
+    setTheme(next);
+  }
 
   async function selectTheme(next: PortalTheme) {
     if (themeBusy || demo || !supabase) return;
@@ -160,12 +172,17 @@ export function ThemesAdmin({ demo }: { demo: boolean }) {
   const previewVideo = file ? file.type.startsWith('video/') : currentVideo;
   const source = preview || (currentPath && supabase ? supabase.storage.from('app-assets').getPublicUrl(currentPath).data.publicUrl : '');
   return <div className="themes-admin">
-    <div className="page-title"><div><span className="eyebrow">APARIENCIA DEL PORTAL</span><h1>Temas</h1><p>El tema elegido se aplica al inicio, al acceso y a las demás pantallas de los jugadores.</p></div></div>
+    <div className="page-title"><div><span className="eyebrow">APARIENCIA DEL PORTAL</span><h1>Temas</h1><p>Mirá un tema en la vista previa. Aplicar lo deja activo para todos los jugadores.</p></div></div>
     <section className="theme-section" aria-labelledby="available-themes-title">
-      <div className="theme-section-heading"><div><span className="eyebrow">01 · APARIENCIA</span><h2 id="available-themes-title">Tema del portal</h2><p>Elegí el estilo que verán todos los jugadores.</p></div><span className="theme-current-label">Actual: {allThemes.find(option => option.id === settings.portal_theme)?.name}</span></div>
+      <div className="theme-section-heading"><div><span className="eyebrow">01 · APARIENCIA</span><h2 id="available-themes-title">Tema del portal</h2><p>Tocá un tema para ver el inicio. Aplicar lo deja activo para todos los jugadores.</p></div><span className="theme-current-label">Actual: {allThemes.find(option => option.id === settings.portal_theme)?.name}</span></div>
       {themeError && <p className="alert error" role="alert">{themeError}</p>}
       <div className="theme-presets" role="group" aria-label="Temas disponibles">
-        {allThemes.map(({ id, name, description, Icon }) => <button key={id} type="button" className={`theme-preset ${isCustomTheme(id) ? 'theme-preset-custom' : `theme-preset-${id}`} ${theme === id ? 'active' : ''}`} aria-pressed={theme === id} disabled={themeBusy || demo} onClick={() => void selectTheme(id)}><span className={`theme-swatch ${isCustomTheme(id) ? 'custom' : id}`}><Icon /></span><span className="theme-preset-copy"><strong>{name}</strong><small>{description}</small></span><span className="theme-preset-status">{settings.portal_theme === id ? <><Check size={14} /> Activo</> : 'Aplicar'}</span></button>)}
+        {allThemes.map(({ id, name, description, Icon }) => <article key={id} className={`theme-preset ${isCustomTheme(id) ? 'theme-preset-custom' : `theme-preset-${id}`} ${theme === id ? 'active' : ''}`}><button type="button" className="theme-preset-pick" aria-pressed={theme === id} onClick={() => pickPreview(id)}><span className={`theme-swatch ${isCustomTheme(id) ? 'custom' : id}`}><Icon /></span><span className="theme-preset-copy"><strong>{name}</strong><small>{description}</small></span></button>{settings.portal_theme === id ? <span className="theme-preset-status"><Check size={14} /> Activo</span> : <button type="button" className="theme-preset-apply" disabled={themeBusy || demo} onClick={() => void selectTheme(id)}>{themeBusy && theme === id ? 'Aplicando…' : 'Aplicar'}</button>}</article>)}
+      </div>
+      <div className="theme-live-preview">
+        <div className="theme-section-heading"><div><span className="eyebrow">VISTA PREVIA</span><h2>Inicio · {allThemes.find(option => option.id === theme)?.name ?? 'Tema'}</h2><p>Así se ve el inicio con este tema. Los jugadores siguen viendo {allThemes.find(option => option.id === settings.portal_theme)?.name ?? 'el tema actual'}.</p></div></div>
+        <div className="theme-live-preview-frame"><ThemeHomePreview theme={theme} designs={designs} /></div>
+        {theme !== settings.portal_theme && <div className="theme-live-preview-actions"><button type="button" className="primary" disabled={themeBusy || demo} onClick={() => void selectTheme(theme)}>{themeBusy ? 'Aplicando…' : 'Aplicar este tema'}</button></div>}
       </div>
       <form className="theme-create" onSubmit={event => void createTheme(event)}>
         <label>Nombre del nuevo tema<input value={newName} maxLength={40} disabled={createBusy || demo} onChange={event => setNewName(event.target.value)} placeholder="Ej.: Carnaval" required /></label>

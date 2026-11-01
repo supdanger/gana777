@@ -343,6 +343,147 @@ a.social.instagram:hover { border-color: #ff8ab8; }
   .user-app.page-home .action-card:active { transform: none; }
 }
 
+/* Tema Inicio moderno: solo cambia la pantalla de Inicio. */
+.user-app.page-home.theme-modern {
+  --home-text: #f7f8fb;
+  --home-muted: #a8adb8;
+  --home-accent: #c084fc;
+  container-type: inline-size;
+  max-width: 480px;
+  padding: 14px 16px 18px;
+  background:
+    radial-gradient(circle at 84% 18%, #3a2466 0, transparent 28%),
+    linear-gradient(180deg, #101218 0%, #090a0e 46%, #07080c 100%) !important;
+}
+.user-app.page-home.theme-modern::before { display: none; }
+.user-app.page-home.theme-modern .home-header { align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 2px; }
+.user-app.page-home.theme-modern .home-header .modern-brand {
+  position: relative;
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-top: 13px;
+  overflow: hidden;
+  color: #fff;
+  background: none;
+  -webkit-text-fill-color: #fff;
+  font-size: clamp(15px, 6.4cqw, 26px);
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: -.05em;
+  line-height: 1;
+  white-space: nowrap;
+}
+.user-app.page-home.theme-modern .modern-brand-crown {
+  position: absolute;
+  top: 0;
+  left: 3px;
+  width: 15px;
+  height: 15px;
+  color: #f2c14b;
+  fill: #f2c14b;
+  stroke: #e0a82a;
+}
+.user-app.page-home.theme-modern .home-profile-button.modern-account {
+  flex: 0 0 auto;
+  gap: 6px;
+  width: auto;
+  min-width: max-content;
+  min-height: 36px;
+  max-width: none !important;
+  padding: 0 12px 0 10px;
+  border: 1.5px solid #c084fc !important;
+  border-radius: 13px !important;
+  background: #12131a !important;
+  color: #fff !important;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 650;
+  letter-spacing: 0;
+  box-shadow: none !important;
+}
+.user-app.page-home.theme-modern .modern-account .home-profile-name { overflow: visible; max-width: none; text-overflow: clip; white-space: nowrap; }
+.user-app.page-home.theme-modern .modern-account svg { width: 16px; height: 16px; flex: 0 0 auto; color: #fff; }
+.user-app.page-home.theme-modern .modern-hero { margin: 16px 0 14px; }
+.user-app.page-home.theme-modern .home-welcome {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(26px, 7.4vw, 32px);
+  font-style: italic;
+  font-weight: 850;
+  letter-spacing: -.6px;
+  line-height: 1.05;
+}
+.user-app.page-home.theme-modern .home-welcome-name { color: #e14bff; font-style: italic; }
+.user-app.page-home.theme-modern .home-welcome::after {
+  content: '';
+  display: block;
+  width: 28px;
+  height: 4px;
+  margin-top: 8px;
+  border-radius: 99px;
+  background: #d946ef;
+}
+.user-app.page-home.theme-modern .section-title {
+  display: block;
+  margin: 10px 0 0;
+  padding: 0;
+  color: #fff;
+  font-size: clamp(17px, 4.8vw, 21px);
+  font-style: normal;
+  font-weight: 750;
+  letter-spacing: -.4px;
+  line-height: 1.15;
+}
+.user-app.page-home.theme-modern .section-title::before { display: none; }
+.user-app.page-home.theme-modern .home-bonus-carousel,
+.user-app.page-home.theme-modern .contacts,
+.user-app.page-home.theme-modern .portal-install,
+.user-app.page-home.theme-modern .home-link-banner { display: none !important; }
+.user-app.page-home.theme-modern .quick-actions { position: relative; z-index: 3; gap: 10px; margin-bottom: 16px; }
+.user-app.page-home.theme-modern .action-card,
+.user-app.page-home.theme-modern a.action-card {
+  min-height: 74px !important;
+  aspect-ratio: auto !important;
+  gap: 12px;
+  padding: 12px 14px !important;
+  border: 1px solid #2a2e38 !important;
+  border-radius: 16px !important;
+  background: #17191f !important;
+  color: #fff;
+  text-decoration: none;
+  box-shadow: none !important;
+}
+.user-app.page-home.theme-modern .action-card[data-theme-card='deposit'] {
+  border-color: #7c3aed !important;
+  background: linear-gradient(100deg, #6d28d9 0%, #5520b0 100%) !important;
+}
+.user-app.page-home.theme-modern .action-card:hover {
+  border-color: #3a3f4a !important;
+  background: #1d2028 !important;
+}
+.user-app.page-home.theme-modern .action-card[data-theme-card='deposit']:hover {
+  border-color: #8b5cf6 !important;
+  background: linear-gradient(100deg, #7c3aed 0%, #6d28d9 100%) !important;
+}
+.user-app.page-home.theme-modern .action-card .icon-circle {
+  width: 36px;
+  height: 36px;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  color: #d8b4fe;
+}
+.user-app.page-home.theme-modern .action-card .icon-circle svg { width: 28px; height: 28px; }
+.user-app.page-home.theme-modern .action-card[data-theme-card='deposit'] .icon-circle,
+.user-app.page-home.theme-modern .action-card[data-theme-card='deposit'] strong,
+.user-app.page-home.theme-modern .action-card[data-theme-card='deposit'] > svg { color: #fff; }
+.user-app.page-home.theme-modern .action-card strong { margin-bottom: 2px; font-size: 17px; font-weight: 800; letter-spacing: -.25px; }
+.user-app.page-home.theme-modern .action-card small { color: #a8adb8; font-size: 13px; font-weight: 450; line-height: 1.25; }
+.user-app.page-home.theme-modern .action-card[data-theme-card='deposit'] small { color: #f3e8ff; }
+.user-app.page-home.theme-modern .action-card > svg { width: 18px; height: 18px; color: #eceff3; }
+.user-app.page-home.theme-modern .modern-home-legal { margin: 6px 0 2px; color: #8b909a; font-size: 12px; font-weight: 500; line-height: 1.4; text-align: center; }
+
 /* Premium inner player portal. Scoped away from the home page and admin shell. */
 .user-app:not(.page-home) {
   --portal-text: #f5f8fc;
