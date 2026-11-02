@@ -36,14 +36,15 @@ test('solo el portal incluye manifiesto y metadatos de instalación', () => {
   for (const size of [192, 512, 1024]) {
     const icon = manifest.icons.find(icon => icon.sizes === `${size}x${size}` && icon.purpose === 'any');
     assert.ok(icon);
-    const png = assets.find(asset => `/${asset.fileName}` === icon.src).source;
+    const iconPath = new URL(icon.src, 'https://portal.example').pathname;
+    const png = assets.find(asset => `/${asset.fileName}` === iconPath).source;
     assert.equal(png.subarray(1, 4).toString(), 'PNG');
     assert.equal(png.readUInt32BE(16), size);
     assert.equal(png.readUInt32BE(20), size);
   }
   const maskable = manifest.icons.find(icon => icon.purpose === 'maskable');
   assert.equal(maskable.sizes, '512x512');
-  assert.ok(assets.some(asset => `/${asset.fileName}` === maskable.src));
+  assert.ok(assets.some(asset => `/${asset.fileName}` === new URL(maskable.src, 'https://portal.example').pathname));
   const apple = assets.find(asset => asset.fileName.endsWith('apple-touch-icon-panda.png')).source;
   assert.equal(apple.readUInt32BE(16), 180);
   assert.equal(apple.readUInt32BE(20), 180);

@@ -30,7 +30,7 @@ export function PlayerBonuses({ demo, onClaim }: { demo: boolean; onClaim: (id: 
   const [nextLoadNumber, setNextLoadNumber] = useState<number | null>(demo || !supabase ? 1 : null);
   const [loadNumberReady, setLoadNumberReady] = useState(demo || !supabase);
   const offers = promotions.filter(offer => offer.selectable && (offer.reward_type === 'free_spins' ? !!offer.reward_label : offer.bonus_mode === 'fixed' ? offer.bonus_amount > 0 : offer.bonus_percent > 0));
-  const visibleOffers = offers.filter(offer => !loadNumberReady || nextLoadNumber === null || offer.load_number_to === null || nextLoadNumber <= offer.load_number_to);
+  const visibleOffers = offers.filter(offer => offer.active && (offer.load_number_to === null || nextLoadNumber !== null && nextLoadNumber <= offer.load_number_to));
   const timedOffers = visibleOffers.filter(offer => offer.cooldown_hours > 0);
 
   useEffect(() => {

@@ -6,7 +6,7 @@ const id = '11111111-1111-4111-8111-111111111111';
 const path = `portal-banners/${id}.webp`;
 
 test('los banners extra se guardan por tema y por pantalla', () => {
-  assert.equal(defaultPortalBannerLayout('halloween', 'home').height, 60);
+  assert.equal(defaultPortalBannerLayout('halloween', 'home').height, 43.5);
   assert.equal(defaultPortalBannerLayout('halloween', 'withdrawal').height, 36);
   const saved = [
     { id, theme: 'halloween', place: 'home', path, layout: { height: 55, width: 120, imageHeight: 90, x: 4, y: -3, radius: 18 } },

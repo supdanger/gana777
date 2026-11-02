@@ -343,7 +343,140 @@ a.social.instagram:hover { border-color: #ff8ab8; }
   .user-app.page-home .action-card:active { transform: none; }
 }
 
-/* Tema Inicio moderno: solo cambia la pantalla de Inicio. */
+/* Fondo compartido por todas las pantallas del tema moderno. */
+.user-app.theme-modern,
+.user-app.theme-modern:not(.page-home),
+.user-login.theme-modern {
+  background:
+    radial-gradient(circle at 84% 18%, #211333 0, transparent 28%),
+    linear-gradient(180deg, #07080b 0%, #040406 46%, #020203 100%) !important;
+  min-height: 100svh;
+}
+.user-app.theme-modern::before,
+.user-app.theme-modern::after,
+.user-login.theme-modern::before,
+.user-login.theme-modern::after { display: none; }
+body:has(.user-app.theme-modern),
+body:has(.user-login.theme-modern) { background: #07080c; }
+
+/* Recorrido de carga del tema moderno. */
+.user-app.theme-modern .modern-bonus-picker { scrollbar-width: none; }
+.user-app.theme-modern .modern-bonus-picker::-webkit-scrollbar { display: none; }
+.user-app.theme-modern .modern-bonus-picker .player-bonus-media { aspect-ratio: auto; object-fit: cover; }
+.user-app.theme-modern .modern-bonus-picker .player-bonus-copy button { border-color: #ffe49a; background: linear-gradient(135deg, #ffe27a, #e9ad2f 48%, #a96808); color: #241200; text-shadow: 0 1px #fff3b0; box-shadow: 0 4px 16px #d7952e66; }
+.user-app.theme-modern .modern-bonus-picker-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 18px; background: #050309cf; backdrop-filter: blur(5px); }
+.user-app.theme-modern .modern-bonus-picker { display: flex; flex-direction: column; width: min(460px, 100%); max-height: 85dvh; overflow: hidden; padding: 18px; border: 1px solid #a879ff80; border-radius: 18px; background: linear-gradient(110deg, #36145ae0, #201032e8); backdrop-filter: blur(16px); box-shadow: 0 22px 70px #000b; }
+.user-app.theme-modern .modern-bonus-picker header { position: relative; flex: 0 0 auto; z-index: 10; display: flex; justify-content: center; gap: 10px; padding: 12px 0; margin: -6px 0 8px; background: transparent; }
+.user-app.theme-modern .modern-bonus-picker > .modern-flow-bonuses { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.user-app.theme-modern .modern-bonus-picker > .modern-flow-bonuses::-webkit-scrollbar { display: none; }
+.user-app.theme-modern .modern-bonus-picker .player-bonus-card { isolation: isolate; }
+.user-app.theme-modern .modern-bonus-picker header h2 { margin: 0; font-size: 21px; }
+.user-app.theme-modern .modern-bonus-picker header .modern-bonus-gold-title,
+.user-app.theme-modern .modern-load-options button strong {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 2px 38px;
+  text-align: center;
+  font-size: clamp(30px, 8vw, 40px);
+  line-height: 1.12;
+  letter-spacing: -.7px;
+  font-weight: 850;
+  color: #ffd45b;
+  background: linear-gradient(110deg, #f3b32e 0%, #ffe391 35%, #fff9dc 48%, #ffe391 61%, #f3b32e 100%);
+  background-size: 250% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 7px #e8ae343d);
+  animation: modern-bonus-gold-shine 4s ease-in-out infinite;
+}
+.user-app.theme-modern .modern-load-options button strong { width: auto; padding: 0; text-align: left; font-size: clamp(25px, 6vw, 29px); letter-spacing: -.5px; line-height: 1.15; }
+.user-app.theme-modern .modern-bonus-picker header { padding: 3px 0 0; margin-bottom: 0; }
+.user-app.theme-modern .modern-bonus-picker > .modern-flow-bonuses { margin-top: 4px; }
+.user-app.theme-modern .modern-bonus-picker header > button { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
+@keyframes modern-bonus-gold-shine { 0%, 20% { background-position: 100% 50%; } 80%, 100% { background-position: 0% 50%; } }
+@media (prefers-reduced-motion: reduce) { .user-app.theme-modern .modern-bonus-picker header .modern-bonus-gold-title, .user-app.theme-modern .modern-load-options button strong { animation: none; } }
+.user-app.theme-modern .modern-bonus-picker header button { padding: 7px; border-color: #665079; background: #2b2235; }
+.user-app.theme-modern .modern-bonus-option { display: flex; flex-direction: column; align-items: stretch; gap: 10px; width: 100%; padding: 12px; border: 1px solid #51425f; border-radius: 12px; background: #25202e; color: #fff; text-align: left; }
+.user-app.theme-modern .modern-bonus-option.selected { border-color: #b88aff; background: #35234c; }
+.user-app.theme-modern .modern-bonus-option b { padding: 9px; border-radius: 8px; background: #7531d7; text-align: center; font-size: 13px; }
+.user-app.theme-modern .modern-load-options button > span:not(.modern-choice-circle) { flex: 1; }
+.user-app.theme-modern .modern-deposit-progress { display: flex; gap: 6px; margin: 0 0 12px; padding: 0; border: 0; }
+.user-app.theme-modern .modern-deposit-progress button { flex: 1; display: flex; flex-direction: column; gap: 7px; padding: 8px 2px; border: 0; background: transparent; color: #b6b3c1; font-size: 11px; opacity: 1; }
+.user-app.theme-modern .modern-deposit-progress button span { display: grid; place-items: center; width: 29px; height: 29px; border: 1px solid #656170; border-radius: 50%; font-size: 13px; }
+.user-app.theme-modern .modern-deposit-progress button[aria-current='step'] { color: #fff; font-weight: 750; }
+.user-app.theme-modern .modern-deposit-progress button[aria-current='step'] span { border-color: #a879ff; background: #7531d7; }
+.user-app.theme-modern .modern-flow-section h2 { margin: 0 0 10px; font-size: 20px; color: #fff; }
+.user-app.theme-modern .modern-transfer-instruction h2 { font-size: clamp(27px, 7vw, 34px); font-weight: 850; line-height: 1.15; letter-spacing: -.6px; }
+.user-app.theme-modern .modern-flow-section p { margin: 0; font-size: 13px; color: #b7b6c5; }
+.user-app.theme-modern .modern-flow-section.card, .user-app.theme-modern .modern-flow-summary, .user-app.theme-modern .modern-deposit-flow .receipt-card { border-color: #34323f; background: #1b1c24; }
+.user-app.theme-modern .modern-load-options, .user-app.theme-modern .modern-flow-bonuses { display: grid; gap: 10px; margin-top: 12px; }
+.user-app.theme-modern .modern-load-options button, .user-app.theme-modern .modern-flow-bonuses > button { display: flex; justify-content: flex-start; gap: 13px; width: 100%; padding: 16px; border: 1px solid #41404d; border-radius: 12px; background: #1e1f27; color: #fff; text-align: left; }
+.user-app.theme-modern .modern-load-options button.selected, .user-app.theme-modern .modern-flow-bonuses > button.selected { border-color: #ae79ff; background: #35234c; box-shadow: inset 3px 0 #a563ff; }
+.user-app.theme-modern .modern-load-options strong, .user-app.theme-modern .modern-flow-bonuses strong { display: block; font-size: 16px; }
+.user-app.theme-modern .modern-load-options small, .user-app.theme-modern .modern-flow-bonuses small { color: #c5bfd1; font-size: 12px; }
+.user-app.theme-modern .modern-load-options button, .user-app.theme-modern .modern-load-options button.selected { min-height: 100px; align-items: center; padding: 20px 18px; gap: 16px; border-color: #a879ff80; background: linear-gradient(110deg, #36145ae0, #201032e8); backdrop-filter: blur(16px); color: #ffdc83; }
+.user-app.theme-modern .modern-load-options button > svg:first-child { width: 34px; height: 34px; flex-shrink: 0; }
+.user-app.theme-modern .modern-load-options button > svg:last-child { width: 25px; height: 25px; flex-shrink: 0; }
+.user-app.theme-modern .modern-load-options button small { display: block; margin-top: 5px; font-size: 14px; line-height: 1.3; }
+.user-app.theme-modern .modern-load-options button:hover { border-color: #bc8bff; background: linear-gradient(110deg, #482071ee, #2b1643ee); }
+.user-app.theme-modern .modern-choice-circle { display: grid; place-items: center; width: 23px; height: 23px; flex-shrink: 0; border: 2px solid #a59eaf; border-radius: 50%; font-size: 14px; font-weight: 800; line-height: 1; }
+.user-app.theme-modern .selected .modern-choice-circle { border-color: #b88aff; background: #8741dd; color: #fff; }
+.user-app.theme-modern .modern-flow-amount h2 label { margin: 0; color: #fff; font: inherit; letter-spacing: inherit; text-transform: none; }
+.user-app.theme-modern .modern-amount-field { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border: 1px solid #a879ff80; border-radius: 12px; background: linear-gradient(110deg, #36145ae0, #201032e8); }
+.user-app.theme-modern .modern-amount-field:focus-within { border-color: #b78aff; box-shadow: 0 0 0 3px #9d5cf022; }
+.user-app.theme-modern .modern-amount-field > span { color: #c9c5d4; font-size: 25px; font-weight: 650; }
+.user-app.theme-modern .modern-amount-field input { min-height: 40px; width: 100%; margin: 0; padding: 0; border: 0; border-radius: 0; outline: 0; background: transparent; color: #fff; font-size: 30px; font-weight: 800; box-shadow: none; }
+.user-app.theme-modern .modern-amount-field input::placeholder { color: #9993a4; }
+.user-app.theme-modern .modern-amount-field { position: relative; }
+.user-app.theme-modern .modern-amount-field:has(input:placeholder-shown):not(:focus-within)::after { content: ''; position: absolute; left: 40px; top: 50%; width: 2px; height: 28px; background: #e7d3ff; transform: translateY(-50%); pointer-events: none; animation: modern-amount-caret 1.2s step-end infinite; }
+@keyframes modern-amount-caret { 0%, 45% { opacity: 1; } 46%, 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .user-app.theme-modern .modern-amount-field:has(input:placeholder-shown):not(:focus-within)::after { animation: none; } }
+.user-app.theme-modern .modern-amount-field input { caret-color: #e7d3ff; }
+.user-app.theme-modern .modern-amount-field.is-invalid { border-color: #ff8398; }
+.user-app.theme-modern .modern-flow-amount > small { margin-top: 7px; color: #bab4c6; font-size: 12px; }
+.user-app.theme-modern .modern-flow-amount > small.modern-amount-error { color: #ff9aad; }
+.user-app.theme-modern .modern-amount-presets { display: flex; gap: 8px; margin-top: 14px; }
+.user-app.theme-modern .modern-amount-presets button { flex: 1; min-width: 0; padding: 8px 4px; border: 1px solid #a879ff80; border-radius: 9px; background: linear-gradient(110deg, #36145ae0, #201032e8); color: #ffd45b; font-size: 13px; font-weight: 800; }
+.user-app.theme-modern .modern-amount-presets button[aria-pressed='true'] { border-color: #ffe391; box-shadow: 0 0 0 1px #ffe39144; }
+.user-app.theme-modern .modern-amount-presets button > span { background: linear-gradient(110deg, #f3b32e 0%, #ffe391 35%, #fff9dc 48%, #ffe391 61%, #f3b32e 100%); background-size: 250% 100%; background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 7px #e8ae343d); animation: modern-bonus-gold-shine 4s ease-in-out infinite; }
+.user-app.theme-modern .modern-amount-presets button > span { animation-duration: 12s; }
+@media (prefers-reduced-motion: reduce) { .user-app.theme-modern .modern-amount-presets button > span { animation: none; } }
+.user-app.theme-modern .modern-continue-hint { margin: -6px 0 0; color: #bdb6cb; font-size: 12px; text-align: center; }
+.user-app.theme-modern .modern-flow-bonuses > button { flex-direction: column; align-items: stretch; }
+.user-app.theme-modern .modern-flow-bonuses img { width: 100%; aspect-ratio: 3.5 / 1; object-fit: contain; border-radius: 8px; }
+.user-app.theme-modern .modern-flow-bonuses details { margin-top: 8px; color: #d1b0ff; font-size: 12px; white-space: pre-wrap; }
+.user-app.theme-modern .modern-flow-hint { margin: 0; color: #bbb6c6; font-size: 12px; }
+.user-app.theme-modern .modern-flow-back { display: block; margin: 0 auto; padding: 8px; border: 0; background: transparent; color: #d6b8ff; font-size: 13px; }
+.user-app.theme-modern .modern-flow-summary > div { display: flex; align-items: baseline; justify-content: space-between; gap: 15px; padding: 13px 0; border-bottom: 1px solid #3a3645; color: #c5bfd1; font-size: 15px; line-height: 1.4; }
+.user-app.theme-modern .modern-flow-summary strong { min-width: 0; color: #fff; font-size: 17px; font-weight: 750; text-align: right; overflow-wrap: anywhere; }
+.user-app.theme-modern .modern-flow-summary .modern-flow-back { margin-top: 5px; font-size: 14px; }
+.user-app.theme-modern.page-deposit .modern-flow-summary.card { border-color: #a879ff80; background: linear-gradient(110deg, #36145ae0, #201032e8); }
+.user-app.theme-modern.page-withdrawal .account-card.card { border-color: #a879ff80; background: linear-gradient(110deg, #36145ae0, #201032e8); }
+.user-app.theme-modern.page-profile .user-profile-summary.card,
+.user-app.theme-modern.page-profile .history-card.card { border-color: #a879ff80; background: linear-gradient(110deg, #36145ae0, #201032e8); }
+.user-app.theme-modern.page-profile .inner-header .brand { display: none; }
+.user-app.theme-modern .modern-receipt-preview { display: block; max-width: 100%; max-height: 240px; margin: 0 auto 14px; object-fit: contain; border-radius: 10px; }
+.user-app.theme-modern .modern-receipt-name { overflow-wrap: anywhere; color: #eee; font-size: 13px; }
+.user-app.theme-modern .modern-deposit-pending { text-align: center; }
+.user-app.theme-modern .modern-deposit-pending svg { color: #b989ff; }
+
+/* Diseño del Inicio moderno. */
+.user-app.theme-modern.page-deposit .receipt-source-button,
+.user-app.theme-modern:is(.page-deposit, .page-withdrawal) .request-form > button.primary {
+  border-color: #7c3aed;
+  background: linear-gradient(100deg, #6d28d9 0%, #5520b0 100%);
+  color: #fff;
+  box-shadow: 0 6px 18px #6d28d92e;
+}
+.user-app.theme-modern.page-deposit .receipt-source-button:hover,
+.user-app.theme-modern:is(.page-deposit, .page-withdrawal) .request-form > button.primary:hover:not(:disabled) {
+  border-color: #8b5cf6;
+  background: linear-gradient(100deg, #7c3aed 0%, #6d28d9 100%);
+}
+.user-app.theme-modern.page-deposit .receipt-source-button:has(input:focus-visible),
+.user-app.theme-modern:is(.page-deposit, .page-withdrawal) .request-form > button.primary:focus-visible { outline: 3px solid #c4b5fd; outline-offset: 3px; }
 .user-app.page-home.theme-modern {
   --home-text: #f7f8fb;
   --home-muted: #a8adb8;
@@ -352,10 +485,36 @@ a.social.instagram:hover { border-color: #ff8ab8; }
   max-width: 480px;
   padding: 14px 16px 18px;
   background:
-    radial-gradient(circle at 84% 18%, #3a2466 0, transparent 28%),
-    linear-gradient(180deg, #101218 0%, #090a0e 46%, #07080c 100%) !important;
+    radial-gradient(circle at 84% 18%, #211333 0, transparent 28%),
+    linear-gradient(180deg, #07080b 0%, #040406 46%, #020203 100%) !important;
 }
-.user-app.page-home.theme-modern::before { display: none; }
+.user-app.theme-modern,
+.user-login.theme-modern { position: relative; isolation: isolate; }
+.user-app.theme-modern::before,
+.user-app.page-home.theme-modern::before,
+.user-login.theme-modern::before {
+  content: '';
+  display: block;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(ellipse at 25% 20%, #6a259e66 0%, transparent 52%), radial-gradient(ellipse at 80% 65%, #3d146455 0%, transparent 58%);
+  background-size: 160% 160%;
+  background-repeat: no-repeat;
+  animation: modern-home-background-glow 18s ease-in-out infinite;
+}
+@keyframes modern-home-background-glow {
+  0%, 100% { background-position: 0% 0%, 100% 100%; opacity: .6; }
+  33% { background-position: 100% 30%, 0% 70%; opacity: .95; }
+  66% { background-position: 40% 100%, 80% 0%; opacity: .75; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .user-app.theme-modern::before, .user-app.page-home.theme-modern::before, .user-login.theme-modern::before { animation: none; opacity: .4; }
+}
+@keyframes modern-brand-shine { 0%, 100% { background-position: 100% 50%; } 50% { background-position: 0% 50%; } }
+@media (prefers-reduced-motion: reduce) { .user-app.page-home.theme-modern .home-header .modern-brand { animation: none !important; } }
 .user-app.page-home.theme-modern .home-header { align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 2px; }
 .user-app.page-home.theme-modern .home-header .modern-brand {
   position: relative;
@@ -364,9 +523,14 @@ a.social.instagram:hover { border-color: #ff8ab8; }
   min-width: 0;
   padding-top: 13px;
   overflow: hidden;
-  color: #fff;
-  background: none;
-  -webkit-text-fill-color: #fff;
+  color: #d946ff;
+  background: linear-gradient(110deg, #f3a0ff 0%, #d946ff 35%, #fff0ff 48%, #d946ff 61%, #8e24c9 100%);
+  background-size: 250% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 7px #c43dff55);
+  animation: modern-brand-shine 7s ease-in-out infinite;
   font-size: clamp(15px, 6.4cqw, 26px);
   font-style: italic;
   font-weight: 900;
@@ -404,7 +568,10 @@ a.social.instagram:hover { border-color: #ff8ab8; }
 }
 .user-app.page-home.theme-modern .modern-account .home-profile-name { overflow: visible; max-width: none; text-overflow: clip; white-space: nowrap; }
 .user-app.page-home.theme-modern .modern-account svg { width: 16px; height: 16px; flex: 0 0 auto; color: #fff; }
-.user-app.page-home.theme-modern .modern-hero { margin: 16px 0 14px; }
+.user-app.page-home.theme-modern .modern-hero { position: relative; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end; min-height: clamp(160px, 42vw, 185px); gap: 14px; margin: 10px 0 0; padding-bottom: 16px; }
+.user-app.page-home.theme-modern .modern-hero .home-welcome { position: relative; z-index: 2; width: 53%; min-width: 0; overflow-wrap: anywhere; }
+.user-app.page-home.theme-modern .modern-home-mascot { position: absolute; z-index: 1; right: 0; bottom: -12px; display: block; width: 46%; height: clamp(175px, 44vw, 215px); object-fit: contain; object-position: center bottom; filter: drop-shadow(0 8px 18px #230d3b66); pointer-events: none; }
+.user-app.page-home.theme-modern .modern-hero .section-title { position: relative; z-index: 2; max-width: 53%; margin: 0; }
 .user-app.page-home.theme-modern .home-welcome {
   margin: 0;
   color: #fff;
@@ -414,7 +581,7 @@ a.social.instagram:hover { border-color: #ff8ab8; }
   letter-spacing: -.6px;
   line-height: 1.05;
 }
-.user-app.page-home.theme-modern .home-welcome-name { color: #e14bff; font-style: italic; }
+.user-app.page-home.theme-modern .home-welcome-name { display: block; margin-top: 4px; color: #e14bff; font-style: italic; }
 .user-app.page-home.theme-modern .home-welcome::after {
   content: '';
   display: block;
@@ -454,18 +621,44 @@ a.social.instagram:hover { border-color: #ff8ab8; }
   text-decoration: none;
   box-shadow: none !important;
 }
-.user-app.page-home.theme-modern .action-card[data-theme-card='deposit'] {
-  border-color: #7c3aed !important;
-  background: linear-gradient(100deg, #6d28d9 0%, #5520b0 100%) !important;
+.user-app.page-home.theme-modern .action-card[data-theme-card='games'] {
+  border-color: #a46af0 !important;
+  background: linear-gradient(100deg, #6523c4 0%, #43158b 100%) !important;
+  box-shadow: 0 0 18px #8839dc26, inset 0 1px #e5c4ff1a !important;
+}
+.user-app.page-home.theme-modern .action-card:not([data-theme-card='games']) {
+  border-color: #a879ff80 !important;
+  background: linear-gradient(110deg, #36145ae0, #201032e8) !important;
+}
+.user-app.page-home.theme-modern .action-card:not([data-theme-card='games']):hover {
+  border-color: #bc8bff !important;
+  background: linear-gradient(110deg, #482071ee, #2b1643ee) !important;
 }
 .user-app.page-home.theme-modern .action-card:hover {
   border-color: #3a3f4a !important;
   background: #1d2028 !important;
 }
-.user-app.page-home.theme-modern .action-card[data-theme-card='deposit']:hover {
-  border-color: #8b5cf6 !important;
-  background: linear-gradient(100deg, #7c3aed 0%, #6d28d9 100%) !important;
+.user-app.page-home.theme-modern .action-card[data-theme-card='games']:hover {
+  border-color: #c398ff !important;
+  background: linear-gradient(100deg, #722cd0 0%, #501c9c 100%) !important;
 }
+.user-app.page-home.theme-modern .action-card[data-theme-card='games']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 25%, #dab2ff26 48%, transparent 71%);
+  background-size: 300% 100%;
+  animation: modern-casino-button-shine 16s ease-in-out infinite;
+}
+@keyframes modern-casino-button-shine {
+  0%, 100% { background-position: 100% 50%; opacity: 0; }
+  35% { opacity: .7; }
+  50% { background-position: 0% 50%; opacity: .7; }
+  85% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .user-app.page-home.theme-modern .action-card[data-theme-card='games']::after { animation: none; opacity: 0; } }
 .user-app.page-home.theme-modern .action-card .icon-circle {
   width: 48px;
   height: 48px;
@@ -475,15 +668,31 @@ a.social.instagram:hover { border-color: #ff8ab8; }
   color: #d8b4fe;
 }
 .user-app.page-home.theme-modern .action-card .icon-circle svg { width: 44px; height: 44px; flex-shrink: 0; color: #fff; stroke-width: 8; }
-.user-app.page-home.theme-modern .action-card[data-theme-card='games'] .icon-circle svg { width: 44px; height: 44px; flex-shrink: 0; color: #f8f8fb; }
+.user-app.page-home.theme-modern .action-card[data-theme-card='games'] .icon-circle svg { width: 44px; height: 44px; flex-shrink: 0; color: #ffda6b; filter: drop-shadow(0 0 5px #ffd04b55); }
 .user-app.page-home.theme-modern .action-card[data-theme-card='withdrawal'] .icon-circle svg { width: 44px; height: 44px; flex-shrink: 0; color: #f8f8fb; }
 .user-app.page-home.theme-modern .action-card[data-theme-card='deposit'] .icon-circle,
 .user-app.page-home.theme-modern .action-card[data-theme-card='deposit'] strong,
 .user-app.page-home.theme-modern .action-card[data-theme-card='deposit'] > svg { color: #fff; }
-.user-app.page-home.theme-modern .action-card strong { margin-bottom: 2px; font-size: 17px; font-weight: 800; letter-spacing: -.25px; }
-.user-app.page-home.theme-modern .action-card small { color: #a8adb8; font-size: 13px; font-weight: 450; line-height: 1.25; }
+.user-app.page-home.theme-modern .action-card strong { margin-bottom: 4px; font-size: clamp(19px, 4.8vw, 21px); font-weight: 850; letter-spacing: -.25px; animation: modern-action-text-glow 10s ease-in-out infinite; }
+.user-app.page-home.theme-modern .action-card small { color: #c6bed6; font-size: 14px; font-weight: 500; line-height: 1.3; animation: modern-action-text-glow 10s ease-in-out infinite; }
+@keyframes modern-action-text-glow { 0%, 100% { text-shadow: 0 0 0 transparent; } 50% { text-shadow: 0 0 5px #e3b5ff24; } }
+@media (prefers-reduced-motion: reduce) { .user-app.page-home.theme-modern .action-card strong, .user-app.page-home.theme-modern .action-card small { animation: none; } }
 .user-app.page-home.theme-modern .action-card[data-theme-card='deposit'] small { color: #f3e8ff; }
 .user-app.page-home.theme-modern .action-card > svg { width: 18px; height: 18px; color: #eceff3; }
+.user-app.page-home.theme-modern .action-card[data-theme-card='games'] strong {
+  color: #ffda6b;
+  background: linear-gradient(110deg, #ffc83d 0%, #ffe391 32%, #fffbe4 48%, #ffe391 64%, #f3b32e 100%);
+  background-size: 250% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 6px #ffd04b55);
+  animation: modern-casino-gold-shine 5s ease-in-out infinite;
+}
+.user-app.page-home.theme-modern .action-card[data-theme-card='games'] small { color: #ffedb0; animation: none; }
+.user-app.page-home.theme-modern .action-card[data-theme-card='games'] > svg { color: #ffda6b; }
+@keyframes modern-casino-gold-shine { 0%, 100% { background-position: 100% 50%; } 50% { background-position: 0% 50%; } }
+@media (prefers-reduced-motion: reduce) { .user-app.page-home.theme-modern .action-card[data-theme-card='games'] strong { animation: none; } }
 .user-app.page-home.theme-modern .modern-home-legal { margin: 6px 0 2px; color: #8b909a; font-size: 12px; font-weight: 500; line-height: 1.4; text-align: center; }
 
 /* Premium inner player portal. Scoped away from the home page and admin shell. */

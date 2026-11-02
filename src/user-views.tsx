@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { ArrowLeft, BookOpen, ChevronRight, Disc, Eye, EyeOff, FileText, Gift, Images, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserPlus, UserRound, X } from 'lucide-react';
+import { ArrowLeft, BookOpen, CheckCircle2, ChevronRight, Disc, Eye, EyeOff, FileText, Gift, Images, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserPlus, UserRound, X } from 'lucide-react';
 import { StorageImage, useContent } from './content';
 import { HomeBonusCarousel } from './special-bonus-carousel';
 import { asBonusRule, bonusEnabled, moneyInputMaxLength, moneyInputPattern, percentText, readMoney } from '../supabase/functions/_shared/bonus-rule';
@@ -13,6 +13,7 @@ import { compressReceipt, readableFileSize } from './image-compression';
 import { BankTransferCard } from './bank-transfer-card';
 import { PlayerFooter } from './player-legal';
 import { PortalInstall } from './portal-install';
+import { PlayerBonuses } from './player-bonuses';
 import { homeBannerImage, homeBannerLayout, homeBannerLayoutStyles, homeBannerLink } from './home-banner';
 import { portalBannersFor } from './portal-banners';
 import { headerLogoLayout, headerLogoStyle } from './header-logo-layout';
@@ -85,8 +86,10 @@ export function LoginView({ admin, busy, configured, feedback, onLogin, onDemo, 
 export function UserHeader({ page, navigate, name = 'Mi perfil' }: { page: Page; navigate: (page: Page) => void; name?: string }) {
   const { settings } = useContent();
   const modernHome = page === 'home' && themeBase(settings) === 'modern';
+  const modernTitle = themeBase(settings) === 'modern';
+  const pageTitle = modernTitle && page === 'deposit' ? 'Cargar saldo' : modernTitle && page === 'withdrawal' ? 'Retirar dinero' : titles[page];
   return <header className={page === 'home' ? 'home-header' : 'inner-header'}>
-    {modernHome ? <><ModernBrand /><ModernAccountButton onClick={() => navigate('profile')} /></> : page === 'home' ? <><Brand homeHeader /><button className="home-profile-button" onClick={() => navigate('profile')} aria-label={`Ver perfil e historial de ${name}`}><span className="user-avatar"><StorageImage path="avatars/panda-user-avatar.png" alt="" /></span><span className="home-profile-name">{name}</span><ChevronRight size={16} aria-hidden="true" /></button></> : <><button className="back-button" aria-label="Volver al inicio" onClick={() => navigate('home')}><ArrowLeft /></button><h1>{titles[page]}</h1><Brand /></>}
+    {modernHome ? <><ModernBrand /><ModernAccountButton onClick={() => navigate('profile')} /></> : page === 'home' ? <><Brand homeHeader /><button className="home-profile-button" onClick={() => navigate('profile')} aria-label={`Ver perfil e historial de ${name}`}><span className="user-avatar"><StorageImage path="avatars/panda-user-avatar.png" alt="" /></span><span className="home-profile-name">{name}</span><ChevronRight size={16} aria-hidden="true" /></button></> : <><button className="back-button" aria-label="Volver al inicio" onClick={() => navigate('home')}><ArrowLeft /></button><h1>{pageTitle}</h1>{!(themeBase(settings) === 'modern' && (page === 'deposit' || page === 'withdrawal')) && <Brand />}</>}
   </header>;
 }
 function WhatsAppMark() {
@@ -273,6 +276,27 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
   const [bonus, setBonus] = useState(initialBonusId);
   const [rawAmount, setRawAmount] = useState('');
   const [amountAttempted, setAmountAttempted] = useState(kind === 'deposit');
+  const [depositStep, setDepositStep] = useState(0);
+  const [bonusPickerOpen, setBonusPickerOpen] = useState(false);
+  useEffect(() => {
+    if (!bonusPickerOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    document.body.style.overflow = 'hidden';
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); setBonusPickerOpen(false); }
+      if (event.key === 'Tab') {
+        const items = [...document.querySelectorAll<HTMLElement>('.modern-bonus-picker button, .modern-bonus-picker summary')];
+        const first = items[0]; const last = items[items.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }
+    };
+    document.addEventListener('keydown', keydown);
+    return () => { document.body.style.overflow = previousOverflow; document.removeEventListener('keydown', keydown); previousFocus?.focus(); };
+  }, [bonusPickerOpen]);
+  const [depositChoice, setDepositChoice] = useState<'bonus' | 'none' | null>(initialBonusId ? 'bonus' : null);
+  const modernDeposit = kind === 'deposit' && themeBase(settings) === 'modern';
   const [nextLoadNumber, setNextLoadNumber] = useState<number | null>(demo || !supabase ? 1 : null);
   const [loadNumberReady, setLoadNumberReady] = useState(demo || !supabase);
   useEffect(() => { setAmountAttempted(kind === 'deposit'); }, [kind]);
@@ -359,6 +383,60 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
       ? 'Escribí cuánto querés cargar. Ejemplo: 1.000. El mínimo es $1.000.'
       : 'Ingresá un monto válido en pesos, por ejemplo 1.000.');
   }} onChange={event => { event.currentTarget.setCustomValidity(''); const nextAmount = readMoney(event.currentTarget.value); if (kind === 'deposit' && nextAmount !== null && nextAmount >= 1000) setAmountAttempted(false); setRawAmount(event.target.value); }} />{bonusCreditLabel && <span className="amount-bonus">{bonusCreditLabel}</span>}</span>{kind === 'deposit' && <small id="deposit-amount-help" className={amountBelowMinimum ? 'amount-minimum-error' : 'amount-minimum-note'} role={amountBelowMinimum ? 'alert' : undefined}>{amountBelowMinimum ? 'El mínimo es $1.000. Ingresá 1.000 o más.' : 'Ingresá cuánto querés cargar. Ejemplo: 1.000. Mínimo: $1.000.'}</small>}{kind === 'withdrawal' && withdrawalPartCount > 1 && <small className="withdrawal-split-note">{withdrawalPartCount > 100 ? 'El máximo por solicitud es de $10.000.000.' : `Se pagará en ${withdrawalPartCount} transferencias de hasta ${money(100000)}. Cada pago tendrá su comprobante en el historial.`}</small>}</label>;
+  if (modernDeposit) {
+    const choiceValid = !selectedOffer || bonusValid;
+    const changeStep = (step: number) => { setDepositStep(step); };
+    return <form className="request-form modern-deposit-flow" onSubmit={event => {
+      if (depositStep !== 2 || !depositAmountValid || !choiceValid || !file || !bank || pendingDeposit || compressing || busy || depositRetrySeconds > 0) { event.preventDefault(); return; }
+      onSubmit(event, file);
+    }}>
+      <input type="hidden" name="bank_assignment_id" value={bank?.assignment_id ?? ''} />
+      <input type="hidden" name="bonus_id" value={depositChoice === 'bonus' ? bonusIdForForm : ''} />
+      {depositStep > 0 && <input type="hidden" name="amount" value={rawAmount} />}
+      <nav className="modern-deposit-progress" aria-label="Pasos de la carga">{['Monto y bono', 'Transferencia', 'Comprobante'].map((title, index) => <button key={title} type="button" aria-current={depositStep === index ? 'step' : undefined} disabled={index >= depositStep || busy || pendingDeposit} onClick={() => changeStep(index)}><span>{index < depositStep ? '✓' : index + 1}</span>{title}</button>)}</nav>
+      {pendingDeposit ? <section className="card modern-deposit-pending" role="status"><CheckCircle2 size={32} /><h2>Tu carga está en proceso</h2><p>Te avisamos cuando esté acreditada.</p></section> : <>
+        {depositStep === 0 && <>
+          <section className="card modern-flow-section modern-flow-amount">
+            <h2><label htmlFor="modern-load-amount">¿Cuánto querés cargar?</label></h2>
+            <div className={`modern-amount-field${amountBelowMinimum ? ' is-invalid' : ''}`}><span aria-hidden="true">$</span><input id="modern-load-amount" name="amount" type="text" inputMode="decimal" pattern={moneyInputPattern} maxLength={moneyInputMaxLength} placeholder="0" required value={rawAmount} aria-describedby="modern-load-minimum" aria-invalid={amountBelowMinimum || undefined} onChange={event => setRawAmount(event.target.value)} /></div>
+            <small id="modern-load-minimum" className={amountBelowMinimum ? 'modern-amount-error' : ''}>{amountBelowMinimum ? 'Ingresá $1.000 o más' : 'Mínimo $1.000'}</small>
+            <div className="modern-amount-presets" role="group" aria-label="Montos rápidos">{[3000, 10000, 20000].map(value => <button key={value} type="button" aria-pressed={typedAmount === value} onClick={() => setRawAmount(new Intl.NumberFormat('es-AR').format(value))}><span>{money(value)}</span></button>)}</div>
+          </section>
+          <section className="modern-flow-section"><h2>Elegí tu bono</h2><div className="modern-load-options">
+            <button type="button" className={selectedOffer ? 'selected' : ''} aria-haspopup="dialog" onClick={() => setBonusPickerOpen(true)}><Gift size={24} /><span><strong>{selectedOffer ? selectedOffer.title : 'Elegí tu bono'}</strong><small>{selectedOffer ? 'Tocá para cambiar tu bono' : 'Mirá todos los bonos activos'}</small></span><ChevronRight size={20} /></button>
+          </div>
+          {selectedOffer && <button type="button" className="modern-flow-back" onClick={() => { setBonus(''); setDepositChoice('none'); }}>Quitar bono y cargar sin bono</button>}
+          {bonusPickerOpen && <div className="modern-bonus-picker-backdrop" onClick={event => { if (event.target === event.currentTarget) setBonusPickerOpen(false); }}><section className="modern-bonus-picker" role="dialog" aria-modal="true" aria-labelledby="modern-bonus-picker-title"><header><h2 id="modern-bonus-picker-title" className="modern-bonus-gold-title">Elegí tu bono</h2><button type="button" aria-label="Cerrar bonos" autoFocus onClick={() => setBonusPickerOpen(false)}><X size={22} /></button></header><div className="modern-flow-bonuses">
+            <PlayerBonuses demo={demo} onClaim={id => { setBonus(id); setDepositChoice('bonus'); setBonusPickerOpen(false); }} />
+          </div></section></div>}</section>
+          <button type="button" className="primary" disabled={!depositAmountValid || !choiceValid || busy} onClick={() => changeStep(1)}>Continuar</button>
+          {(!depositAmountValid || !choiceValid) && <p className="modern-continue-hint" role="status">{!depositAmountValid ? rawAmount ? 'El monto mínimo es $1.000' : 'Ingresá el monto para continuar' : selectedOffer ? `Este bono requiere una carga desde ${money(selectedOffer.min_amount)} hasta ${money(selectedOffer.max_amount)} y cumplir sus condiciones.` : 'Elegí un bono para continuar'}</p>}
+        </>}
+        {depositStep === 1 && <>
+          <section className="modern-flow-section modern-transfer-instruction"><h2>Transferí a esta cuenta</h2><p>Monto a transferir: <strong>{money(typedAmount ?? 0)}</strong></p></section>
+          {bank ? <BankTransferCard bank={bank} onCopy={onCopy} /> : bankOperation && bankOperation.mode !== 'online' ? <BankPause status={bankOperation} now={now} /> : <section className="card" role="status">Preparando una cuenta…</section>}
+          <p className="modern-flow-hint">Verificá que el titular coincida antes de transferir.</p>
+          <button type="button" className="primary" disabled={!bank || busy} onClick={() => changeStep(2)}>Ya transferí, continuar</button>
+          <button type="button" className="modern-flow-back" onClick={() => changeStep(0)}>Modificar monto o bono</button>
+        </>}
+        {depositStep === 2 && <>
+          <section className="modern-flow-section"><h2>Adjuntá el comprobante</h2><p>Revisá que se vean el monto, la fecha y la cuenta.</p></section>
+          <section className="card receipt-card compact-receipt-card">
+            {preview && <img className="modern-receipt-preview" src={preview} alt="Comprobante de la transferencia" />}
+            {file && <p className="modern-receipt-name">{file.name}</p>}
+            <label className="receipt-source-button"><FileText size={20} /><span>{compressing ? 'Preparando imagen…' : file ? 'Cambiar comprobante' : 'Enviar comprobante'}</span><input ref={receiptInput} type="file" accept="image/*" disabled={compressing || busy} onChange={event => void selectReceipt(event)} /></label>
+            {file && <button className="modern-flow-back" type="button" disabled={busy} onClick={clearReceipt}>Quitar archivo</button>}
+            {receiptError && <p className="receipt-error" role="alert">{receiptError}</p>}
+          </section>
+          <section className="card modern-flow-summary"><div><span>Monto transferido</span><strong>{money(typedAmount ?? 0)}</strong></div><div><span>Bono</span><strong>{depositChoice === 'bonus' ? selectedOffer?.title : 'Sin bono'}</strong></div><button type="button" className="modern-flow-back" disabled={busy} onClick={() => changeStep(0)}>Modificar monto o bono</button></section>
+          <button className="primary" disabled={busy || demo || !file || !bank || compressing || depositRetrySeconds > 0 || !choiceValid}>{busy ? 'Enviando…' : 'Cargar fichas'}</button>
+          <button type="button" className="modern-flow-back" disabled={busy} onClick={() => changeStep(1)}>Volver a los datos de transferencia</button>
+        </>}
+      </>}
+      {feedback && <div className="request-feedback">{feedback}</div>}
+      {depositRetrySeconds > 0 && <p role="timer">Podés volver a enviar en {depositRetryCountdown}</p>}
+    </form>;
+  }
   return <form className="request-form" onSubmit={event => {
     if (kind === 'deposit' && !depositAmountValid) {
       event.preventDefault();

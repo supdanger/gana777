@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
-import { ChevronRight, Crown, UserRound } from 'lucide-react';
+import { ChevronRight, UserRound } from 'lucide-react';
+import modernPanda from './assets/panda-login-transparent.png';
 
 export function ModernBrand() {
-  return <span className="brand modern-brand"><Crown className="modern-brand-crown" strokeWidth={2.2} aria-hidden="true" />Gana777bet.com</span>;
+  return <span className="brand modern-brand">Gana777bet.com</span>;
 }
 
 export function ModernAccountButton({ onClick }: { onClick?: () => void }) {
-  return <button className="home-profile-button modern-account" type="button" onClick={onClick} aria-label="Mi cuenta"><UserRound size={18} strokeWidth={2} aria-hidden="true" /><span className="home-profile-name">Mi cuenta</span></button>;
+  return <button className="home-profile-button modern-account" type="button" onClick={onClick} aria-label="Mi perfil"><UserRound size={18} strokeWidth={2} aria-hidden="true" /><span className="home-profile-name">Mi perfil</span></button>;
 }
 
 function WalletPlusIcon() {
@@ -64,11 +65,12 @@ export function ModernHomeBody({ name, gamesUrl = null, onDeposit, onWithdraw, o
   return <>
     <div className="modern-hero">
       <h1 className="home-welcome">Hola, <span className="home-welcome-name">{name}</span></h1>
+      <img className="modern-home-mascot" src={modernPanda} alt="" aria-hidden="true" draggable={false} />
       <h2 className="section-title">¿Qué querés hacer?</h2>
     </div>
     <div className="quick-actions">
-      <ModernCard id="deposit" title="Cargar saldo" description="Agregá dinero para jugar" icon={<WalletPlusIcon />} onClick={onDeposit} />
       <ModernCard id="games" title="Ir a los juegos" description="Entrá al casino y elegí un juego" icon={<CardsIcon />} href={gamesUrl} />
+      <ModernCard id="deposit" title="Cargar saldo" description="Agregá dinero para jugar" icon={<WalletPlusIcon />} onClick={onDeposit} />
       <ModernCard id="withdrawal" title="Retirar dinero" description="Pedí un retiro a tu cuenta" icon={<BankIcon />} onClick={onWithdraw} />
       <ModernCard id="bonuses" title="Bonos disponibles" description="Consultá los bonos para tu carga" icon={<GiftIcon />} onClick={onBonuses} />
       <ModernCard id="chat" title="Chat de soporte" description="Escribinos si necesitás ayuda" icon={<HeadsetIcon />} onClick={onChat} />
