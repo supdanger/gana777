@@ -3,7 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
-import { bonusScheduleOpen, nextBonusScheduleChange, parseBonusSchedule, bonusScheduleText, bonusScheduleColumns } from '../supabase/functions/_shared/bonus-schedule.ts';
+import { bonusScheduleOpen, nextBonusScheduleChange, parseBonusSchedule, bonusScheduleText, bonusScheduleColumns, nextBonusScheduleOpen } from '../supabase/functions/_shared/bonus-schedule.ts';
 import { bonusEnabled, asBonusRule } from '../supabase/functions/_shared/bonus-rule.ts';
 import { creditAmounts } from '../src/amounts.ts';
 import { assertFormFields, parseAmount, parseUuid, InputError } from '../supabase/functions/_shared/validation.ts';
@@ -46,6 +46,18 @@ test('se despierta solo en la próxima apertura/cierre y no programa nada para b
   assert.equal(bonusScheduleOpen({}),true);
   assert.equal(bonusScheduleOpen({bonus_start_time:'14:00'}),false);
   assert.equal(bonusScheduleOpen({...daily,bonus_days:[]}),false);
+});
+
+test('el contador apunta a la próxima apertura, respetando días y esperas que terminan fuera de horario',()=>{
+  assert.equal(nextBonusScheduleOpen(daily,at('2026-11-07T13:00:00-03:00')),at('2026-11-07T14:00:00-03:00'));
+  assert.equal(nextBonusScheduleOpen(daily,at('2026-11-07T15:00:00-03:00')),at('2026-11-07T15:00:00-03:00'));
+  assert.equal(nextBonusScheduleOpen(daily,at('2026-11-07T18:00:00-03:00')),at('2026-11-08T14:00:00-03:00'));
+  const monday=parseBonusSchedule(true,'14:00','17:00',[1]);
+  assert.equal(nextBonusScheduleOpen(monday,at('2026-11-07T15:00:00-03:00')),at('2026-11-09T14:00:00-03:00'));
+  const overnight=parseBonusSchedule(true,'23:00','02:00',[5]);
+  assert.equal(nextBonusScheduleOpen(overnight,at('2026-11-07T03:00:00-03:00')),at('2026-11-13T23:00:00-03:00'));
+  assert.equal(nextBonusScheduleOpen({bonus_start_time:'14:00'}),null);
+  assert.equal(nextBonusScheduleOpen({},NaN),null);
 });
 
 test('rechaza horas iguales, segundos, días vacíos o inválidos y permite desactivar el horario',()=>{

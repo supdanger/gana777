@@ -187,9 +187,9 @@ function BankPause({ status, now }: { status: BankOperationStatus; now: number }
     </div>
   </section>;
 }
-export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, initialBonusId = '', busy, demo, onSubmit, onCopy, onOpenWithdrawalHistory, onBrowseBonuses, feedback }: {
+export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, initialBonusId = '', busy, demo, onSubmit, onCopy, onOpenWithdrawalHistory, onBrowseBonuses, feedback, submissionError = '' }: {
   kind: 'deposit' | 'withdrawal'; requests: RequestRow[]; bank: Bank | null; bankOperation: BankOperationStatus | null; retryAt?: number; initialBonusId?: string; busy: boolean; demo: boolean;
-  onSubmit: (event: FormEvent<HTMLFormElement>, receipt?: File | null) => void; onCopy: (text: string, label: string) => void; onOpenWithdrawalHistory: () => void; onBrowseBonuses?: () => void; feedback?: ReactNode;
+  onSubmit: (event: FormEvent<HTMLFormElement>, receipt?: File | null) => void | Promise<void>; onCopy: (text: string, label: string) => void; onOpenWithdrawalHistory: () => void; onBrowseBonuses?: () => void; feedback?: ReactNode; submissionError?: string;
 }) {
   const { promotions, reloadPromotions, settings } = useContent();
   const scheduleNow = useBonusScheduleClock(promotions);
@@ -211,6 +211,12 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
   const [file, setFile] = useState<File | null>(null);
   const [compressing, setCompressing] = useState(false);
   const [receiptError, setReceiptError] = useState('');
+  const [receiptSendAttempted, setReceiptSendAttempted] = useState(false);
+  const [receiptSending, setReceiptSending] = useState(false);
+  const receiptSubmitInFlight = useRef(false);
+  const receiptHeading = useRef<HTMLHeadingElement>(null);
+  const receiptSendButton = useRef<HTMLButtonElement>(null);
+  const pendingReceipt = useRef<HTMLElement>(null);
   const [preview, setPreview] = useState('');
   const [bonus, setBonus] = useState(initialBonusId);
   const [rawAmount, setRawAmount] = useState('');
@@ -286,12 +292,26 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     setRawAmount('');
     setCompressing(false);
   }, [kind, pendingDeposit]);
+  useLayoutEffect(() => {
+    if (!modernDeposit) return;
+    const target = pendingDeposit ? pendingReceipt.current : depositStep === 2 ? receiptHeading.current : null;
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    target.scrollIntoView({ block: 'start' });
+  }, [modernDeposit, depositStep, pendingDeposit]);
+  useLayoutEffect(() => {
+    if (!modernDeposit || depositStep !== 2 || !file || compressing) return;
+    const button = receiptSendButton.current;
+    button?.focus({ preventScroll: true });
+    button?.scrollIntoView({ block: 'nearest' });
+  }, [modernDeposit, depositStep, file, compressing]);
   async function selectReceipt(event: React.ChangeEvent<HTMLInputElement>) {
     const input = event.currentTarget;
     const selected = input.files?.[0] ?? null;
     if (!selected) return;
     const changeId = ++receiptChangeId.current;
     setReceiptError('');
+    setReceiptSendAttempted(false);
     setCompressing(true);
     try {
       const optimized = await compressReceipt(selected);
@@ -299,7 +319,8 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     } catch (error) {
       if (changeId !== receiptChangeId.current) return;
       input.value = '';
-      setReceiptError(error instanceof Error ? error.message : 'No pudimos preparar el comprobante.');
+      const message = error instanceof Error ? error.message : 'No pudimos preparar el comprobante.';
+      setReceiptError(modernDeposit && file ? `${message} La foto anterior sigue seleccionada.` : message);
     } finally {
       if (changeId === receiptChangeId.current) setCompressing(false);
     }
@@ -325,18 +346,25 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
   }} onChange={event => { event.currentTarget.setCustomValidity(''); const nextAmount = readMoney(event.currentTarget.value); if (kind === 'deposit' && nextAmount !== null && nextAmount >= 1000) setAmountAttempted(false); setRawAmount(event.target.value); }} />{bonusCreditLabel && <span className="amount-bonus">{bonusCreditLabel}</span>}</span>{kind === 'deposit' && <small id="deposit-amount-help" className={amountBelowMinimum ? 'amount-minimum-error' : 'amount-minimum-note'} role={amountBelowMinimum ? 'alert' : undefined}>{amountBelowMinimum ? 'El mínimo es $1.000. Ingresá 1.000 o más.' : 'Ingresá cuánto querés cargar. Ejemplo: 1.000. Mínimo: $1.000.'}</small>}{kind === 'withdrawal' && withdrawalPartCount > 1 && <small className="withdrawal-split-note">{withdrawalPartCount > 100 ? 'El máximo por solicitud es de $10.000.000.' : `Se pagará en ${withdrawalPartCount} transferencias de hasta ${money(100000)}. Cada pago tendrá su comprobante en el historial.`}</small>}</label>;
   if (modernDeposit) {
     const choiceValid = !selectedOffer || bonusValid;
+    const sending = busy || receiptSending;
+    const retryReceipt = receiptSendAttempted && !!submissionError;
     const changeStep = (step: number) => { setDepositStep(step); };
-    return <form className="request-form modern-deposit-flow" onSubmit={event => {
+    return <form className="request-form modern-deposit-flow" onSubmit={async event => {
+      event.preventDefault();
       if (selectedOffer && !bonusScheduleOpen(selectedOffer)) { event.preventDefault(); setReceiptError('El bono está fuera de horario. Elegí otro bono o continuá sin bono.'); return; }
-      if (depositStep !== 2 || !depositAmountValid || !choiceValid || !file || !bank || pendingDeposit || compressing || busy || depositRetrySeconds > 0) { event.preventDefault(); return; }
-      onSubmit(event, file);
+      if (depositStep !== 2 || !depositAmountValid || !choiceValid || !file || !bank || pendingDeposit || compressing || sending || receiptSubmitInFlight.current || depositRetrySeconds > 0) return;
+      receiptSubmitInFlight.current = true;
+      setReceiptSending(true);
+      setReceiptSendAttempted(true);
+      try { await onSubmit(event, file); }
+      finally { receiptSubmitInFlight.current = false; setReceiptSending(false); }
     }}>
       <input type="hidden" name="bank_assignment_id" value={bank?.assignment_id ?? ''} />
       <input type="hidden" name="bonus_id" value={depositChoice === 'bonus' ? bonusIdForForm : ''} />
       {depositStep > 0 && <input type="hidden" name="amount" value={rawAmount} />}
       {selectedOffer && hasBonusSchedule(selectedOffer) && <p className="deposit-bonus-note" role="status">{bonusScheduleText(selectedOffer)}{!scheduleEligible && <> · Fuera de horario. <button type="button" onClick={() => { setBonus(''); setDepositChoice('none'); }}>Continuar sin bono</button></>}</p>}
-      <nav className="modern-deposit-progress" aria-label="Pasos de la carga">{['Monto y bono', 'Transferencia', 'Comprobante'].map((title, index) => <button key={title} type="button" aria-current={depositStep === index ? 'step' : undefined} disabled={index >= depositStep || busy || pendingDeposit} onClick={() => changeStep(index)}><span>{index < depositStep ? '✓' : index + 1}</span>{title}</button>)}</nav>
-      {pendingDeposit ? <section className="card modern-deposit-pending" role="status"><CheckCircle2 size={32} /><h2>Tu carga está en proceso</h2><p>Te avisamos cuando esté acreditada.</p></section> : <>
+      {!pendingDeposit && <nav className="modern-deposit-progress" aria-label="Pasos de la carga">{['Monto y bono', 'Transferencia', 'Comprobante'].map((title, index) => <button key={title} type="button" aria-current={depositStep === index ? 'step' : undefined} disabled={index >= depositStep || sending || pendingDeposit} onClick={() => changeStep(index)}><span>{index < depositStep ? '✓' : index + 1}</span>{title}</button>)}</nav>}
+      {pendingDeposit ? <section ref={pendingReceipt} tabIndex={-1} className="card modern-deposit-pending" role="status"><CheckCircle2 size={54} aria-hidden="true" /><h2>Comprobante enviado</h2><p>Tu carga está en revisión.</p><small>Te avisaremos cuando esté acreditada. No hace falta enviarlo otra vez.</small></section> : <>
         {depositStep === 0 && <>
           <section className="card modern-flow-section modern-flow-amount">
             <h2><label htmlFor="modern-load-amount">¿Cuánto querés cargar?</label></h2>
@@ -358,24 +386,37 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
           <section className="modern-flow-section modern-transfer-instruction"><h2>Transferí a esta cuenta</h2><p>Monto a transferir: <strong>{money(typedAmount ?? 0)}</strong></p></section>
           {bank ? <BankTransferCard bank={bank} onCopy={onCopy} /> : bankOperation && bankOperation.mode !== 'online' ? <BankPause status={bankOperation} now={now} /> : <section className="card" role="status">Preparando una cuenta…</section>}
           <p className="modern-flow-hint">Verificá que el titular coincida antes de transferir.</p>
-          <button type="button" className="primary" disabled={!bank || busy} onClick={() => changeStep(2)}>Ya transferí, continuar</button>
+          <button type="button" className="primary" disabled={!bank || busy} onClick={() => changeStep(2)}>Ya transferí · subir comprobante</button>
           <button type="button" className="modern-flow-back" onClick={() => changeStep(0)}>Modificar monto o bono</button>
         </>}
-        {depositStep === 2 && <>
-          <section className="modern-flow-section"><h2>Adjuntá el comprobante</h2><p>Revisá que se vean el monto, la fecha y la cuenta.</p></section>
-          <section className="card receipt-card compact-receipt-card">
-            {preview && <img className="modern-receipt-preview" src={preview} alt="Comprobante de la transferencia" />}
-            {file && <p className="modern-receipt-name">{file.name}</p>}
-            <label className="receipt-source-button"><FileText size={20} /><span>{compressing ? 'Preparando imagen…' : file ? 'Cambiar comprobante' : 'Enviar comprobante'}</span><input ref={receiptInput} type="file" accept="image/*" disabled={compressing || busy} onChange={event => void selectReceipt(event)} /></label>
-            {file && <button className="modern-flow-back" type="button" disabled={busy} onClick={clearReceipt}>Quitar archivo</button>}
-            {receiptError && <p className="receipt-error" role="alert">{receiptError}</p>}
-          </section>
-          <section className="card modern-flow-summary"><div><span>Monto transferido</span><strong>{money(typedAmount ?? 0)}</strong></div><div><span>Bono</span><strong>{depositChoice === 'bonus' ? selectedOffer?.title : 'Sin bono'}</strong></div><button type="button" className="modern-flow-back" disabled={busy} onClick={() => changeStep(0)}>Modificar monto o bono</button></section>
-          <button className="primary" disabled={busy || demo || !file || !bank || compressing || depositRetrySeconds > 0 || !choiceValid}>{busy ? 'Enviando…' : 'Cargar fichas'}</button>
-          <button type="button" className="modern-flow-back" disabled={busy} onClick={() => changeStep(1)}>Volver a los datos de transferencia</button>
-        </>}
+        {depositStep === 2 && <section className="modern-receipt-step" aria-labelledby="modern-receipt-title" aria-busy={sending || compressing}>
+          <header className="modern-receipt-heading">
+            <span>Último paso</span>
+            <h2 id="modern-receipt-title" ref={receiptHeading} tabIndex={-1}>{file ? <><CheckCircle2 size={26} aria-hidden="true" />Foto seleccionada</> : 'Subí la foto del comprobante'}</h2>
+            <p>{file ? 'Ahora enviála para revisar tu carga.' : 'Para revisar tu carga, necesitamos la foto de tu transferencia.'}</p>
+          </header>
+          <input className="modern-receipt-input" ref={receiptInput} type="file" accept="image/*" aria-label="Foto del comprobante" disabled={compressing || sending} onChange={event => void selectReceipt(event)} />
+          {compressing ? <div className="modern-receipt-preparing" role="status"><Images size={42} aria-hidden="true" /><strong>Preparando foto…</strong><span>Esperá un momento.</span></div> : file ? <div className="modern-receipt-selected">
+            {preview ? <img className="modern-receipt-preview" src={preview} alt="Foto seleccionada del comprobante de transferencia" /> : <FileText size={44} aria-label="Comprobante seleccionado" />}
+            <button type="button" className="modern-flow-back" disabled={sending} onClick={() => receiptInput.current?.click()}>Cambiar foto</button>
+          </div> : <>
+            <button type="button" className="modern-receipt-pick" aria-label="Elegir foto del comprobante" aria-describedby="modern-receipt-help" disabled={sending} onClick={() => receiptInput.current?.click()}>
+              <span className="modern-receipt-pick-icon" aria-hidden="true"><Images size={46} strokeWidth={1.6} /><span>+</span></span>
+              <strong>Tocá acá para elegir la foto</strong><span>Abrí tu galería</span>
+            </button>
+            <p id="modern-receipt-help" className="modern-receipt-help">Elegí la captura de la transferencia desde tu galería.</p>
+          </>}
+          {receiptError && <p className="receipt-error" role="alert">{receiptError}</p>}
+          {feedback && <div className="request-feedback">{feedback}</div>}
+          {file && !compressing && <>
+            <button ref={receiptSendButton} type="submit" className="primary modern-receipt-send" disabled={sending || demo || !bank || depositRetrySeconds > 0 || !choiceValid}><Send size={21} aria-hidden="true" />{sending ? 'Enviando comprobante…' : retryReceipt ? 'Reintentar envío' : 'Enviar para revisión'}</button>
+            <p className="modern-receipt-help">{sending ? 'Esperá la confirmación. Tu foto se está enviando.' : retryReceipt ? 'Tu foto sigue seleccionada. Podés volver a enviarla.' : 'Revisá que se vean el monto, la fecha y la cuenta.'}</p>
+          </>}
+          <div className="modern-receipt-context"><span>Carga</span><strong>{money(typedAmount ?? 0)}</strong>{selectedOffer && depositChoice === 'bonus' && <small>Bono: {selectedOffer.title}</small>}</div>
+          <div className="modern-receipt-secondary"><button type="button" className="modern-flow-back" disabled={sending} onClick={() => changeStep(0)}>Modificar monto o bono</button><button type="button" className="modern-flow-back" disabled={sending} onClick={() => changeStep(1)}>Volver a la cuenta</button></div>
+        </section>}
       </>}
-      {feedback && <div className="request-feedback">{feedback}</div>}
+      {(depositStep !== 2 || pendingDeposit) && feedback && <div className="request-feedback">{feedback}</div>}
       {depositRetrySeconds > 0 && <p role="timer">Podés volver a enviar en {depositRetryCountdown}</p>}
     </form>;
   }

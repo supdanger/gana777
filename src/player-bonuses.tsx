@@ -1,8 +1,8 @@
-import { bonusScheduleOpen, bonusScheduleText, hasBonusSchedule } from '../supabase/functions/_shared/bonus-schedule';
+import { bonusScheduleOpen, bonusScheduleText, hasBonusSchedule, nextBonusScheduleOpen } from '../supabase/functions/_shared/bonus-schedule';
 import { useBonusScheduleClock } from './bonus-schedule-clock';
 import { sharedPlayerRpc } from './player-resource';
 import { VisibleVideo } from './visible-video';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Gift, Info, X } from 'lucide-react';
 import { bonusButtonLayoutStyles, normalizeBonusBannerLayout, specialBonusDisplayLayout } from './bonus-banner-layout';
 import { useContent, StorageImage, type Promotion } from './content';
@@ -26,28 +26,37 @@ function reward(offer: Promotion) {
 
 export function PlayerBonuses({ demo, onClaim }: { demo: boolean; onClaim: (id: string) => void }) {
   const { promotions, settings } = useContent();
-  const scheduleNow = useBonusScheduleClock(promotions);
+  const [clockOffset, setClockOffset] = useState(0);
+  const scheduleNow = useBonusScheduleClock(promotions, clockOffset);
   const [availability, setAvailability] = useState<Record<string, Availability>>({});
   const [ready, setReady] = useState(!supabase || demo);
   const [now, setNow] = useState(Date.now);
-  const [clockOffset, setClockOffset] = useState(0);
   const [rulesOffer, setRulesOffer] = useState<Promotion | null>(null);
   const [nextLoadNumber, setNextLoadNumber] = useState<number | null>(demo || !supabase ? 1 : null);
   const [loadNumberReady, setLoadNumberReady] = useState(demo || !supabase);
-  const offers = promotions.filter(offer => offer.selectable && (offer.reward_type === 'free_spins' ? !!offer.reward_label : offer.bonus_mode === 'fixed' ? offer.bonus_amount > 0 : offer.bonus_percent > 0));
-  const visibleOffers = offers.filter(offer => offer.active && (offer.load_number_to === null || nextLoadNumber !== null && nextLoadNumber <= offer.load_number_to));
+  const offers = useMemo(() => promotions.filter(offer => offer.selectable && (offer.reward_type === 'free_spins' ? !!offer.reward_label : offer.bonus_mode === 'fixed' ? offer.bonus_amount > 0 : offer.bonus_percent > 0)), [promotions]);
+  const visibleOffers = useMemo(() => offers.filter(offer => offer.active && (offer.load_number_to === null || nextLoadNumber !== null && nextLoadNumber <= offer.load_number_to)), [offers, nextLoadNumber]);
   const timedOffers = visibleOffers.filter(offer => offer.cooldown_hours > 0);
-
-  const hasCountdown = timedOffers.some(offer => {
-    const next = availability[offer.id]?.next_available_at;
-    return !!next && Date.parse(next) > now + clockOffset;
-  });
+  const availableAt = useMemo(() => Object.fromEntries(visibleOffers.map(offer => {
+    const cooldown = offer.cooldown_hours > 0 ? Date.parse(availability[offer.id]?.next_available_at ?? '') : NaN;
+    const earliest = Math.max(scheduleNow + clockOffset, Number.isFinite(cooldown) ? cooldown : 0);
+    return [offer.id, nextBonusScheduleOpen(offer, earliest)];
+  })), [visibleOffers, availability, scheduleNow, clockOffset]);
+  const currentTime = Math.max(now, scheduleNow) + clockOffset;
+  const hasCountdown = visibleOffers.some(offer => nextLoadNumber !== null && nextLoadNumber >= offer.load_number_from
+    && !availability[offer.id]?.awaiting_credit && (availableAt[offer.id] ?? 0) > currentTime);
   useEffect(() => {
     if (!hasCountdown) return;
-    const tick = () => { if (document.visibilityState === 'visible') setNow(Date.now()); };
-    const timer = window.setInterval(tick, 1000);
-    document.addEventListener('visibilitychange', tick);
-    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', tick); };
+    let timer = 0;
+    const sync = () => {
+      window.clearInterval(timer);
+      if (document.visibilityState !== 'visible') return;
+      setNow(Date.now());
+      timer = window.setInterval(() => setNow(Date.now()), 1000);
+    };
+    sync();
+    document.addEventListener('visibilitychange', sync);
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', sync); };
   }, [hasCountdown]);
   useEffect(() => {
     if (demo || !supabase) { setNextLoadNumber(1); setLoadNumberReady(true); return; }
@@ -93,9 +102,9 @@ export function PlayerBonuses({ demo, onClaim }: { demo: boolean; onClaim: (id: 
         ? offer.load_number_from === 1 ? 'todas las cargas' : `desde la carga ${offer.load_number_from}`
         : offer.load_number_from === offer.load_number_to ? `solo la carga ${offer.load_number_from}` : `de la carga ${offer.load_number_from} a la ${offer.load_number_to}`;
       const status = availability[offer.id];
-      const remaining = status?.next_available_at ? Date.parse(status.next_available_at) - now - clockOffset : 0;
+      const remaining = Math.max(0, (availableAt[offer.id] ?? currentTime) - currentTime);
       const statusReady = !timed || (ready && (!supabase || demo || !!status));
-      const waiting = offer.reward_type === 'free_spins' && !!offer.daily_reset_time && statusReady && !status?.awaiting_credit && remaining > 0;
+      const waiting = (hasBonusSchedule(offer) || offer.reward_type === 'free_spins' && !!offer.daily_reset_time) && statusReady && !status?.awaiting_credit && remaining > 0;
       const scheduleOpen = bonusScheduleOpen(offer, scheduleNow + clockOffset);
       const canClaim = scheduleOpen && loadEligible && (!timed || (statusReady && !status?.awaiting_credit && remaining <= 0));
       const layout = specialBonusDisplayLayout(normalizeBonusBannerLayout(offer.banner_layout, themeBase(settings)));
@@ -110,11 +119,8 @@ export function PlayerBonuses({ demo, onClaim }: { demo: boolean; onClaim: (id: 
             <span className="player-bonus-range">Desde {money(offer.min_amount)} hasta {money(offer.max_amount)}</span>
             <strong className="player-bonus-reward">{reward(offer)}</strong>
           </>}
-          {hasBonusSchedule(offer) && <span className="player-bonus-state">{bonusScheduleText(offer)}</span>}
-          {!scheduleOpen && <span className="player-bonus-state">Fuera de horario</span>}
           {!loadEligible && <span className="player-bonus-state">{!loadNumberReady ? 'Verificando tu número de carga…' : nextLoadNumber === null ? 'No pudimos verificar tu número de carga. Recargá la página.' : `Este bono aplica en ${loadWindowText}. Tu próxima carga es la n.º ${nextLoadNumber}.`}</span>}
-          {scheduleOpen && loadEligible && timed && (!statusReady ? <span className="player-bonus-state">Consultando disponibilidad…</span> : status?.awaiting_credit ? <span className="player-bonus-state">Carga con bono en proceso</span> : remaining > 0 ? <><span className="player-bonus-state">Disponible nuevamente en</span><strong className="player-bonus-countdown" role="timer">{countdown(remaining)}</strong></> : <button type="button" disabled={!canClaim} onClick={() => { if (bonusScheduleOpen(offer, Date.now() + clockOffset)) onClaim(offer.id); }}>Obtener</button>)}
-          {scheduleOpen && loadEligible && !timed && <button type="button" disabled={!canClaim} onClick={() => { if (bonusScheduleOpen(offer, Date.now() + clockOffset)) onClaim(offer.id); }}>Obtener</button>}
+          {loadEligible && (!statusReady ? <span className="player-bonus-state">Consultando disponibilidad…</span> : status?.awaiting_credit ? <span className="player-bonus-state">Carga con bono en proceso</span> : remaining > 0 ? <><span className="player-bonus-state">Disponible en</span><strong className="player-bonus-countdown" role="timer" aria-label="Tiempo hasta que el bono esté disponible">{countdown(remaining)}</strong></> : scheduleOpen ? <button type="button" disabled={!canClaim} onClick={() => { if (bonusScheduleOpen(offer, Date.now() + clockOffset)) onClaim(offer.id); }}>Obtener</button> : <span className="player-bonus-state">No disponible</span>)}
         </div>
         <button type="button" className="player-bonus-info-button" aria-label={`Ver información de ${offer.title}`} title={`Información de ${offer.title}`} onClick={() => setRulesOffer(offer)}><Info size={18} aria-hidden="true" /></button>
       </article>;

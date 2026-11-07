@@ -138,7 +138,7 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
       assertFormFields(form, ['title', 'reward_type', 'mode', 'value', 'rules_text', 'min_amount', 'max_amount', 'load_number_from', 'load_number_to', 'all_loads',
         ...(timed ? form.get('reward_type') === 'free_spins' ? ['daily_reset_time'] : ['cooldown_hours'] : []),
         ...(scheduled ? ['bonus_start_time','bonus_end_time','bonus_days'] : [])]);
-      if (scheduled && !scheduleSupported && !demo) throw new InputError('La programación por horario todavía está pendiente de habilitación.');
+      if (scheduled && !scheduleSupported && !demo) throw new InputError('Los horarios todavía no están habilitados. Desmarcá «Disponible solo en un horario» para guardar el bono sin horario.');
       let schedule: ReturnType<typeof parseBonusSchedule>;
       try { schedule = parseBonusSchedule(scheduled, String(form.get('bonus_start_time') ?? ''), String(form.get('bonus_end_time') ?? ''), String(form.get('bonus_days') ?? '').split(',').filter(Boolean).map(Number)); }
       catch (cause) { throw new InputError(cause instanceof Error ? cause.message : 'Revisá el horario del bono.'); }
@@ -325,8 +325,9 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
         </div>
         <label className="bonus-special-toggle"><input name="all_loads" type="checkbox" value="true" checked={allLoads} onChange={event => setAllLoads(event.target.checked)} />Sin límite: desde la carga inicial en adelante</label>
       </div>
+      {scheduled && !scheduleSupported && !loading && !demo && <p id="bonus-schedule-save-notice" className="bonus-schedule-save-notice" role="status">Los horarios todavía no están habilitados. Para guardar este bono sin horario, desmarcá «Disponible solo en un horario».</p>}
       <div className="bonus-form-actions">
-        <button type="submit" disabled={busy || loading || scheduled && !scheduleSupported && !demo}>{busy ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear bono'}</button>
+        <button type="submit" disabled={busy || loading} aria-describedby={scheduled && !scheduleSupported && !demo ? 'bonus-schedule-save-notice' : undefined}>{busy ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear bono'}</button>
         {editing && <button type="button" disabled={busy} onClick={() => { setEditingId(null); setMode('percent'); setRewardType('cash'); setRewardValue(''); setTimed(false); setScheduled(false); setLoadNumberFrom('1'); setLoadNumberTo(''); setAllLoads(true); }}>Cancelar</button>}
       </div>
     </form>

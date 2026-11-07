@@ -93,6 +93,20 @@ No se desplegaron durante esta implementación.
 
 ## Verificación
 
+### Envío de comprobantes en el portal moderno
+
+El tercer paso muestra una sola acción principal: elegir la foto mediante un
+recuadro grande y, después de seleccionarla, ver la imagen y enviar para revisión.
+Cancelar la galería conserva la selección anterior; una foto dañada no borra una
+foto válida. Un fallo de envío conserva el archivo y ofrece reintentar. El envío
+tiene un bloqueo local inmediato contra solicitudes repetidas y mantiene la
+compresión existente. La confirmación sustituye los controles de subida cuando
+el servidor registra una carga pendiente. No añade consultas, assets ni cambios SQL.
+
+La prueba de navegador usa archivos y respuestas simulados; cubre selección,
+cancelación, reemplazo inválido, vista previa, error/reintento, toques repetidos y
+confirmación, además de revisar anchos de 320 px, móvil y escritorio.
+
 ### Bonos por horario — activación pendiente
 
 El editor de bonos permite una franja diaria independiente de `cooldown_hours`:
@@ -101,6 +115,14 @@ propone 14:00–17:00 todos los días. El porcentaje, el mínimo/máximo del dep
 el número de cargas mantienen su configuración existente. Un bono del 50% con
 máximo de carga de $50.000 da como máximo $25.000 de bono en esa carga; no es un
 tope de premio para depósitos mayores.
+
+La tarjeta del jugador no repite el texto del horario que ya incluye su banner.
+Mientras espera, muestra «Disponible en» y una cuenta regresiva calculada en el
+dispositivo; no agrega consultas. Los objetivos se calculan al cambiar los datos
+o la franja, no cada segundo. Todas las tarjetas comparten un solo temporizador
+local para los segundos, que se detiene con la pestaña oculta y al finalizar las esperas. Si un
+cooldown termina fuera del horario, el objetivo es la siguiente apertura válida.
+El horario detallado sigue disponible en el botón de información del bono.
 
 Inicio incluido y fin excluido. Las franjas que cruzan medianoche pertenecen al
 día de inicio (viernes 23:00–02:00 termina el sábado). Los bonos sin horario

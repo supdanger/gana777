@@ -67,6 +67,7 @@ function fromLocal(localEpoch: number) {
 
 // Un temporizador local hasta la próxima apertura/cierre; sin sondeo de red.
 export function nextBonusScheduleChange(rows: readonly BonusSchedule[], at = Date.now()): number | null {
+  if (!Number.isFinite(at) || !rows.some(hasBonusSchedule)) return null;
   let next = Infinity;
   const today = parts(at).date;
   for (const row of rows) {
@@ -83,4 +84,12 @@ export function nextBonusScheduleChange(rows: readonly BonusSchedule[], at = Dat
     }
   }
   return Number.isFinite(next) ? next : null;
+}
+
+// The earliest usable instant, including a cooldown that can end outside the window.
+export function nextBonusScheduleOpen(row: BonusSchedule, at = Date.now()): number | null {
+  if (!Number.isFinite(at)) return null;
+  if (bonusScheduleOpen(row, at)) return at;
+  const next = nextBonusScheduleChange([row], at);
+  return next !== null && bonusScheduleOpen(row, next) ? next : null;
 }

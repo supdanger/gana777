@@ -47,6 +47,16 @@ async function openApp(admin, mobile = false, queue = null, bonusPlan = null) {
     let single = false;
     const resource = url.pathname.split('/').at(-1);
     if (url.pathname.includes('/auth/v1/')) body = resource === 'user' ? account(admin) : session(admin);
+    else if (url.pathname.includes('/functions/') && resource === 'submit-deposit' && bonusPlan?.receipt) {
+      const receipt = bonusPlan.receipt;
+      receipt.submissions++;
+      const uploaded = await new Request(req.url(), { method: 'POST', headers: req.headers(), body: req.postDataBuffer() }).formData();
+      receipt.fields = { amount: uploaded.get('amount'), bonus: uploaded.get('bonus_id'), assignment: uploaded.get('bank_assignment_id'), fileSize: uploaded.get('receipt')?.size };
+      if (receipt.barrier) await receipt.barrier;
+      if (receipt.failNext) { receipt.failNext = false; return route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ error: 'No pudimos enviar el comprobante. Probá de nuevo.' }) }); }
+      receipt.saved = { ...requestRows[0], id: uid(25000), amount: Number(uploaded.get('amount')), status: 'pending', created_at: new Date().toISOString(), receipt_path: 'mock/uploaded.jpg' };
+      body = { request: receipt.saved };
+    }
     else if (url.pathname.includes('/functions/')) body = { ok: true, pending_count: 0, requests: [] };
     else if (url.pathname.includes('/storage/')) return route.abort();
     else if (url.pathname.includes('/rpc/')) {
@@ -81,12 +91,13 @@ async function openApp(admin, mobile = false, queue = null, bonusPlan = null) {
       else if (resource === 'get_my_session_revoked_at') body = null;
       else if (resource === 'get_my_whatsapp_url') body = 'https://wa.me/595981111111';
       else if (resource === 'player_next_deposit_number') body = 4;
+      else if (resource === 'special_bonus_availability' && bonusPlan?.availability) { const serverNow = new Date(await page.evaluate(() => Date.now()) + (bonusPlan.clockOffset || 0)).toISOString(); body = bonusPlan.availability.map(row => ({ ...row, server_now: serverNow })); }
       else if (resource === 'get_bank_operation_status') { body = { mode: 'online', resumes_at: null, active_shift_key: 'morning' }; single = true; }
       else if (resource === 'get_bonus_counter_dashboard') body = { active: { id: 1, started_at: stamp(0), summary: { counters: [{ key: 'fixed-1000', title: 'Bono + $1.000', loads: 41, bonusTotal: 41000 }, { key: 'fixed-2500', title: 'Bono + $2.500', loads: 17, bonusTotal: 42500 }, { key: 'none', title: 'Sin bono', loads: 11, bonusTotal: 0 }, { key: 'percent-100', title: 'Bono 100%', loads: 6, bonusTotal: 30000 }], totalLoads: 75, withoutBonus: 11, totalBonusGranted: 113500, freeSpinsGranted: 0 } }, history: [] };
       else if (resource === 'assign_bank_account') { body = { assignment_id: uid(999), id: uid(998), bank: 'Banco prueba', holder: 'Prueba Banco', cbu: '0123456789012345678901', alias: 'prueba.banco' }; single = true; }
     } else {
       if (resource === 'promotions') {
-        if (!bonusPlan && url.searchParams.get('select')?.includes('bonus_start_time')) return route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: '42703', message: 'column promotions.bonus_start_time does not exist' }) });
+        if ((!bonusPlan || bonusPlan.scheduleSupported === false) && url.searchParams.get('select')?.includes('bonus_start_time')) return route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: '42703', message: 'column promotions.bonus_start_time does not exist' }) });
         if (bonusPlan) {
           if (req.method() === 'POST') { const row = { image_path: null, image_layout: 'image', deposit_image_path: null, ...req.postDataJSON(), id: uid(24000 + bonusPlan.offers.length) }; bonusPlan.offers.push(row); bonusPlan.saved = row; }
           if (req.method() === 'PATCH') { const row = bonusPlan.offers.find(row => `eq.${row.id}` === url.searchParams.get('id')); if (row) Object.assign(row, req.postDataJSON()); }
@@ -101,7 +112,7 @@ async function openApp(admin, mobile = false, queue = null, bonusPlan = null) {
         const search = url.searchParams.get('or');
         if (search) body = body.filter(row => [row.username, row.display_name, row.external_user_id, row.phone].some(value => search.includes(`*${value}*`)));
       } else if (resource === 'whatsapp_principals') body = [{ slot: 1, phone: '595981111111', active: true }];
-      else if (resource === 'request_summaries') body = bonusPlan && !admin ? requestRows.filter(row => row.kind !== 'deposit' || row.status !== 'pending') : [...requestRows];
+      else if (resource === 'request_summaries') body = bonusPlan && !admin ? [...requestRows.filter(row => row.kind !== 'deposit' || row.status !== 'pending'), ...(bonusPlan.receipt?.saved ? [bonusPlan.receipt.saved] : [])] : [...requestRows];
       else if (resource === 'chat_inbox') body = [...chats];
       else if (resource === 'external_chat_inbox') body = [...external];
       else if (resource === 'withdrawal_parts') {
@@ -325,6 +336,7 @@ try {
   const reviewReceived = qp.waitForResponse(response => response.url().endsWith('/rpc/review_queue_deposit'));
   await qp.getByRole('button', { name: 'Aceptar carga', exact: true }).click();
   await reviewSent;
+  await qp.getByRole('button', { name: 'Cerrar detalle', exact: true }).click();
   await qnav.getByRole('button', { name: 'Inicio', exact: true }).click();
   await qp.waitForSelector('.admin-overview');
   delete queue.reviewBarrier; finishReview();
@@ -336,6 +348,38 @@ try {
   assert.deepEqual(shared.errors, []);
   records.push({ app: 'shared-deposit-queue', checks: ['30 rows per page', 'no SAC selector', 'server-confirmed take', 'explicit release', 'take conflict', 'mine filter', 'credit confirmation', 'foreign claim read-only', 'supervisor reassignment', 'audit on demand', 'mobile without overflow', 'late approval does not reopen a dismissed screen'] });
   await shared.context.close();
+  const legacyBonusPlan = { offers: [], scheduleSupported: false };
+  const legacyBonus = await openApp(true, false, null, legacyBonusPlan);
+  const lp = legacyBonus.page;
+  await lp.getByRole('navigation', { name: 'Navegación principal', exact: true }).getByRole('button', { name: 'Bonos', exact: true }).click();
+  await lp.locator('input[name="title"]').fill('Bono sin horario');
+  await lp.locator('input[name="value"]').fill('50');
+  await lp.locator('input[name="min_amount"]').fill('1.000');
+  await lp.locator('input[name="max_amount"]').fill('50.000');
+  await lp.getByRole('button', { name: 'Crear bono', exact: true }).click();
+  await lp.waitForSelector('.bonus-offer');
+  assert.equal(legacyBonusPlan.saved.bonus_percent, 50);
+  assert.equal('bonus_start_time' in legacyBonusPlan.saved, false);
+  await lp.getByRole('button', { name: 'Editar', exact: true }).click();
+  const saveLegacy = lp.getByRole('button', { name: 'Guardar cambios', exact: true });
+  assert.equal(await saveLegacy.isEnabled(), true, 'Sin horario se puede guardar con el esquema actual');
+  await lp.getByRole('checkbox', { name: 'Disponible solo en un horario', exact: true }).check();
+  await lp.locator('#bonus-schedule-save-notice').waitFor();
+  const mutationCount = () => legacyBonus.calls.filter(call => call.path.endsWith('/promotions') && ['POST','PATCH'].includes(call.method)).length;
+  const beforeBlockedSave = mutationCount();
+  await saveLegacy.click();
+  await lp.getByRole('alert').filter({ hasText: 'Los horarios todavía no están habilitados' }).waitFor();
+  assert.equal(mutationCount(), beforeBlockedSave, 'No se guarda una franja sin soporte de servidor');
+  await lp.getByRole('checkbox', { name: 'Disponible solo en un horario', exact: true }).uncheck();
+  assert.equal(await lp.locator('#bonus-schedule-save-notice').count(), 0);
+  await lp.locator('input[name="title"]').fill('Bono editado sin horario');
+  await saveLegacy.click();
+  await lp.locator('.bonus-offer > div > strong').filter({ hasText: 'Bono editado sin horario' }).waitFor();
+  assert.equal(mutationCount(), beforeBlockedSave + 1);
+  assert.equal('bonus_start_time' in legacyBonusPlan.saved, false);
+  assert.deepEqual(legacyBonus.errors, []);
+  await legacyBonus.context.close();
+  records.push({ app: 'legacy-bonus-save', checks: ['create without schedule', 'edit without schedule', 'clear reason when schedule unavailable', 'no unsupported write', 'uncheck schedule and save changes'] });
   const bonusPlan = { offers: [] };
   const bonusAdmin = await openApp(true, false, null, bonusPlan);
   const bp = bonusAdmin.page;
@@ -367,6 +411,8 @@ try {
   const bonusPlayer = await openApp(false, true, null, bonusPlan);
   const pp = bonusPlayer.page;
   await pp.getByRole('button', { name: /Bonos disponibles/ }).click();
+  assert.doesNotMatch(await pp.locator('.player-bonus-card').innerText(), /hora de Paraguay|14:00[–-]17:00/);
+  assert.equal(await pp.locator('.player-bonus-card [role="timer"]').count(), 0, 'El bono activo muestra su botón sin texto horario adicional');
   await pp.getByRole('button', { name: 'Obtener', exact: true }).click();
   await pp.waitForSelector('.modern-deposit-flow');
   await pp.getByLabel('¿Cuánto querés cargar?', { exact: true }).fill('50.000');
@@ -382,6 +428,120 @@ try {
   assert.deepEqual(bonusPlayer.errors, []);
   await bonusPlayer.context.close();
   records.push({ app: 'scheduled-bonuses', checks: ['50% and 50,000 deposit maximum', 'save/edit daily schedule', 'seven days selected', 'mobile form', 'live expiry blocks selected bonus', 'explicit continue without bonus', 'no query at schedule boundary'] });
+  const countdownPlan = { offers: bonusPlan.offers.map(offer => ({ ...offer })), now: '2026-11-07T13:59:50-03:00' };
+  const countdownApp = await openApp(false, true, null, countdownPlan);
+  const cp = countdownApp.page;
+  await cp.getByRole('button', { name: /Bonos disponibles/ }).click();
+  const bonusTimer = cp.getByRole('timer', { name: 'Tiempo hasta que el bono esté disponible', exact: true });
+  await bonusTimer.waitFor();
+  assert.doesNotMatch(await cp.locator('.player-bonus-card').innerText(), /hora de Paraguay|14:00[–-]17:00/);
+  assert.equal(await cp.getByRole('button', { name: 'Obtener', exact: true }).count(), 0);
+  const databaseCalls = () => countdownApp.calls.filter(call => call.path.includes('/rest/')).length;
+  const beforeCountdown = databaseCalls();
+  const firstCountdown = await bonusTimer.innerText();
+  await cp.clock.fastForward(1000);
+  assert.notEqual(await bonusTimer.innerText(), firstCountdown);
+  assert.equal(databaseCalls(), beforeCountdown, 'Actualizar los segundos no consulta la base');
+  await cp.screenshot({ path: '/tmp/gana777-browser-checks/bonus-countdown.png', fullPage: false });
+  await cp.clock.fastForward(10_000);
+  await cp.getByRole('button', { name: 'Obtener', exact: true }).waitFor();
+  assert.equal(await bonusTimer.count(), 0);
+  assert.equal(databaseCalls(), beforeCountdown, 'Abrir la franja no consulta la base');
+  await cp.screenshot({ path: '/tmp/gana777-browser-checks/bonus-available.png', fullPage: false });
+  assert.deepEqual(countdownApp.errors, []);
+  await countdownApp.context.close();
+  records.push({ app: 'bonus-local-countdown', checks: ['no duplicated schedule text', 'local seconds countdown', 'no database call per tick', 'automatic availability', 'no database call at opening'] });
+  const offsetOffer = { ...bonusPlan.offers[0], bonus_mode: 'fixed', bonus_percent: 0, bonus_amount: 1000, cooldown_hours: 6 };
+  const offsetPlan = { offers: [offsetOffer], now: '2026-11-07T16:59:50-03:00', clockOffset: -2000, availability: [{ promotion_id: offsetOffer.id, next_available_at: null, awaiting_credit: false }] };
+  const offsetApp = await openApp(false, true, null, offsetPlan);
+  const op = offsetApp.page;
+  await op.getByRole('button', { name: /Bonos disponibles/ }).click();
+  await op.getByRole('button', { name: 'Obtener', exact: true }).waitFor();
+  const beforeOffset = offsetApp.calls.filter(call => call.path.includes('/rest/')).length;
+  await op.clock.fastForward(15_000);
+  await op.getByRole('timer', { name: 'Tiempo hasta que el bono esté disponible', exact: true }).waitFor();
+  assert.equal(await op.getByRole('button', { name: 'Obtener', exact: true }).count(), 0, 'El cierre usa también la corrección del reloj del servidor');
+  assert.equal(offsetApp.calls.filter(call => call.path.includes('/rest/')).length, beforeOffset);
+  assert.deepEqual(offsetApp.errors, []);
+  await offsetApp.context.close();
+  records.push({ app: 'bonus-server-clock', checks: ['schedule boundary with server clock offset', 'no query at corrected boundary'] });
+  const receiptPlan = { offers: [], receipt: { submissions: 0, failNext: true } };
+  const receiptApp = await openApp(false, true, null, receiptPlan);
+  const rp = receiptApp.page;
+  await rp.getByRole('button', { name: /^Cargar/ }).click();
+  await rp.getByLabel('¿Cuánto querés cargar?', { exact: true }).fill('10.000');
+  await rp.getByRole('button', { name: 'Continuar', exact: true }).click();
+  await rp.getByRole('button', { name: 'Ya transferí · subir comprobante', exact: true }).click();
+  const pickPhoto = rp.getByRole('button', { name: 'Elegir foto del comprobante', exact: true });
+  await pickPhoto.waitFor();
+  assert.equal(await rp.getByRole('button', { name: 'Enviar para revisión', exact: true }).count(), 0);
+  assert.equal(await rp.locator('.modern-receipt-pick').evaluate(element => { const r = element.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; }), true, 'La acción principal aparece sin buscarla debajo de la pantalla');
+  await rp.screenshot({ path: '/tmp/gana777-browser-checks/receipt-choose-mobile.png', fullPage: false });
+  const cancelChoice = rp.waitForEvent('filechooser');
+  await pickPhoto.click();
+  await (await cancelChoice).setFiles([]);
+  assert.equal(receiptPlan.receipt.submissions, 0);
+  await rp.locator('.modern-receipt-input').setInputFiles({ name: 'invalida.png', mimeType: 'image/png', buffer: Buffer.from('imagen dañada') });
+  await rp.getByRole('alert').filter({ hasText: 'No pudimos leer esa imagen' }).waitFor();
+  assert.equal(await pickPhoto.count(), 1);
+  const receiptData = await rp.evaluate(() => {
+    const canvas = document.createElement('canvas'); canvas.width = 420; canvas.height = 470;
+    const context = canvas.getContext('2d'); context.fillStyle = '#ffffff'; context.fillRect(0, 0, 420, 470);
+    context.fillStyle = '#243326'; context.font = 'bold 22px sans-serif'; context.fillText('COMPROBANTE DE PRUEBA', 24, 50);
+    context.font = '16px sans-serif'; context.fillText('Sin validez · datos simulados', 24, 82);
+    context.fillStyle = '#333333'; context.font = 'bold 40px sans-serif'; context.fillText('$ 10.000', 24, 170);
+    context.font = '18px sans-serif'; context.fillText('Transferencia de prueba', 24, 235); context.fillText('Cuenta de prueba', 24, 275);
+    context.fillText('07/11/2026 · 14:30', 24, 315); context.fillText('Solo para verificar la interfaz', 24, 410);
+    return canvas.toDataURL('image/png').split(',')[1];
+  });
+  const photo = { name: 'comprobante-prueba.png', mimeType: 'image/png', buffer: Buffer.from(receiptData, 'base64') };
+  const choosePhoto = rp.waitForEvent('filechooser');
+  await pickPhoto.click(); await (await choosePhoto).setFiles(photo);
+  const sendReceipt = rp.getByRole('button', { name: 'Enviar para revisión', exact: true });
+  await sendReceipt.waitFor();
+  await rp.locator('.modern-receipt-preview').waitFor();
+  assert.equal(receiptPlan.receipt.submissions, 0, 'Elegir la foto no envía la solicitud');
+  const previewSource = await rp.locator('.modern-receipt-preview').getAttribute('src');
+  const cancelReplacement = rp.waitForEvent('filechooser');
+  await rp.getByRole('button', { name: 'Cambiar foto', exact: true }).click(); await (await cancelReplacement).setFiles([]);
+  assert.equal(await rp.locator('.modern-receipt-preview').getAttribute('src'), previewSource);
+  await rp.locator('.modern-receipt-input').setInputFiles({ name: 'otra-invalida.png', mimeType: 'image/png', buffer: Buffer.from('no es una imagen') });
+  await rp.getByRole('alert').filter({ hasText: 'La foto anterior sigue seleccionada' }).waitFor();
+  assert.equal(await rp.locator('.modern-receipt-preview').getAttribute('src'), previewSource);
+  await rp.locator('.modern-receipt-input').setInputFiles({ ...photo, name: 'comprobante-cambiado.png' });
+  await rp.getByRole('button', { name: 'Enviar para revisión', exact: true }).waitFor();
+  assert.equal(await rp.getByRole('alert').count(), 0);
+  await rp.screenshot({ path: '/tmp/gana777-browser-checks/receipt-selected-mobile.png', fullPage: false });
+  await rp.setViewportSize({ width: 320, height: 740 });
+  assert.ok(await rp.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+  await rp.setViewportSize({ width: 1280, height: 900 });
+  await rp.screenshot({ path: '/tmp/gana777-browser-checks/receipt-selected-desktop.png', fullPage: false });
+  await rp.setViewportSize({ width: 390, height: 844 });
+  let finishReceipt;
+  receiptPlan.receipt.barrier = new Promise(resolve => { finishReceipt = resolve; });
+  const receiptSent = rp.waitForRequest(request => request.url().endsWith('/functions/v1/submit-deposit'));
+  await sendReceipt.click(); await receiptSent;
+  await rp.getByRole('button', { name: 'Enviando comprobante…', exact: true }).waitFor();
+  assert.equal(await rp.getByRole('button', { name: 'Enviando comprobante…', exact: true }).isDisabled(), true);
+  await rp.evaluate(() => { const form = document.querySelector('.modern-deposit-flow'); form.requestSubmit(); form.requestSubmit(); });
+  assert.equal(receiptPlan.receipt.submissions, 1, 'Los toques repetidos no duplican el envío');
+  delete receiptPlan.receipt.barrier; finishReceipt();
+  await rp.getByRole('button', { name: 'Reintentar envío', exact: true }).waitFor();
+  assert.equal(await rp.locator('.modern-receipt-preview').count(), 1, 'El error conserva la foto seleccionada');
+  await rp.screenshot({ path: '/tmp/gana777-browser-checks/receipt-retry-mobile.png', fullPage: false });
+  await rp.getByRole('button', { name: 'Reintentar envío', exact: true }).click();
+  await rp.getByRole('heading', { name: 'Comprobante enviado', exact: true }).waitFor();
+  assert.equal(receiptPlan.receipt.submissions, 2);
+  assert.equal(receiptPlan.receipt.fields.amount, '10000');
+  assert.equal(receiptPlan.receipt.fields.assignment, uid(999));
+  assert.ok(receiptPlan.receipt.fields.fileSize > 0);
+  assert.equal(await rp.locator('.modern-receipt-send, .modern-receipt-pick, .modern-receipt-preview').count(), 0);
+  await rp.evaluate(() => document.querySelector('.modern-deposit-flow').requestSubmit());
+  assert.equal(receiptPlan.receipt.submissions, 2);
+  await rp.screenshot({ path: '/tmp/gana777-browser-checks/receipt-success-mobile.png', fullPage: false });
+  assert.deepEqual(receiptApp.errors, []);
+  records.push({ app: 'receipt-upload', checks: ['large visible gallery action', 'cancel picker', 'invalid photo', 'preview before sending', 'cancel replacement preserves photo', 'failed replacement preserves photo', 'mobile 320 px', 'desktop preview', 'duplicate submit blocked', 'error keeps photo', 'explicit retry', 'clear success confirmation'] });
+  await receiptApp.context.close();
   writeFileSync('/tmp/gana777-browser-checks/results.json', JSON.stringify(records, null, 2));
   console.log(JSON.stringify(records, null, 2));
 } catch (error) {
