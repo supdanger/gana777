@@ -1,19 +1,19 @@
-.admin-document { background: #111113; color-scheme: dark; }
-.admin-document .admin-login { min-height: 100dvh; padding: 56px 20px 24px; background: #111113; color: #eeedf2; }
-.admin-document .admin-login > .brand { color: #eeedf2; font-style: normal; text-shadow: none; }
-.admin-document .admin-login > .brand span { color: #b3a0e6; }
-.admin-document .admin-login > .eyebrow { margin-top: 15px; color: #95919f; font-size: 10px; font-weight: 500; letter-spacing: .12em; }
-.admin-document .admin-login .login-card { width: min(420px, 100%); padding: 30px; border: 1px solid #39373f; border-radius: 12px; background: #1b1b1f; box-shadow: 0 12px 40px #0002; }
-.admin-document .admin-login .login-card h1 { color: #eeedf2; background: none; -webkit-text-fill-color: currentColor; font-size: 27px; font-weight: 600; letter-spacing: -.035em; }
-.admin-document .admin-login .login-card > p { color: #b0adba; font-size: 14px; }
-.admin-document .admin-login label { color: #b0adba; font-size: 12px; }
-.admin-document .admin-login .icon-input { border-color: #39373f; border-radius: 8px; background: #161619; box-shadow: none; }
-.admin-document .admin-login .icon-input input { border-color: #39373f; border-radius: 8px; background: transparent; color: #eeedf2; box-shadow: none; }
-.admin-document .admin-login input::placeholder { color: #95919f; }
-.admin-document .admin-login .input-icon { color: #95919f; }
-.admin-document .admin-login .password button { border: 0; background: transparent; color: #b0adba; }
-.admin-document .admin-login .primary { border: 1px solid #7553ae; border-radius: 8px; background: #7553ae; color: #fff; box-shadow: none; font-weight: 600; }
-.admin-document .admin-login .primary:hover:not(:disabled) { background: #8260bb; }
-.admin-document .admin-login :is(input, button):focus-visible { outline: 2px solid #b3a0e6; outline-offset: 3px; }
-.admin-document .admin-login footer { color: #95919f; }
-.admin-document .admin-login .secure-connection { color: #b0adba; }
+.admin-document { background: #100e16; color-scheme: dark; }
+.admin-document .admin-login { min-height: 100dvh; padding: 56px 20px 24px; background: #100e16; color: #f8f4ff; }
+.admin-document .admin-login > .brand { color: #f8f4ff; font-style: normal; text-shadow: none; }
+.admin-document .admin-login > .brand span { color: #d7b0ff; }
+.admin-document .admin-login > .eyebrow { margin-top: 15px; color: #b7aecb; font-size: 10px; font-weight: 500; letter-spacing: .12em; }
+.admin-document .admin-login .login-card { width: min(420px, 100%); padding: 30px; border: 1px solid #6f6294; border-radius: 12px; background: #1c1728; box-shadow: 0 12px 40px #0006; }
+.admin-document .admin-login .login-card h1 { color: #f8f4ff; background: none; -webkit-text-fill-color: currentColor; font-size: 27px; font-weight: 600; letter-spacing: -.035em; }
+.admin-document .admin-login .login-card > p { color: #d4cce6; font-size: 14px; }
+.admin-document .admin-login label { color: #d4cce6; font-size: 12px; }
+.admin-document .admin-login .icon-input { border-color: #6f6294; border-radius: 8px; background: #120f1a; box-shadow: none; }
+.admin-document .admin-login .icon-input input { border-color: #6f6294; border-radius: 8px; background: transparent; color: #f8f4ff; box-shadow: none; }
+.admin-document .admin-login input::placeholder { color: #b7aecb; }
+.admin-document .admin-login .input-icon { color: #d7b0ff; }
+.admin-document .admin-login .password button { border: 0; background: transparent; color: #d4cce6; }
+.admin-document .admin-login .primary { border: 1px solid #7c3aed; border-radius: 8px; background: #7c3aed; color: #fff; box-shadow: none; font-weight: 600; }
+.admin-document .admin-login .primary:hover:not(:disabled) { background: #8b4dff; }
+.admin-document .admin-login :is(input, button):focus-visible { outline: 2px solid #d7b0ff; outline-offset: 3px; }
+.admin-document .admin-login footer { color: #b7aecb; }
+.admin-document .admin-login .secure-connection { color: #d4cce6; }
