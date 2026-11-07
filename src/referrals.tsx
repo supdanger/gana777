@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useAdminRefreshVersion } from './admin-refresh';
 import { ArrowRight, Copy, Gift, RefreshCw } from 'lucide-react';
 import { InputError, parseUuid } from '../supabase/functions/_shared/validation';
 import { date, money, supabase } from './lib';
@@ -38,7 +39,11 @@ export function ReferralRewardsAdmin({ demo, busy, action, userId, superAdmin }:
   const [failure, setFailure] = useState('');
   const [reload, setReload] = useState(0);
   const [copied, setCopied] = useState('');
+  const adminRefresh = useAdminRefreshVersion();
 
+  useEffect(() => {
+    if (adminRefresh > 0) setReload(value => value + 1);
+  }, [adminRefresh]);
   useEffect(() => {
     if (demo || !supabase) return;
     const db = supabase;
@@ -56,17 +61,6 @@ export function ReferralRewardsAdmin({ demo, busy, action, userId, superAdmin }:
     });
     return () => { alive = false; };
   }, [demo, status, page, reload]);
-
-  useEffect(() => {
-    if (demo || !supabase) return;
-    const db = supabase;
-    const refresh = () => setReload(value => value + 1);
-    const channel = db.channel('admin-referral-rewards').on('postgres_changes', {
-      event: '*', schema: 'public', table: 'referral_rewards',
-    }, refresh).subscribe();
-    window.addEventListener('focus', refresh);
-    return () => { void db.removeChannel(channel); window.removeEventListener('focus', refresh); };
-  }, [demo]);
 
   async function updateReward(name: 'reserve_referral_reward' | 'release_referral_reward' | 'mark_referral_reward_credited', row: AdminReward) {
     if (name === 'mark_referral_reward_credited' && !window.confirm(`¿Ya acreditaste ${money(row.amount)} a ${row.username} en la plataforma externa? Confirmá únicamente después de realizar la carga.`)) return;

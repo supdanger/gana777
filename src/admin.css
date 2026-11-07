@@ -2163,6 +2163,8 @@ a.chat-entry-link:hover { filter: brightness(1.08); }
 .admin-shell.admin-theme-negro .admin-sidebar-brand { filter: none; }
 .admin-shell.admin-theme-negro .admin-sidebar-brand .brand span { background: linear-gradient(110deg, #f3a0ff, #d946ff 48%, #8e24c9); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 16px #c43dff88; }
 .admin-shell.admin-theme-negro .admin-sidebar-brand .brand-role { color: #d96cff; }
+.admin-refresh { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; margin: 0; padding: 0 12px; border: 1px solid #2f6d4c; border-radius: 999px; background: #123524; color: #d9ffe8; font-size: 12px; font-weight: 750; }
+.admin-refresh:hover { background: #184830; }
 .admin-theme-picker { display: inline-flex; align-items: center; gap: 7px; margin: 0; padding: 5px 9px; border: 1px solid #49305a; border-radius: 999px; background: #21142d; color: #e0a2ff; }
 .admin-theme-picker .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .admin-theme-picker select { width: 112px; min-height: 28px; margin: 0; padding: 3px 22px 3px 5px; border: 0; border-radius: 6px; background: transparent; box-shadow: none; color: #fff7ff; font-size: 11px; font-weight: 750; }
@@ -2180,7 +2182,7 @@ a.chat-entry-link:hover { filter: brightness(1.08); }
 .admin-shell.admin-theme-dorado .admin-sidebar { background: linear-gradient(180deg, #21170b, #151008 55%, #0f0b05); }
 .admin-shell.admin-theme-dorado .admin-navigation .admin-nav-group button.active { border-color: #a98235; background: linear-gradient(100deg, #4a3518, #332512); box-shadow: inset 3px 0 #e5b84b, 0 8px 22px #b47a2633; }
 .admin-shell.admin-theme-dorado .admin-content .card, .admin-shell.admin-theme-dorado .cashier-create, .admin-shell.admin-theme-dorado .cashier-card, .admin-shell.admin-theme-dorado .player-create, .admin-shell.admin-theme-dorado .player-card, .admin-shell.admin-theme-dorado .load-request-button { border-color: #79602e; background: linear-gradient(145deg, #402e17, #302314); }
-@media (max-width: 700px) { .admin-theme-picker { margin-left: auto; } .admin-theme-picker select { max-width: 80px; } }
+@media (max-width: 700px) { .admin-refresh { margin-left: auto; padding: 0 10px; } .admin-refresh span { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; } .admin-theme-picker select { max-width: 80px; } }
 .admin-shell .admin-content .themes-admin button.theme-preset-pick,
 .admin-shell .admin-content .themes-admin button.theme-preset-pick:hover:not(:disabled) { border: 0; background: transparent; color: inherit; box-shadow: none; }
 .admin-shell.admin-theme-negro .admin-content .themes-admin button.theme-preset-apply { border-color: #8a8a8a; background: #1b1b1b; color: #f4f4f4; }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useAdminRefreshVersion } from './admin-refresh';
 import { Archive, RotateCcw } from 'lucide-react';
 import { supabase, money } from './lib';
 import type { BonusCounter } from './bonus-counters';
@@ -30,6 +31,7 @@ export function BonusCounterAdmin({ demo, demoCounters = [] }: { demo: boolean; 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const adminRefresh = useAdminRefreshVersion();
 
   const refresh = useCallback(async () => {
     if (!supabase || demo) return;
@@ -47,12 +49,8 @@ export function BonusCounterAdmin({ demo, demoCounters = [] }: { demo: boolean; 
     if (demo || !supabase) { setLoading(false); return; }
     let alive = true;
     void refresh().catch(() => { if (alive) setError('No pudimos cargar los contadores por turno. Aplicá la migración 074.'); }).finally(() => { if (alive) setLoading(false); });
-    const channel = supabase.channel('bonus-counter-shifts')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => { void refresh().catch(() => undefined); })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bonus_counter_shifts' }, () => { void refresh().catch(() => undefined); })
-      .subscribe();
-    return () => { alive = false; void supabase?.removeChannel(channel); };
-  }, [demo, refresh]);
+    return () => { alive = false; };
+  }, [demo, refresh, adminRefresh]);
 
   async function closeShift() {
     if (!supabase || busy || !window.confirm('¿Guardar el resumen de este turno e iniciar un turno nuevo?')) return;

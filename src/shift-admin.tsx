@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { InputError } from '../supabase/functions/_shared/validation';
+import { useAdminRefreshVersion } from './admin-refresh';
 import { supabase, type BankOperationStatus } from './lib';
 import { SacBoard } from './sac-board';
 import { shifts, shiftLabel, type ShiftKey } from './shifts';
@@ -20,6 +21,7 @@ export function ShiftAdmin({ demo, busy, action, station, onStation }: { demo: b
   const [loading, setLoading] = useState(!demo && !!supabase);
   const [loadError, setLoadError] = useState('');
   const [now, setNow] = useState(Date.now);
+  const adminRefresh = useAdminRefreshVersion();
 
   async function loadState() {
     if (!supabase) return;
@@ -37,7 +39,7 @@ export function ShiftAdmin({ demo, busy, action, station, onStation }: { demo: b
     let alive = true;
     void loadState().catch(() => { if (alive) setLoadError('No pudimos cargar el control de turnos. Aplicá la migración de cierre de caja.'); }).finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [demo]);
+  }, [demo, adminRefresh]);
   useEffect(() => {
     if (status?.mode !== 'closing') return;
     const timer = window.setInterval(() => setNow(Date.now()), 1000);

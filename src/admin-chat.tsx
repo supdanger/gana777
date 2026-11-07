@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { ArrowLeft, Check, CircleCheck, Copy, Images, Link2, MessageCircle, RotateCcw, Search, Send, Unlink2, X } from 'lucide-react';
+import { useAdminRefreshVersion } from './admin-refresh';
 import { date, supabase, type Message } from './lib';
 import { ChatImage, removeChatImage, uploadChatImage, useChatImagePreview } from './chat-images';
 import { needsChatReply, pendingChatCount } from './admin-navigation';
@@ -60,15 +61,20 @@ export function AdminChat({ inbox, selectedId, demo, canManageExternalLinks, onS
   const pending = pendingChatCount(inbox);
   const completed = inbox.filter(row => !!row.completed_at).length;
   const title = (row: ChatInboxRow) => row.username || row.display_name || `Usuario ${row.user_id.slice(0, 8)}`;
+  const adminRefresh = useAdminRefreshVersion();
 
   useEffect(() => {
-    if (!selectedId || demo || !supabase) { setMessages([]); return; }
-    const db = supabase;
-    let alive = true;
+    if (!selectedId || demo) { setMessages([]); return; }
     stickToBottom.current = true;
-    setMessages([]); setHasMore(false); setLoading(true); setError(''); setNotice(''); setCopied(false); setImage(null);
+    setMessages([]); setHasMore(false); setError(''); setNotice(''); setCopied(false); setImage(null);
     setEntryUser(inbox.find(row => row.user_id === selectedId)?.username ?? '');
     if (imageInput.current) imageInput.current.value = '';
+  }, [selectedId, demo]);
+  useEffect(() => {
+    if (!selectedId || demo || !supabase) return;
+    const db = supabase;
+    let alive = true;
+    setLoading(true);
     const loadLatest = () => void db.from('unified_chat_messages').select('id,user_id,sender_id,body,attachment_path,created_at,source,external_thread_id')
       .eq('user_id', selectedId).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(PAGE_SIZE)
       .then(({ data, error: loadError }) => {
@@ -84,22 +90,8 @@ export function AdminChat({ inbox, selectedId, demo, canManageExternalLinks, onS
         setHasMore((data ?? []).length === PAGE_SIZE);
       });
     loadLatest();
-    const channel = db.channel(`admin-chat-${selectedId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `user_id=eq.${selectedId}` }, payload => {
-        const message = payload.new as Message;
-        setMessages(old => old.some(item => item.id === message.id) ? old : [...old, { ...message, source: 'app' }]);
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'external_chat_messages' }, payload => {
-        const message = payload.new as { thread_id?: string };
-        if (message.thread_id && externalLinksRef.current.some(link => link.id === message.thread_id)) loadLatest();
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'external_chat_threads' }, payload => {
-        const thread = payload.new as { linked_user_id?: string | null };
-        if (thread.linked_user_id === selectedId) loadLatest();
-      })
-      .subscribe();
-    return () => { alive = false; void db.removeChannel(channel); };
-  }, [selectedId, demo]);
+    return () => { alive = false; };
+  }, [selectedId, demo, adminRefresh]);
 
   useEffect(() => {
     if (!selectedId || demo || !supabase) { setExternalLinks([]); return; }
@@ -108,11 +100,8 @@ export function AdminChat({ inbox, selectedId, demo, canManageExternalLinks, onS
     const refreshLinks = () => void db.from('external_chat_threads').select('id,nickname').eq('linked_user_id', selectedId)
       .then(({ data }) => { if (alive) setExternalLinks((data ?? []) as { id: string; nickname: string }[]); });
     refreshLinks();
-    const channel = db.channel(`admin-chat-links-${selectedId}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'external_chat_threads' }, refreshLinks)
-      .subscribe();
-    return () => { alive = false; void db.removeChannel(channel); };
-  }, [selectedId, demo]);
+    return () => { alive = false; };
+  }, [selectedId, demo, adminRefresh]);
 
   const lastMessageId = messages.at(-1)?.id;
   useEffect(() => {

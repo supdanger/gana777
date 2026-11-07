@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, type FormEvent } from 'react';
+import React, { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Session } from '@supabase/supabase-js';
 import { ArrowUpRight, CalendarClock, Check, CheckCircle2, ChevronRight, Clock, Copy, Hash, UserRound, WalletCards, X } from 'lucide-react';
@@ -36,6 +36,7 @@ import { ShiftAdmin } from './shift-admin';
 import { SacBoard } from './sac-board';
 import { SAC_STATION_KEY, depositRouteLabel, parseSacStation, scopedDepositFilter } from './sac';
 import { AdminShell } from './admin-shell';
+import { AdminRefreshProvider } from './admin-refresh';
 import { pendingChatCount, pendingRequestCount } from './admin-navigation';
 import { CashierAdmin } from './cashier-admin';
 import { ContactAdmin } from './contact-admin';
@@ -143,6 +144,16 @@ function App() {
   const [historyError, setHistoryError] = useState('');
   const [historyReload, setHistoryReload] = useState(0);
   const [leaderboardReload, setLeaderboardReload] = useState(0);
+  const [adminRefresh, setAdminRefresh] = useState(0);
+  const refreshAdmin = useCallback(() => {
+    setAdminRefresh(value => value + 1);
+    setWithdrawalReload(value => value + 1);
+    setDepositReload(value => value + 1);
+    setHistoryReload(value => value + 1);
+    setChatReload(value => value + 1);
+    setExternalChatReload(value => value + 1);
+    setLeaderboardReload(value => value + 1);
+  }, []);
   const [pendingDepositCount, setPendingDepositCount] = useState(0);
   const [pendingWithdrawalCount, setPendingWithdrawalCount] = useState(0);
   const [approvedDeposit, setApprovedDeposit] = useState<RequestRow | null>(null);
@@ -283,12 +294,14 @@ function App() {
     setWheelEligible(false);
     setWheelEligibilityReady(false);
     void refresh();
-    const poll = window.setInterval(() => void refresh(), 60000);
+    const poll = window.setInterval(() => { if (document.visibilityState !== 'hidden') void refresh(); }, 300_000);
+    const onVisible = () => { if (document.visibilityState === 'visible') void refresh(); };
+    document.addEventListener('visibilitychange', onVisible);
     const channel = db.channel(`wheel-eligibility-${userId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'requests', filter: `user_id=eq.${userId}` }, () => void refresh())
       .subscribe();
     window.addEventListener('focus', refresh);
-    return () => { alive = false; window.clearInterval(poll); window.removeEventListener('focus', refresh); void db.removeChannel(channel); };
+    return () => { alive = false; window.clearInterval(poll); window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', onVisible); void db.removeChannel(channel); };
   }, [demo, session?.user.id, settings.wheel_enabled]);
   useEffect(() => {
     if (adminApp || page !== 'wheel' || !wheelEligibilityReady || settings.wheel_enabled && wheelEligible) return;
@@ -439,19 +452,25 @@ function App() {
       }
     }
     void refresh();
+    if (adminApp) return () => { alive = false; };
     const onFocus = () => void refresh();
     window.addEventListener('focus', onFocus);
+    const ownUser = `user_id=eq.${session.user.id}`;
+    let refreshTimer = 0;
+    const schedulePlayerRefresh = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => { void refresh(); }, 400);
+    };
     const channel = db.channel(`updates-${session.user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => { void refresh(); if (adminApp) setWithdrawalReload(value => value + 1); setDepositReload(value => value + 1); setHistoryReload(value => value + 1); })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'deposit_credits' }, () => setLeaderboardReload(value => value + 1))
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'withdrawal_parts' }, () => { void refresh(); if (adminApp) setWithdrawalReload(value => value + 1); })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => { if (!adminApp) void refresh(); })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'external_chat_messages' }, () => { if (!adminApp) void refresh(); })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'external_chat_threads' }, () => { if (!adminApp) void refresh(); })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'admin_permissions', filter: `user_id=eq.${session.user.id}` }, () => void refresh())
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'cashier_profiles', filter: `user_id=eq.${session.user.id}` }, () => void refresh()).subscribe();
-    return () => { alive = false; window.removeEventListener('focus', onFocus); void db.removeChannel(channel); };
-  }, [session, sacStation, adminApp]);
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests', filter: ownUser }, schedulePlayerRefresh)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: ownUser }, schedulePlayerRefresh)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'user_notifications', filter: ownUser }, schedulePlayerRefresh)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'external_chat_threads', filter: `linked_user_id=eq.${session.user.id}` }, schedulePlayerRefresh)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'admin_permissions', filter: ownUser }, () => void refresh())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'cashier_profiles', filter: ownUser }, () => void refresh())
+      .subscribe();
+    return () => { alive = false; window.clearTimeout(refreshTimer); window.removeEventListener('focus', onFocus); void db.removeChannel(channel); };
+  }, [session, sacStation, adminApp, adminRefresh]);
   useEffect(() => {
     if (adminApp || demo || !session || !supabase) return;
     const db = supabase;
@@ -467,7 +486,7 @@ function App() {
     };
     const onVisible = () => { if (document.visibilityState === 'visible') void check(); };
     void check();
-    const timer = window.setInterval(() => void check(), 60_000);
+    const timer = window.setInterval(() => void check(), 180_000);
     document.addEventListener('visibilitychange', onVisible);
     return () => { alive = false; window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
   }, [adminApp, demo, session?.user.id, session?.user.last_sign_in_at, session?.user.created_at]);
@@ -516,14 +535,7 @@ function App() {
       if (alive && version === requestVersion) setChatInbox(rows);
     }
     void refreshInbox();
-    const onFocus = () => void refreshInbox();
-    window.addEventListener('focus', onFocus);
-    const channel = db.channel(`admin-chat-inbox-${session.user.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => void refreshInbox())
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'external_chat_messages' }, () => void refreshInbox())
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'external_chat_threads' }, () => void refreshInbox())
-      .subscribe();
-    return () => { alive = false; window.removeEventListener('focus', onFocus); void db.removeChannel(channel); };
+    return () => { alive = false; };
   }, [session?.user.id, chatReload]);
   useEffect(() => {
     if (!adminApp || !session || !supabase || demo || (!staffContext.superAdmin && !staffContext.permissions.external_chat)) {
@@ -550,13 +562,7 @@ function App() {
       if (alive && version === requestVersion) setExternalChatInbox(rows);
     }
     void refreshExternalInbox();
-    const onFocus = () => void refreshExternalInbox();
-    window.addEventListener('focus', onFocus);
-    const channel = db.channel(`admin-external-chat-${session.user.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'external_chat_messages' }, () => void refreshExternalInbox())
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'external_chat_threads' }, () => void refreshExternalInbox())
-      .subscribe();
-    return () => { alive = false; window.removeEventListener('focus', onFocus); void db.removeChannel(channel); };
+    return () => { alive = false; };
   }, [session?.user.id, externalChatReload, demo, staffContext.superAdmin, staffContext.permissions.external_chat]);
   useEffect(() => {
     if (!adminApp || !session || !supabase || (!staffContext.superAdmin && !staffContext.permissions.access_requests) || demo) { setAccessRequestCount(0); return; }
@@ -566,18 +572,12 @@ function App() {
         const data = await invokeAdminPlayerAccess({ action: 'admin-count' });
         if (alive) setAccessRequestCount(Number(data.pending_count) || 0);
       } catch (error) {
-        if (error instanceof AccessSessionError) {
-          window.clearInterval(timer);
-          window.removeEventListener('focus', refreshCount);
-          if (alive) setAccessRequestCount(0);
-        }
+        if (error instanceof AccessSessionError && alive) setAccessRequestCount(0);
       }
     };
-    const timer = window.setInterval(() => void refreshCount(), 30000);
     void refreshCount();
-    window.addEventListener('focus', refreshCount);
-    return () => { alive = false; window.clearInterval(timer); window.removeEventListener('focus', refreshCount); };
-  }, [session?.user.id, staffContext.superAdmin, staffContext.permissions.access_requests, demo]);
+    return () => { alive = false; };
+  }, [session?.user.id, staffContext.superAdmin, staffContext.permissions.access_requests, demo, adminRefresh]);
   useEffect(() => {
     if (adminApp || demo || page !== 'deposit' || !session || !supabase) return;
     let alive = true;
@@ -606,7 +606,7 @@ function App() {
     const db = supabase;
     const refreshBankState = () => setBankReload(value => value + 1);
     const operationChanged = () => { setBank(null); refreshBankState(); };
-    const timer = window.setInterval(() => { if (document.visibilityState !== 'hidden') refreshBankState(); }, 30_000);
+    const timer = window.setInterval(() => { if (document.visibilityState !== 'hidden') refreshBankState(); }, 180_000);
     const channel = db.channel(`bank-operation-${session.user.id}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bank_operation_state' }, operationChanged)
       .subscribe();
@@ -1147,7 +1147,7 @@ function App() {
     </>}
   </>;
   const staffAvatarUrl = staffContext.avatarPath && supabase ? supabase.storage.from('cashier-avatars').getPublicUrl(staffContext.avatarPath).data.publicUrl : null;
-  if (adminApp) return <AdminShell page={page} counts={pendingCounts} permissions={demo ? allStaffPermissions : staffContext.permissions} superAdmin={demo || staffContext.superAdmin} staffName={demo ? 'Superadministrador' : staffContext.displayName || name} avatarUrl={staffAvatarUrl} busy={busy} navigate={navigate} logout={() => void logout()}>{content}</AdminShell>;
+  if (adminApp) return <AdminRefreshProvider version={adminRefresh} refresh={refreshAdmin}><AdminShell page={page} counts={pendingCounts} permissions={demo ? allStaffPermissions : staffContext.permissions} superAdmin={demo || staffContext.superAdmin} staffName={demo ? 'Superadministrador' : staffContext.displayName || name} avatarUrl={staffAvatarUrl} busy={busy} navigate={navigate} logout={() => void logout()} onRefresh={refreshAdmin}>{content}</AdminShell></AdminRefreshProvider>;
   const surface = themeSurface(settings, path => supabase?.storage.from('app-assets').getPublicUrl(path).data.publicUrl ?? null);
   return <div className={`app user-app page-${page} ${surface.className}`} style={surface.style}>
     <UserHeader page={page} navigate={navigate} name={name} />

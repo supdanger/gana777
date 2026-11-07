@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Copy, Disc, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { InputError, parseUuid } from '../supabase/functions/_shared/validation';
+import { useAdminRefreshVersion } from './admin-refresh';
 import { useContent } from './content';
 import { date, money, supabase } from './lib';
 import { wheelAmountLabel, wheelCycleSummary, wheelFaces, wheelLandingRotation, wheelSectorOffset, wheelWaitLabel, type WheelSlice } from './wheel-sequence';
@@ -281,6 +282,7 @@ export function WheelAdmin({ demo, busy, action, userId, superAdmin, canEditPriz
 }) {
   const { settings, reloadPromotions } = useContent();
   const visible = !!settings.wheel_enabled;
+  const adminRefresh = useAdminRefreshVersion();
   const [tab, setTab] = useState<'prizes' | 'credit'>('credit');
   const [drafts, setDrafts] = useState<Draft[]>(recipeDrafts);
   const [status, setStatus] = useState<'pending' | 'credited'>('pending');
@@ -296,7 +298,10 @@ export function WheelAdmin({ demo, busy, action, userId, superAdmin, canEditPriz
   const summary = parsed.error ? null : wheelCycleSummary(parsed.active);
 
   useEffect(() => {
-    if (demo || !supabase || !canEditPrizes) return;
+    if (adminRefresh > 0 && visible) setReload(value => value + 1);
+  }, [adminRefresh, visible]);
+  useEffect(() => {
+    if (demo || !supabase || !canEditPrizes || !visible) return;
     const db = supabase;
     void db.rpc('list_wheel_prizes').then(({ data, error }) => {
       if (error || !data?.length) return;
@@ -304,8 +309,9 @@ export function WheelAdmin({ demo, busy, action, userId, superAdmin, canEditPriz
         key: String(prize.amount), amount: String(Number(prize.amount)), slots: String(prize.slots), active: prize.active,
       })));
     });
-  }, [demo, canEditPrizes]);
+  }, [demo, canEditPrizes, visible]);
   useEffect(() => {
+    if (!visible) { setRows([]); setTotal(0); setLoading(false); return; }
     if (demo || !supabase || tab !== 'credit') return;
     const db = supabase;
     let alive = true;
@@ -321,15 +327,7 @@ export function WheelAdmin({ demo, busy, action, userId, superAdmin, canEditPriz
       setTotal(Number(spins[0]?.total_count) || 0);
     });
     return () => { alive = false; };
-  }, [demo, status, page, reload, tab]);
-  useEffect(() => {
-    if (demo || !supabase) return;
-    const db = supabase;
-    const refresh = () => setReload(value => value + 1);
-    const channel = db.channel('admin-wheel-spins').on('postgres_changes', { event: '*', schema: 'public', table: 'wheel_spins' }, refresh).subscribe();
-    window.addEventListener('focus', refresh);
-    return () => { void db.removeChannel(channel); window.removeEventListener('focus', refresh); };
-  }, [demo]);
+  }, [demo, status, page, reload, tab, visible]);
 
   function move(index: number, direction: -1 | 1) {
     const next = index + direction;
@@ -389,12 +387,12 @@ export function WheelAdmin({ demo, busy, action, userId, superAdmin, canEditPriz
   }
 
   return <section className="referral-admin wheel-admin" aria-labelledby="wheel-admin-title">
-    <div className="referral-heading"><div><h2 id="wheel-admin-title"><Disc size={23} /> Ruleta</h2><p>Un giro cada 24 horas. El premio se acredita a mano, aparte de las cargas.</p></div><button type="button" disabled={busy || loading || demo} onClick={() => setReload(value => value + 1)}><RefreshCw size={17} />Actualizar</button></div>
+    <div className="referral-heading"><div><h2 id="wheel-admin-title"><Disc size={23} /> Ruleta</h2><p>Un giro cada 24 horas. El premio se acredita a mano, aparte de las cargas.</p></div><button type="button" disabled={busy || loading || demo || !visible} onClick={() => setReload(value => value + 1)}><RefreshCw size={17} />Actualizar</button></div>
     <div className="wheel-visibility">
       <button type="button" role="switch" aria-checked={visible} className={visible ? 'enabled' : ''} disabled={!canEditPrizes || busy} onClick={() => void toggleVisible()}><span />{visible ? 'Prendida para los jugadores' : 'Apagada para los jugadores'}</button>
-      <p>{canEditPrizes ? 'Apagada, los jugadores no ven la ruleta. Prendela para que aparezca en el inicio.' : 'Solo quien edita los premios puede prender la ruleta.'}</p>
+      <p>{visible ? 'La ruleta está activa. Los jugadores la ven en el inicio.' : canEditPrizes ? 'Apagada: no se consultan premios ni giros. Activala solo cuando la vayas a usar.' : 'Solo quien edita los premios puede prender la ruleta.'}</p>
     </div>
-    <div className="referral-filters" role="group" aria-label="Secciones de la ruleta">
+    {visible && <><div className="referral-filters" role="group" aria-label="Secciones de la ruleta">
       <button type="button" aria-pressed={tab === 'credit'} onClick={() => setTab('credit')}>Acreditación</button>
       <button type="button" aria-pressed={tab === 'prizes'} onClick={() => setTab('prizes')}>Premios</button>
     </div>
@@ -452,6 +450,6 @@ export function WheelAdmin({ demo, busy, action, userId, superAdmin, canEditPriz
         })}</div>
         <div className="referral-pagination"><button type="button" disabled={busy || page === 0} onClick={() => setPage(value => value - 1)}>Anterior</button><span>Página {page + 1} de {Math.max(1, Math.ceil(total / 10))} · {total} premios</span><button type="button" disabled={busy || (page + 1) * 10 >= total} onClick={() => setPage(value => value + 1)}>Siguiente</button></div>
       </>}
-    </>}
+    </>}</>}
   </section>;
 }

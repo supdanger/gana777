@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowLeft, CircleCheck, Link2, MessageCircle, RotateCcw, Search, Send } from 'lucide-react';
+import { useAdminRefreshVersion } from './admin-refresh';
 import { date, supabase } from './lib';
 import { ChatImage } from './chat-images';
 import { parseMessage } from '../supabase/functions/_shared/validation';
@@ -39,6 +40,7 @@ export function AdminExternalChat({ inbox, selectedId, demo, canLink, onSelect, 
   const [entryUser, setEntryUser] = useState('');
   const [sendingEntry, setSendingEntry] = useState(false);
   const log = useRef<HTMLDivElement>(null);
+  const adminRefresh = useAdminRefreshVersion();
   const activeId = useRef(selectedId);
   activeId.current = selectedId;
   const selected = inbox.find(row => row.thread_id === selectedId);
@@ -51,10 +53,14 @@ export function AdminExternalChat({ inbox, selectedId, demo, canLink, onSelect, 
   });
 
   useEffect(() => {
-    if (!selectedId || demo || !supabase) { setMessages([]); return; }
+    if (!selectedId || demo) { setMessages([]); return; }
+    setMessages([]); setError(''); setNotice(''); setLinkUsername(''); setLinkMatch(null);
+  }, [selectedId, demo]);
+  useEffect(() => {
+    if (!selectedId || demo || !supabase) return;
     const db = supabase;
     let alive = true;
-    setMessages([]); setLoading(true); setError(''); setNotice(''); setLinkUsername(''); setLinkMatch(null);
+    setLoading(true);
     void db.from('external_chat_messages').select('id,thread_id,sender_type,sender_id,body,attachment_path,created_at')
       .eq('thread_id', selectedId).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(100)
       .then(({ data, error: loadError }) => {
@@ -63,13 +69,8 @@ export function AdminExternalChat({ inbox, selectedId, demo, canLink, onSelect, 
         if (loadError) { setError('No pudimos cargar esta conversación. Intentá abrirla nuevamente.'); return; }
         setMessages(((data ?? []) as ExternalMessage[]).reverse());
       });
-    const channel = db.channel(`external-chat-thread-${selectedId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'external_chat_messages', filter: `thread_id=eq.${selectedId}` }, payload => {
-        const message = payload.new as ExternalMessage;
-        setMessages(old => old.some(item => item.id === message.id) ? old : [...old, message]);
-      }).subscribe();
-    return () => { alive = false; void db.removeChannel(channel); };
-  }, [selectedId, demo]);
+    return () => { alive = false; };
+  }, [selectedId, demo, adminRefresh]);
 
   useEffect(() => {
     if (log.current) log.current.scrollTop = log.current.scrollHeight;

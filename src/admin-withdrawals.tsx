@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type FormEvent, type MouseEvent, type ReactNode } from 'react';
 import { Check, ChevronDown, ChevronRight, ClipboardPaste, Clock3, Copy, Edit3, Eye, WalletCards, X } from 'lucide-react';
+import { useAdminRefreshVersion } from './admin-refresh';
 import { date, money, type RequestRow, type WithdrawalPart } from './lib';
 import { compressReceipt } from './image-compression';
 import { BankTransferCard } from './bank-transfer-card';
@@ -38,6 +39,7 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onAdju
   const [selectedSourceId, setSelectedSourceId] = useState('');
   const [paymentError, setPaymentError] = useState('');
   const [now, setNow] = useState(Date.now);
+  const adminRefresh = useAdminRefreshVersion();
   const [editingAmountId, setEditingAmountId] = useState<string | null>(null);
   const [amountError, setAmountError] = useState('');
   const trigger = useRef<HTMLButtonElement | null>(null);
@@ -101,15 +103,8 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onAdju
   useEffect(() => {
     void loadSources();
     const clock = window.setInterval(() => setNow(Date.now()), 1000);
-    const refresh = window.setInterval(() => void loadSources(), 15000);
-    const onFocus = () => void loadSources();
-    window.addEventListener('focus', onFocus);
-    const channel = !demo && supabase ? supabase.channel('withdrawal-sources')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'withdrawal_parts' }, () => void loadSources())
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bank_operation_state' }, () => void loadSources())
-      .subscribe() : null;
-    return () => { window.clearInterval(clock); window.clearInterval(refresh); window.removeEventListener('focus', onFocus); if (channel) void supabase?.removeChannel(channel); };
-  }, [demo]);
+    return () => window.clearInterval(clock);
+  }, [demo, adminRefresh]);
 
   const serverTime = now + serverOffset;
   const paymentRequest = withdrawals.find(request => request.id === paymentSelection?.requestId);

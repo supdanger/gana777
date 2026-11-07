@@ -49,12 +49,8 @@ export function HomeBonusCarousel({ onClaim }: { onClaim: (id: string) => void }
     void refresh();
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', onVisible);
-    const poll = window.setInterval(() => { if (document.visibilityState !== 'hidden') void refresh(); }, 60_000);
-    const channel = db.channel('special-bonus-availability')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'special_bonus_uses' }, () => void refresh())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'deposit_credits' }, () => void refresh())
-      .subscribe();
-    return () => { alive = false; window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', onVisible); window.clearInterval(poll); void db.removeChannel(channel); };
+    const poll = window.setInterval(() => { if (document.visibilityState !== 'hidden') void refresh(); }, 300_000);
+    return () => { alive = false; window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', onVisible); window.clearInterval(poll); };
   }, []);
   useEffect(() => {
     if (total < 2) return;

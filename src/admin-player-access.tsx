@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useAdminRefreshVersion } from './admin-refresh';
 import { CheckCircle2, Eye, EyeOff, MessageCircle, RefreshCw, Send, UserRound, XCircle } from 'lucide-react';
 import { date } from './lib';
-import { AccessSessionError, invokeAdminPlayerAccess } from './admin-player-access-api';
+import { invokeAdminPlayerAccess } from './admin-player-access-api';
 import { InputError } from '../supabase/functions/_shared/validation';
 import { safeHttpsLink } from './security';
 
@@ -34,6 +35,7 @@ export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy:
   const [casinoUrl, setCasinoUrl] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const log = useRef<HTMLDivElement>(null);
+  const adminRefresh = useAdminRefreshVersion();
   const selected = requests.find(item => item.id === selectedId) ?? null;
   const needsSetup = (item: AccessRequest) => item.status === 'pending' || (item.status === 'approved' && !item.has_personal_url);
   const visible = requests.filter(item => (filter === 'all' || needsSetup(item)) && (!search.trim() || `${item.username} ${item.referral_code ?? ''} ${item.latest_message?.body ?? ''}`.toLocaleLowerCase('es').includes(search.trim().replace(/^@/, '').toLocaleLowerCase('es'))));
@@ -51,26 +53,16 @@ export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy:
       if (!alive) return;
       setLoading(false);
       setThreadError(error instanceof Error ? error.message : 'No pudimos cargar solicitudes.');
-      if (error instanceof AccessSessionError) window.clearInterval(timer);
     };
-    const timer = window.setInterval(() => { void refresh().catch(handleError); }, 12000);
     void refresh().catch(handleError);
-    return () => { alive = false; window.clearInterval(timer); };
-  }, [demo]);
+    return () => { alive = false; };
+  }, [demo, adminRefresh]);
   useEffect(() => {
     if (!selectedId || demo) { setMessages([]); return; }
     let alive = true;
     void invokeAdminPlayerAccess({ action: 'admin-messages', request_id: selectedId }).then(result => { if (alive) { setMessages(result.messages as AccessMessage[]); setCasinoUrl(typeof result.casino_url === 'string' ? result.casino_url : ''); } }).catch(error => { if (alive) setThreadError(error instanceof Error ? error.message : 'No pudimos cargar la conversación.'); });
     return () => { alive = false; };
-  }, [selectedId, demo]);
-  useEffect(() => {
-    if (!selectedId || demo) return;
-    const timer = window.setInterval(() => {
-      void invokeAdminPlayerAccess({ action: 'admin-messages', request_id: selectedId }).then(result => setMessages(result.messages as AccessMessage[])).catch(error => { if (error instanceof AccessSessionError) window.clearInterval(timer); });
-      void refresh().catch(error => { if (error instanceof AccessSessionError) { window.clearInterval(timer); setThreadError(error.message); } });
-    }, 5000);
-    return () => window.clearInterval(timer);
-  }, [selectedId, demo]);
+  }, [selectedId, demo, adminRefresh]);
   useEffect(() => { if (log.current) log.current.scrollTop = log.current.scrollHeight; }, [messages]);
   useEffect(() => { setPlayerUsername(selected?.username ?? ''); setPassword(''); setCasinoUrl(''); setShowPassword(false); }, [selectedId]);
 

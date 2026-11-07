@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   ArrowDownToLine, ArrowUpFromLine, Clock3, Disc, Gift, History, Landmark, Link2,
-  LayoutDashboard, LogOut, Menu, MessagesSquare, MessageCircle, PhoneCall, UserCog, Users, X, PanelsTopLeft, UserRound, Layers3, BellRing, Palette, Settings2,
+  LayoutDashboard, LogOut, Menu, MessagesSquare, MessageCircle, PhoneCall, UserCog, Users, X, PanelsTopLeft, UserRound, Layers3, BellRing, Palette, RefreshCw, Settings2,
 } from 'lucide-react';
 import { Brand, titles, type Page } from './user-views';
 import { AdminPageGuide } from './admin-guides';
@@ -41,7 +41,7 @@ function sectionLabel(page: Page): string {
   return groups.find(group => group.items.some(item => item.page === page))?.label ?? 'Panel';
 }
 
-export function AdminShell({ page, counts, permissions, superAdmin, staffName, avatarUrl, busy, navigate, logout, children }: {
+export function AdminShell({ page, counts, permissions, superAdmin, staffName, avatarUrl, busy, navigate, logout, onRefresh, children }: {
   page: Page;
   counts: PendingCounts;
   permissions: StaffPermissions;
@@ -51,6 +51,7 @@ export function AdminShell({ page, counts, permissions, superAdmin, staffName, a
   busy: boolean;
   navigate: (page: Page) => void;
   logout: () => void;
+  onRefresh: () => void;
   children: ReactNode;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -91,6 +92,7 @@ export function AdminShell({ page, counts, permissions, superAdmin, staffName, a
       <header className="admin-topbar">
         <button className="admin-menu-toggle" aria-label="Abrir menú" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}><Menu /></button>
         <div><small>{sectionLabel(page)}</small><strong>{titles[page]}</strong></div>
+        <button type="button" className="admin-refresh" onClick={onRefresh} title="El panel no consulta solo. Telegram avisa; este botón trae los datos nuevos."><RefreshCw size={15} aria-hidden="true" /><span>Actualizar</span></button>
         <label className="admin-theme-picker"><Palette size={15} aria-hidden="true" /><span className="sr-only">Tema del panel</span><select value={panelTheme} onChange={event => setPanelTheme(event.target.value)} aria-label="Tema del panel"><option value="violeta">Violeta</option><option value="negro">Negro intenso</option><option value="azul">Azul noche</option><option value="esmeralda">Esmeralda</option><option value="dorado">Dorado</option></select></label>
         <div className="admin-staff-identity">
           <span className="admin-staff-avatar">{avatarUrl ? <img src={avatarUrl} alt="" /> : staffName.slice(0, 1).toUpperCase()}</span>

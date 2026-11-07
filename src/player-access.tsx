@@ -63,8 +63,10 @@ export function PlayerAccessRequest({ onBack, onCredentialsReady }: { onBack: ()
         setThread(result.thread as AccessThread); setMessages(result.messages as AccessMessage[]);
       } catch { /* Keep the last loaded messages during temporary network loss. */ }
     };
-    const timer = window.setInterval(() => void refresh(), thread.status === 'pending' ? 4000 : 10000);
-    return () => window.clearInterval(timer);
+    const timer = window.setInterval(() => { if (document.visibilityState !== 'hidden') void refresh(); }, thread.status === 'pending' ? 20_000 : 60_000);
+    const onVisible = () => { if (document.visibilityState === 'visible') void refresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
   }, [thread?.id, thread?.status, token]);
 
   useEffect(() => { if (log.current) log.current.scrollTop = log.current.scrollHeight; }, [messages]);

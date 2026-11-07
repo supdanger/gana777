@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useAdminRefreshVersion } from './admin-refresh';
 import { ChevronDown } from 'lucide-react';
 import { InputError } from '../supabase/functions/_shared/validation.ts';
 import { BankTransferCard } from './bank-transfer-card';
@@ -126,6 +127,7 @@ export function SacBoard({
   const [stations, setStations] = useState<SacStation[]>(() => stationsOrDefaults([]));
   const [phones, setPhones] = useState<SacPhoneOption[]>(demo ? demoSacPhones : []);
   const [loadedShift, setLoadedShift] = useState<string | null>(demo ? 'morning' : null);
+  const adminRefresh = useAdminRefreshVersion();
   const activeShift = liveShift === undefined ? loadedShift : liveShift;
   const shownPhones = phonesForShift(phones, activeShift);
   const [loading, setLoading] = useState(!demo && !!supabase);
@@ -161,19 +163,13 @@ export function SacBoard({
 
   useEffect(() => {
     if (demo || !supabase) { setLoading(false); return; }
-    const db = supabase;
     let alive = true;
     const load = () => {
       void reload().catch(() => { if (alive) setLoadError('No pudimos cargar los SAC. Aplicá la migración 038 y actualizá el panel.'); }).finally(() => { if (alive) setLoading(false); });
     };
     load();
-    const channel = db.channel(`sac-board-${scope}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'sac_stations' }, load)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'sac_phones' }, load)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bank_operation_state' }, load)
-      .subscribe();
-    return () => { alive = false; void db.removeChannel(channel); };
-  }, [demo, reload, scope]);
+    return () => { alive = false; };
+  }, [demo, reload, scope, adminRefresh]);
 
   function applyDemo(next: SacStation[]) { setStations(stationsOrDefaults(next)); }
 

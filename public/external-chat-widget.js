@@ -330,12 +330,16 @@
   }
 
   async function refresh() {
+    if (document.visibilityState === 'hidden') {
+      if (isOpen && !timer) timer = setInterval(refresh, 20000);
+      return;
+    }
     if (busy) return;
     busy = true;
     try { var data = await call('read'); mergeLinked(data); status.textContent = ''; }
     catch (error) { status.textContent = error.message || 'No pudimos actualizar el chat.'; }
     finally { busy = false; }
-    if (isOpen && !timer) timer = setInterval(refresh, 5000);
+    if (isOpen && !timer) timer = setInterval(refresh, 20000);
   }
 
   async function start() {
@@ -417,5 +421,10 @@
     }
   }
   void checkAvailability();
-  setInterval(checkAvailability, 60000);
+  setInterval(function () { if (document.visibilityState !== 'hidden') void checkAvailability(); }, 180000);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState !== 'visible') return;
+    void checkAvailability();
+    if (chatView.classList.contains('open')) void refresh();
+  });
 })();

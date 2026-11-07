@@ -78,6 +78,11 @@ async function readMessages(thread: Thread) {
   }))].sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id)).slice(-100);
 }
 
+async function touchThread(db: ReturnType<typeof service>, threadId: string) {
+  const staleBefore = new Date(Date.now() - 120_000).toISOString();
+  await db.from('external_chat_threads').update({ last_seen_at: new Date().toISOString() }).eq('id', threadId).lt('last_seen_at', staleBefore);
+}
+
 async function bubbleSettings(db: ReturnType<typeof service>) {
   const { data, error } = await db.from('app_settings').select('external_chat_enabled,external_chat_option_enabled,external_charge_option_enabled').eq('id', true).single();
   if (error || !data) throw new HttpError(503, 'No pudimos consultar la disponibilidad del chat.');
@@ -117,13 +122,13 @@ Deno.serve(async request => {
         token = created.token;
         thread = created.thread;
       }
-      await db.from('external_chat_threads').update({ last_seen_at: new Date().toISOString() }).eq('id', thread.id);
+      await touchThread(db, thread.id);
       return jsonResponse({ token, nickname: thread.nickname, link_version: thread.linked_at, messages: await readMessages(thread) }, 200, origin);
     }
 
     const thread = await findThread(input?.token);
     if (thread.origin !== origin) throw new HttpError(403, 'Origen no autorizado para esta conversación.');
-    await db.from('external_chat_threads').update({ last_seen_at: new Date().toISOString() }).eq('id', thread.id);
+    if (action !== 'send') await touchThread(db, thread.id);
     if (action === 'send') {
       let attachmentPath: string | null = null;
       if (input.attachment !== undefined && input.attachment !== null) {
