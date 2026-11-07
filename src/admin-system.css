@@ -120,7 +120,7 @@
 .admin-shell .admin-breadcrumb > strong { margin-top: 2px; color: var(--panel-text); font-size: 18px; font-weight: 600; line-height: 1.4; }
 .admin-shell .admin-home-brand { display: inline-flex; align-items: baseline; max-width: 100%; margin: 0; padding: 0; border: 0; background: transparent; box-shadow: none; color: #fff; font-size: clamp(20px, 2vw, 28px); font-style: italic; font-weight: 900; letter-spacing: -1px; line-height: 1; }
 .admin-shell .admin-home-brand:hover, .admin-shell .admin-home-brand:focus-visible { border-color: transparent; background: transparent; transform: none; }
-.admin-shell .admin-wordmark { display: inline-block; min-width: 0; color: #b63cff; background: linear-gradient(110deg, #7218d6 0%, #b52cff 30%, #f0b0ff 48%, #b52cff 66%, #7218d6 100%); background-size: 250% 100%; background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 8px #a626ff80); animation: admin-brand-shine 4s ease-in-out infinite; }
+.admin-shell .admin-wordmark { display: inline-block; min-width: 0; color: #b63cff; background: linear-gradient(110deg, #7218d6 0%, #b52cff 30%, #f0b0ff 48%, #b52cff 66%, #7218d6 100%); background-size: 250% 100%; background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 8px #a626ff80); animation: admin-brand-shine 7s ease-in-out infinite; }
 .admin-shell .admin-wordmark .is-bet { font-size: .72em; color: transparent; -webkit-text-fill-color: transparent; }
 .admin-shell .admin-wordmark .is-role { margin-left: 8px; font-size: .4em; font-style: normal; font-weight: 800; letter-spacing: .14em; color: transparent; -webkit-text-fill-color: transparent; }
 .admin-shell .admin-sidebar-brand .admin-home-brand { font-size: 22px; }
@@ -287,6 +287,30 @@
 .admin-shell .admin-overview .deposit-leaderboard-list li { background: var(--panel-surface-inset); }
 .admin-shell .admin-overview .deposit-leaderboard-list li:is(.top-1, .top-2, .top-3) { background: var(--panel-surface-inset); box-shadow: none; }
 .admin-shell .admin-overview .deposit-leaderboard-rank { background: var(--panel-surface-raised); }
+
+@keyframes admin-data-card-enter {
+  from { opacity: 0; transform: translateY(9px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .admin-shell .admin-overview :is(.overview-metric, .bonus-counter-grid .card, .bonus-counter-totals .card, .bonus-shift-history, .deposit-leaderboard) {
+    animation: admin-data-card-enter .5s cubic-bezier(.2, .75, .25, 1) both;
+    transition: transform .24s ease, background-color .24s ease, box-shadow .24s ease;
+  }
+  .admin-shell .admin-overview .overview-metric:nth-child(2),
+  .admin-shell .admin-overview .bonus-counter-grid .card:nth-child(2) { animation-delay: .06s; }
+  .admin-shell .admin-overview .overview-metric:nth-child(3),
+  .admin-shell .admin-overview .bonus-counter-grid .card:nth-child(3) { animation-delay: .12s; }
+  .admin-shell .admin-overview .overview-metric:nth-child(4),
+  .admin-shell .admin-overview .bonus-counter-grid .card:nth-child(4) { animation-delay: .18s; }
+  .admin-shell .admin-overview .bonus-counter-totals .card:nth-child(2),
+  .admin-shell .admin-overview .deposit-leaderboard { animation-delay: .16s; }
+  .admin-shell .admin-overview .bonus-shift-history { animation-delay: .22s; }
+  .admin-shell .admin-overview :is(.overview-metric, .bonus-counter-grid .card, .bonus-counter-totals .card):hover {
+    transform: translateY(-2px);
+    background: var(--panel-surface-raised);
+  }
+}
 
 .admin-shell .admin-content .eyebrow { color: var(--panel-subtle); font-weight: 600; letter-spacing: .1em; }
 .admin-shell .admin-content :is(.account-form-actions button:first-child, .principal-create > button, .bonus-form-actions button:first-child, .contact-link-form button) { border-color: var(--panel-accent-strong); background: var(--panel-accent-strong); color: #fff; box-shadow: none; }
