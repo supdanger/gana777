@@ -264,5 +264,22 @@ await db.exec('reset role');
 await db.exec(archiveOperation);
 assert.equal((await db.query('select count(*)::int as n from public.deposit_queue_archives')).rows[0].n,archived.length);
 assert.deepEqual(await snapshot(),beforeArchive);
+await db.exec(source('migrations/098_simple_deposit_queue.sql'));
+await db.exec(`reset role; alter table public.requests disable trigger validate_request;
+insert into public.requests(id,user_id,kind,status,amount,created_at) values
+ ('${uid(910)}','${P}','deposit','pending',8000,now()),
+ ('${uid(911)}','${P}','deposit','approved',9000,now());
+alter table public.requests enable trigger validate_request;`);
+await as(A);
+const simplePages=async()=>{ const first=await rpc('list_deposit_queue',['all',0]); const rows=[...first.rows]; for(let page=1;page<Math.ceil(first.total/30);page++) rows.push(...(await rpc('list_deposit_queue',['all',page])).rows); return rows; };
+let simpleRows=await simplePages();
+assert.ok(simpleRows.some(row=>row.id===uid(910)),'la pendiente sigue en Todas');
+assert.ok(!simpleRows.some(row=>row.id===uid(911)),'la aprobada sin acreditar sale de la bandeja');
+const simpleTaken=await rpc('take_deposit',[uid(910)]);
+const simpleDone=await rpc('review_queue_deposit',[uid(910),simpleTaken.claim_token,'approved',null,true]);
+assert.ok(simpleDone.credited_at,'Ya cargué acredita en la misma llamada');
+assert.equal((await db.query(`select count(*)::int as n from public.deposit_credits where request_id='${uid(910)}'`)).rows[0].n,1);
+simpleRows=await simplePages();
+assert.ok(!simpleRows.some(row=>row.id===uid(910)));
 await db.close();
 console.log('OK: bandeja compartida, permisos, tokens, auditoría, idempotencia, reparto sin SAC y bonos por horario con límite de carga y aprobación posterior al cierre; archivo reversible de pruebas con corte fijo y pantallas antiguas bloqueadas.');

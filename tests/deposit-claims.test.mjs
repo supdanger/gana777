@@ -58,5 +58,7 @@ test('un conflicto de toma no se convierte en una asignación local ni habilita 
   assert.equal(api.ownsDeposit({claimed_by:'b',claim_token:'token'},'a'),false);
   assert.equal(api.ownsDeposit({claimed_by:'a'},'a'),false);
   assert.equal(api.ownsDeposit({claimed_by:'a',claim_token:'token'},'a'),true);
-  assert.equal(api.depositClaimLabel({status:'approved',claimed_by:null},'a'),'Requiere revisión del supervisor');
+  assert.equal(api.depositClaimLabel({status:'approved',claimed_by:null},'a'),'Cargada');
+  assert.equal(api.depositClaimLabel({status:'pending',claimed_by:null},'a'),'Disponible');
+  assert.equal(api.depositClaimLabel({status:'pending',claimed_by:'b',claimed_name:'Bea',claim_token:'t'},'a'),'En atención por Bea');
 });

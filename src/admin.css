@@ -533,6 +533,7 @@ article.theme-preset:hover:not(.active) { border-color: var(--panel-border); bac
 .credit-ready-heading > svg { width: 44px; height: 44px; margin-bottom: 10px; color: var(--panel-success); }
 .credit-ready-heading h2 { display: block; margin: 6px 42px 3px; font-size: 23px; }
 .credit-ready-heading p { margin: 0; font-size: 13px; }
+.deposit-load-copy { display: grid; gap: 8px; margin: 12px 0; }
 .credit-copy-field { overflow: hidden; border: 1px solid var(--panel-border); border-radius: 10px; background: var(--panel-surface-inset); }
 .credit-copy-field > span { display: block; padding: 8px 12px 0; color: var(--panel-muted); font-size: 10px; font-weight: 700; text-transform: uppercase; }
 .credit-copy-field > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 9px 10px 12px; }

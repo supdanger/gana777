@@ -5,7 +5,7 @@ import { ArrowUpRight, CalendarClock, Check, CheckCircle2, ChevronRight, Clock, 
 import { canonicalMoney, percentText, readMoney } from '../supabase/functions/_shared/bonus-rule';
 import { adminApp, supabase, configError, turnstileSiteKey, REQUEST_COLUMNS, REQUEST_COLUMNS_LEGACY, money, date, statusLabel, type RequestRow, type WithdrawalPart, type Message, type Bank, type BankOperationStatus } from './lib';
 import { DEPOSIT_PAGE_SIZE, depositWindow } from './deposit-page';
-import { depositQueueEnabled, readDepositQueue, takeDeposit, releaseDeposit, reassignDeposit, reviewQueueDeposit, confirmQueueCredit, ownsDeposit, depositClaimLabel, type QueueDeposit, type DepositQueueFilter } from './deposit-claims';
+import { depositQueueEnabled, readDepositQueue, takeDeposit, releaseDeposit, reviewQueueDeposit, confirmQueueCredit, ownsDeposit, depositClaimLabel, type QueueDeposit, type DepositQueueFilter } from './deposit-claims';
 import { bonusCounters } from './bonus-counters';
 const BonusCounterAdmin = lazy(() => import('./bonus-counter-admin').then(module => ({ default: module.BonusCounterAdmin })));
 import { loginFailure, readLoginRetryAt, saveLoginRetryAt } from './login-security';
@@ -141,8 +141,7 @@ function App() {
   const [sharedDeposits, setSharedDeposits] = useState(false);
   const [depositFilter, setDepositFilter] = useState<DepositQueueFilter>('available');
   const [activeDeposit, setActiveDeposit] = useState<QueueDeposit | null>(null);
-  const [reassignReason, setReassignReason] = useState('');
-  const [reassignOpen, setReassignOpen] = useState(false);
+
   const [depositReadError, setDepositReadError] = useState('');
   const [sacStation, setSacStation] = useState<number | null>(() => parseSacStation(readDevicePreference(SAC_STATION_KEY)));
   const [requests, setRequests] = useState<QueueDeposit[]>([]);
@@ -227,6 +226,7 @@ function App() {
   const scrollPositions = useRef(new Map<Page, number>());
   const playerPopHandler = useRef<((event: PopStateEvent) => void) | null>(null);
   const depositTrigger = useRef<HTMLButtonElement | null>(null);
+  const closeDepositDetail = useRef<() => void>(() => {});
   const bankAssignmentId = useRef<string | null>(null);
   const userId = session?.user.id ?? 'demo';
   useEffect(() => { playerPageRef.current = page; currentPageRef.current = page; }, [page]);
@@ -371,7 +371,7 @@ function App() {
     if (!selectedDepositId) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setSelectedDepositId(null); };
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') closeDepositDetail.current(); };
     window.addEventListener('keydown', closeOnEscape);
     return () => {
       document.body.style.overflow = previousOverflow;
@@ -1208,7 +1208,7 @@ function App() {
   function depositList() {
     const demoDeposits: QueueDeposit[] = requests.filter(request => request.kind === 'deposit').sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id));
     const actor = session?.user.id ?? (demo ? 'demo-operator' : '');
-    const demoQueue = sharedDeposits ? demoDeposits.filter(row => row.status !== 'rejected' && !row.credited_at && (depositFilter === 'all' || depositFilter === 'mine' && ownsDeposit(row, actor) || depositFilter === 'available' && row.status === 'pending' && !row.claimed_by)) : demoDeposits;
+    const demoQueue = sharedDeposits ? demoDeposits.filter(row => row.status === 'pending' && !row.credited_at && (depositFilter === 'all' || depositFilter === 'mine' && ownsDeposit(row, actor) || depositFilter === 'available' && !row.claimed_by)) : demoDeposits;
     const total = demo ? demoQueue.length : depositTotal;
     const pager = depositWindow(depositPage, total);
     const items = demo ? demoQueue.slice(pager.from, pager.to + 1) : depositRows;
@@ -1231,10 +1231,15 @@ function App() {
         setSelectedDepositId(row.id);
         setReviewAmount(canonicalMoney(row.amount));
         setReviewGrantBonus(true);
-        setReassignOpen(false);
-        setReassignReason('');
       });
     }
+    function dismissDeposit() {
+      if (busy) { setSelectedDepositId(null); return; }
+      const shouldRelease = sharedDeposits && !!selected && ownsDeposit(selected, actor) && selected.status === 'pending' && !selected.credited_at;
+      if (shouldRelease) void releaseSelected();
+      else setSelectedDepositId(null);
+    }
+    closeDepositDetail.current = dismissDeposit;
     async function releaseSelected() {
       if (!selected) return;
       await action(async () => {
@@ -1242,17 +1247,7 @@ function App() {
         else await releaseDeposit(selected);
         if (!demo && currentSessionId.current !== actor) return;
         setSelectedDepositId(null); setActiveDeposit(null); setDepositReload(value => value + 1);
-        setNotice('Carga liberada. Ya puede atenderla otro compañero.');
-      });
-    }
-    async function assumeSelected() {
-      if (!selected || !window.confirm('¿Verificaste con el responsable anterior si ya acreditó en la plataforma? Vas a asumir esta carga.')) return;
-      await action(async () => {
-        const row = demo ? { ...selected, claimed_by: actor, claimed_name: 'Vos', claim_token: crypto.randomUUID(), claimed_at: new Date().toISOString() } : await reassignDeposit(selected, reassignReason);
-        if (!demo && currentSessionId.current !== actor) return;
-        if (demo) setRequests(old => old.map(item => item.id === row.id ? row : item));
-        setActiveDeposit(row); setSelectedDepositId(row.id); setReassignOpen(false); setDepositReload(value => value + 1);
-        setNotice('La carga quedó a tu nombre. Verificá su acreditación antes de continuar.');
+        setNotice('Carga liberada. Volvió a Disponibles.');
       });
     }
     const selectedName = selected?.user_name || 'Usuario sin nombre';
@@ -1265,10 +1260,11 @@ function App() {
       const db = supabase;
       if (!selected) return;
       if (demo || !db) {
-        const reviewed = { ...selected, status, credit_started_at: status === 'approved' ? new Date().toISOString() : null };
-        setActiveDeposit(reviewed);
+        const reviewed = { ...selected, status, credited_at: status === 'approved' ? new Date().toISOString() : selected.credited_at, credit_started_at: status === 'approved' ? new Date().toISOString() : null };
         setRequests(old => old.map(item => item.id === selected.id ? reviewed : item));
-        if (status === 'approved') { setApprovedDeposit(reviewed); setCopiedCreditField(null); setSelectedDepositId(null); }
+        setSelectedDepositId(null);
+        setActiveDeposit(null);
+        if (status === 'approved') setNotice('Carga registrada.');
         return;
       }
       await action(async () => {
@@ -1292,7 +1288,12 @@ function App() {
         if (sharedDeposits) setDepositReload(value => value + 1);
         setDepositRows(old => old.map(item => item.id === selected.id ? reviewed : item));
         if (selected.status === 'pending') setPendingDepositCount(count => Math.max(0, count - 1));
-        if (status === 'approved' && stillReviewing) { setApprovedDeposit(reviewed); setCopiedCreditField(null); setSelectedDepositId(null); }
+        if (status === 'approved' && stillReviewing && sharedDeposits) {
+          setSelectedDepositId(null);
+          setActiveDeposit(null);
+          setNotice('Carga registrada.');
+        } else if (status === 'approved' && stillReviewing) { setApprovedDeposit(reviewed); setCopiedCreditField(null); setSelectedDepositId(null); }
+        else if (status === 'rejected' && stillReviewing) { setSelectedDepositId(null); setActiveDeposit(null); setNotice('La carga quedó como no cargada.'); }
       });
     }
     async function confirmCredit() {
@@ -1350,23 +1351,23 @@ function App() {
         <h1 id="loads-title">Cargas</h1>
         <span className="loads-count">{waitingForSac ? 'SAC sin elegir' : `${total} ${total === 1 ? 'solicitud' : 'solicitudes'}`}</span>
       </div>
-      {sharedDeposits && <><p className="deposit-queue-description">Todos ven las mismas cargas. Al abrir una disponible, queda a tu nombre hasta que la resuelvas o la liberes.</p><div className="deposit-queue-tabs" role="tablist" aria-label="Filtrar cargas">{([['available', 'Disponibles'], ['mine', 'Mis cargas'], ['all', 'Todas']] as const).map(([key, label]) => <button type="button" role="tab" aria-selected={depositFilter === key} key={key} disabled={busy} onClick={() => { setDepositRows([]); setDepositPage(0); setDepositFilter(key); }}>{label}</button>)}</div></>}
-      {depositReadError ? <div className="alert error" role="alert">{depositReadError}<button type="button" onClick={() => setDepositReload(value => value + 1)}>Reintentar</button></div> : waitingForSac ? null : depositLoading && !items.length ? <p className="empty">Cargando cargas…</p> : !items.length ? <section className="card empty loads-empty"><WalletCards size={34} /><strong>No hay solicitudes de carga</strong><p>{sharedDeposits ? depositFilter === 'mine' ? 'Las cargas que tomes aparecerán acá.' : depositFilter === 'available' ? 'No quedan cargas disponibles. En Todas podés ver las que están en atención.' : 'Las nuevas cargas aparecerán acá.' : staffContext.superAdmin || demo ? 'Las nuevas cargas aparecerán en esta lista.' : 'Las cargas de los teléfonos de este SAC aparecerán en esta lista.'}</p></section> : <div className="loads-list">
+      {sharedDeposits && <><p className="deposit-queue-description">Abrí una disponible y sale de esa lista. La X la devuelve. Ya cargué la termina.</p><div className="deposit-queue-tabs" role="tablist" aria-label="Filtrar cargas">{([['available', 'Disponibles'], ['all', 'Todas']] as const).map(([key, label]) => <button type="button" role="tab" aria-selected={depositFilter === key} key={key} disabled={busy} onClick={() => { setDepositRows([]); setDepositPage(0); setDepositFilter(key); }}>{label}</button>)}</div></>}
+      {depositReadError ? <div className="alert error" role="alert">{depositReadError}<button type="button" onClick={() => setDepositReload(value => value + 1)}>Reintentar</button></div> : waitingForSac ? null : depositLoading && !items.length ? <p className="empty">Cargando cargas…</p> : !items.length ? <section className="card empty loads-empty"><WalletCards size={34} /><strong>No hay solicitudes de carga</strong><p>{sharedDeposits ? depositFilter === 'available' ? 'No quedan cargas disponibles. En Todas se ven las que alguien está atendiendo.' : 'No hay cargas pendientes.' : staffContext.superAdmin || demo ? 'Las nuevas cargas aparecerán en esta lista.' : 'Las cargas de los teléfonos de este SAC aparecerán en esta lista.'}</p></section> : <div className="loads-list">
         {items.map(request => {
           const name = request.user_name || 'Usuario sin nombre';
           const requestRoute = depositRouteLabel(request, !sharedDeposits && (staffContext.superAdmin || demo));
           return <button className="load-request-button" key={request.id} disabled={busy || depositLoading} onClick={event => { depositTrigger.current = event.currentTarget; void openDeposit(request); }} aria-haspopup="dialog">
               <span className="request-avatar" aria-hidden="true">{name.charAt(0).toLocaleUpperCase('es')}</span>
               <span className="request-summary-user"><strong>{name}</strong><small>{date(request.created_at)}</small>{requestRoute ? <small className="request-route">{requestRoute}</small> : null}</span>
-              <span className="request-summary-amount"><strong>{money(request.amount)}</strong><span className={`badge ${request.status}`}>{sharedDeposits ? depositClaimLabel(request, actor) : request.credited_at ? 'Acreditada' : statusLabel[request.status]}</span>{sharedDeposits && <small>{ownsDeposit(request, actor) ? 'Continuar atención' : request.claimed_by || request.status !== 'pending' ? 'Consultar detalle' : 'Abrir y tomar'}</small>}</span>
+              <span className="request-summary-amount"><strong>{money(request.amount)}</strong><span className={`badge ${request.status}`}>{sharedDeposits ? depositClaimLabel(request, actor) : request.credited_at ? 'Acreditada' : statusLabel[request.status]}</span>{sharedDeposits && <small>{ownsDeposit(request, actor) ? 'Continuar' : request.claimed_by ? 'Ver quién la tiene' : 'Abrir y tomar'}</small>}</span>
               <ChevronRight className="request-chevron" aria-hidden="true" />
             </button>;
         })}
       </div>}
       {total > 0 && <nav className="loads-pager" aria-label="Páginas de cargas"><button type="button" disabled={pager.current === 0 || depositLoading} onClick={() => { setSelectedDepositId(null); setDepositPage(pager.current - 1); }}>Anterior</button><span>Página {pager.current + 1} de {pager.pages}</span><button type="button" disabled={pager.current + 1 >= pager.pages || depositLoading} onClick={() => { setSelectedDepositId(null); setDepositPage(pager.current + 1); }}>Siguiente</button></nav>}
-      {selected && <div className="load-modal-backdrop" role="presentation" onClick={event => { if (event.target === event.currentTarget) setSelectedDepositId(null); }}>
+      {selected && <div className="load-modal-backdrop" role="presentation" onClick={event => { if (event.target === event.currentTarget) dismissDeposit(); }}>
         <section className="load-modal" role="dialog" aria-modal="true" aria-label="Revisión de solicitud de carga">
-          <button className="load-modal-close" aria-label="Cerrar detalle" autoFocus onClick={() => setSelectedDepositId(null)}><X /></button>
+          <button className="load-modal-close" aria-label="Cerrar detalle" title={sharedDeposits && ownsDeposit(selected, actor) && selected.status === 'pending' ? 'Devolver a Disponibles' : 'Cerrar'} autoFocus onClick={() => dismissDeposit()}><X /></button>
           <div className="load-modal-summary">
             <div className="summary-field summary-amount"><span><WalletCards size={16} /> Monto solicitado</span><strong>{money(selected.amount)}</strong></div>
             <div className="summary-field"><span><UserRound size={16} /> Nombre del usuario</span><strong>{selectedName}</strong></div>
@@ -1375,9 +1376,8 @@ function App() {
             {route ? <div className="summary-field"><span>Cuenta de destino</span><strong>{route}</strong></div> : null}
           <div className="summary-review-meta"><span>Estado <span className={`badge ${selected.status}`}>{selected.credited_at ? 'Acreditada' : statusLabel[selected.status]}</span></span>{selectedBonus && <span>Bono solicitado: <strong>{selectedBonus}</strong></span>}{selected.bonus_load_number && <span>Carga n.º <strong>{selected.bonus_load_number}</strong></span>}{selected.requested_special_bonus_id && !selected.bonus_id && selected.status === 'approved' && <span>Bono especial solicitado; {selected.credited_at ? 'acreditada' : 'aprobada'} sin bono</span>}</div>
           </div>
-          {sharedDeposits && <div className="deposit-claim-status" role="status"><strong>{depositClaimLabel(selected, actor)}</strong>{selected.claimed_at && <small>Tomada el {date(selected.claimed_at)}</small>}{selected.claimed_at && Date.now() - Date.parse(selected.claimed_at) > 15 * 60_000 && <small>Atención demorada. Consultá con el responsable antes de reasignar.</small>}{canWorkSelected && selected.status === 'pending' && <button type="button" disabled={busy} onClick={() => void releaseSelected()}>Liberar carga</button>}{staffContext.superAdmin && !selected.credited_at && selected.status !== 'rejected' && (!canWorkSelected || selected.status === 'approved') && <button type="button" disabled={busy} onClick={() => setReassignOpen(value => !value)}>Revisar y asumir carga</button>}</div>}
+          {sharedDeposits && <div className="deposit-claim-status" role="status"><strong>{depositClaimLabel(selected, actor)}</strong>{selected.claimed_at && <small>Tomada el {date(selected.claimed_at)}</small>}{canWorkSelected && selected.status === 'pending' && <button type="button" disabled={busy} onClick={() => void releaseSelected()}>Liberar carga</button>}</div>}
           {sharedDeposits && !demo && <DepositClaimHistory key={selected.id} requestId={selected.id} />}
-          {sharedDeposits && reassignOpen && <form className="deposit-reassign-form" onSubmit={event => { event.preventDefault(); void assumeSelected(); }}><p>Consultá al responsable anterior y comprobá en la plataforma si ya acreditó. Asumir la carga no realiza una nueva acreditación.</p><label>Motivo de la reasignación<textarea minLength={5} maxLength={300} required value={reassignReason} onChange={event => setReassignReason(event.target.value)} /></label><button type="submit" disabled={busy}>Confirmar y asumir a mi nombre</button></form>}
           <div className="request-detail">
             <section className="receipt-viewer" aria-label="Comprobante de transferencia">
               <div className="receipt-canvas" aria-live="polite">
@@ -1395,8 +1395,9 @@ function App() {
             <label><input type="radio" name="special-review-bonus" checked={!reviewGrantBonus} onChange={() => setReviewGrantBonus(false)} /> Acreditar solo el dinero recibido, sin bono</label>
             {(() => { const actual = readMoney(reviewAmount); const min = Number(selected.special_min_amount) || 0; const max = Number(selected.special_max_amount) || 0; return actual !== null && (actual < min || actual > max) ? <p className="alert error">El monto recibido no cumple el rango de {money(min)} a {money(max)}. Elegí «sin bono».</p> : null; })()}
           </div>}
-          {canWorkSelected && selected.status === 'pending' && <div className="load-decision-footer"><button className="approve-load" disabled={busy} onClick={() => void reviewSelected('approved')}>Aceptar carga</button><button className="reject-load" disabled={busy} onClick={() => { if (window.confirm('¿Confirmás que querés rechazar esta carga? Esta acción no se puede deshacer.')) void reviewSelected('rejected'); }}>Rechazar</button></div>}
-          {canWorkSelected && selected.status === 'approved' && !selected.credited_at && <div className="load-decision-footer"><button className="approve-load" disabled={busy} onClick={() => { setApprovedDeposit(selected); setSelectedDepositId(null); }}>Ver datos para acreditar</button></div>}
+          {sharedDeposits && canWorkSelected && selected.status === 'pending' && <div className="deposit-load-copy"><div className="credit-copy-field"><span>Usuario</span><div><strong>{selectedName}</strong><button type="button" aria-label="Copiar nombre de usuario" onClick={() => void copyCreditValue(selectedName, 'user')}>{copiedCreditField === 'user' ? <><Check size={17} /> Copiado</> : <><Copy size={17} /> Copiar</>}</button></div></div><div className="credit-copy-field"><span>Monto a cargar</span><div><strong>{money(selected.amount)}</strong><button type="button" aria-label="Copiar monto a cargar" onClick={() => void copyCreditValue(creditAmounts(selected.amount, selected.bonus_percent, selected.bonus_amount ?? 0).copyValue, 'amount')}>{copiedCreditField === 'amount' ? <><Check size={17} /> Copiado</> : <><Copy size={17} /> Copiar</>}</button></div></div></div>}
+          {canWorkSelected && selected.status === 'pending' && <div className="load-decision-footer"><button className="approve-load" disabled={busy} onClick={() => void reviewSelected('approved')}>Ya cargué</button><button className="reject-load" disabled={busy} onClick={() => { if (window.confirm('¿Confirmás que esta carga no se hizo? Esta acción no se puede deshacer.')) void reviewSelected('rejected'); }}>No se cargó</button></div>}
+          {!sharedDeposits && canWorkSelected && selected.status === 'approved' && !selected.credited_at && <div className="load-decision-footer"><button className="approve-load" disabled={busy} onClick={() => { setApprovedDeposit(selected); setSelectedDepositId(null); }}>Ver datos para acreditar</button></div>}
           {selected.credited_at && <div className="load-decision-footer"><button className="approve-load" disabled={busy} onClick={() => void retryCreditPush(selected.id)}>Comprobar o reenviar aviso</button></div>}
         </section>
       </div>}

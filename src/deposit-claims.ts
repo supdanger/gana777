@@ -75,9 +75,9 @@ export function ownsDeposit(row: QueueDeposit, actor: string): boolean {
 }
 
 export function depositClaimLabel(row: QueueDeposit, actor: string): string {
-  if (row.credited_at) return 'Acreditada';
+  if (row.credited_at || row.status === 'approved') return 'Cargada';
   if (row.status === 'rejected') return 'Rechazada';
-  if (ownsDeposit(row, actor)) return row.status === 'approved' ? 'Por acreditar · tuya' : 'Tomada por vos';
+  if (ownsDeposit(row, actor)) return 'Tomada por vos';
   if (row.claimed_by) return `En atención por ${row.claimed_name || 'otro compañero'}`;
-  return row.status === 'approved' ? 'Requiere revisión del supervisor' : 'Disponible';
+  return 'Disponible';
 }
