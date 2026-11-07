@@ -122,7 +122,8 @@ dispositivo; no agrega consultas. Los objetivos se calculan al cambiar los datos
 o la franja, no cada segundo. Todas las tarjetas comparten un solo temporizador
 local para los segundos, que se detiene con la pestaña oculta y al finalizar las esperas. Si un
 cooldown termina fuera del horario, el objetivo es la siguiente apertura válida.
-El horario detallado sigue disponible en el botón de información del bono.
+La información del bono muestra únicamente las reglas configuradas; no agrega
+horarios ni referencias geográficas automáticamente.
 
 Inicio incluido y fin excluido. Las franjas que cruzan medianoche pertenecen al
 día de inicio (viernes 23:00–02:00 termina el sábado). Los bonos sin horario

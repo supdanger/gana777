@@ -52,7 +52,7 @@ export function bonusScheduleText(row: BonusSchedule): string {
   const days = row.bonus_days ?? [];
   const label = days.length === 7 ? 'Todos los días' : days.map(day => bonusWeekdays[day - 1]).filter(Boolean).join(', ');
   const overnight = (minutes(row.bonus_start_time) ?? 0) > (minutes(row.bonus_end_time) ?? 0) ? ' (hasta el día siguiente)' : '';
-  return `${label} · ${row.bonus_start_time?.slice(0, 5)}–${row.bonus_end_time?.slice(0, 5)}${overnight} · hora de Paraguay`;
+  return `${label} · ${row.bonus_start_time?.slice(0, 5)}–${row.bonus_end_time?.slice(0, 5)}${overnight}`;
 }
 
 function fromLocal(localEpoch: number) {

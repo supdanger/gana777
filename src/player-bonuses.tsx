@@ -1,4 +1,4 @@
-import { bonusScheduleOpen, bonusScheduleText, hasBonusSchedule, nextBonusScheduleOpen } from '../supabase/functions/_shared/bonus-schedule';
+import { bonusScheduleOpen, hasBonusSchedule, nextBonusScheduleOpen } from '../supabase/functions/_shared/bonus-schedule';
 import { useBonusScheduleClock } from './bonus-schedule-clock';
 import { sharedPlayerRpc } from './player-resource';
 import { VisibleVideo } from './visible-video';
@@ -128,7 +128,7 @@ export function PlayerBonuses({ demo, onClaim }: { demo: boolean; onClaim: (id: 
     {rulesOffer && <div className="player-bonus-rules-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setRulesOffer(null); }}>
       <section className="player-bonus-rules-dialog" role="dialog" aria-modal="true" aria-labelledby="player-bonus-rules-title">
         <header><div><small>INFORMACIÓN DEL BONO</small><h2 id="player-bonus-rules-title">{rulesOffer.title}</h2></div><button type="button" aria-label="Cerrar información" onClick={() => setRulesOffer(null)}><X size={20} /></button></header>
-        <div className="player-bonus-rules-text">{hasBonusSchedule(rulesOffer) && <p>{bonusScheduleText(rulesOffer)}</p>}{rulesOffer.rules_text.trim() || 'Este bono todavía no tiene información adicional publicada.'}</div>
+        <div className="player-bonus-rules-text">{rulesOffer.rules_text.trim() || 'Este bono todavía no tiene información adicional publicada.'}</div>
       </section>
     </div>}
   </section>;

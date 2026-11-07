@@ -63,7 +63,7 @@ test('el contador apunta a la próxima apertura, respetando días y esperas que 
 test('rechaza horas iguales, segundos, días vacíos o inválidos y permite desactivar el horario',()=>{
   for(const [start,end,days] of [['14:00','14:00',[1]],['14:00:00','14:00',[1]],['24:00','17:00',[1]],['14:00:01','17:00',[1]],['14:00','17:00',[]],['14:00','17:00',[0]]]) assert.throws(()=>parseBonusSchedule(true,start,end,days));
   assert.deepEqual(parseBonusSchedule(true,'14:00','17:00',[7,1,1]).bonus_days,[1,7]);
-  assert.equal(bonusScheduleText(daily),'Todos los días · 14:00–17:00 · hora de Paraguay');
+  assert.equal(bonusScheduleText(daily),'Todos los días · 14:00–17:00');
   assert.equal(bonusScheduleOpen(parseBonusSchedule(false,'','',[])),true);
 });
 

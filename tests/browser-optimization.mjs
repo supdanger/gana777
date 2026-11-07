@@ -413,6 +413,9 @@ try {
   await pp.getByRole('button', { name: /Bonos disponibles/ }).click();
   assert.doesNotMatch(await pp.locator('.player-bonus-card').innerText(), /hora de Paraguay|14:00[–-]17:00/);
   assert.equal(await pp.locator('.player-bonus-card [role="timer"]').count(), 0, 'El bono activo muestra su botón sin texto horario adicional');
+  await pp.getByRole('button', { name: 'Ver información de Tarde 50%', exact: true }).click();
+  assert.doesNotMatch(await pp.locator('.player-bonus-rules-dialog').innerText(), /Paraguay|Todos los días|14:00[–-]17:00/);
+  await pp.getByRole('button', { name: 'Cerrar información', exact: true }).click();
   await pp.getByRole('button', { name: 'Obtener', exact: true }).click();
   await pp.waitForSelector('.modern-deposit-flow');
   await pp.getByLabel('¿Cuánto querés cargar?', { exact: true }).fill('50.000');
