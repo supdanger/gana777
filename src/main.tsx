@@ -14,6 +14,7 @@ import { publicError } from './security';
 import { ContentProvider, useContent } from './content';
 import { DepositRateLimitError, submitDeposit, receiptUrl } from './receipt';
 import { creditAmounts } from './amounts';
+import { PlayerEntryGate } from './player-entry-gate';
 import { userHistoryWindow } from './user-history';
 const ApprovedReferralNotice = lazy(() => import('./referrals').then(module => ({ default: module.ApprovedReferralNotice })));
 const ReferralBonusHistory = lazy(() => import('./referrals').then(module => ({ default: module.ReferralBonusHistory })));
@@ -1538,4 +1539,4 @@ function App() {
     </div>}
   </div>;
 }
-createRoot(document.getElementById('root')!).render(<React.StrictMode><ContentProvider><App /></ContentProvider></React.StrictMode>);
+createRoot(document.getElementById('root')!).render(<React.StrictMode><PlayerEntryGate><ContentProvider><App /></ContentProvider></PlayerEntryGate></React.StrictMode>);

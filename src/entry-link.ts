@@ -44,6 +44,7 @@ export function entryLinkUrl(body: string, verifyHost: string): string | null {
   if (!raw || raw.length > 1900 || /[\s<>"']/.test(raw)) return null;
   let url: URL;
   try { url = new URL(raw); } catch { return null; }
+  if (!url.username && !url.password && !url.search && /^#e=[A-Za-z0-9_-]{32}$/.test(url.hash) && allowedRedirect(`${url.origin}${url.pathname}`)) return raw;
   if (url.protocol !== 'https:' || url.username || url.password || url.hash) return null;
   if (url.hostname.toLowerCase() !== verifyHost.toLowerCase()) return null;
   if (url.pathname !== '/auth/v1/verify') return null;

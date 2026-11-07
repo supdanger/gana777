@@ -243,6 +243,7 @@
     if (!raw || raw.length > 1900 || /[\s<>"']/.test(raw)) return '';
     try {
       var url = new URL(raw);
+      if (!url.username && !url.password && !url.search && /^#e=[A-Za-z0-9_-]{32}$/.test(url.hash) && entryRedirects[url.origin] && url.pathname === '/') return raw;
       if (url.protocol !== 'https:' || url.username || url.password || url.hash) return '';
       if (url.hostname.toLowerCase() !== verifyHost || url.pathname !== '/auth/v1/verify') return '';
       var names = [];

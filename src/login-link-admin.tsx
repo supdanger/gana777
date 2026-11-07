@@ -130,7 +130,7 @@ export function LoginLinkAdmin({ demo, busy, action }: { demo: boolean; busy: bo
         <label>Nombre de usuario<input name="username" minLength={3} maxLength={32} pattern={'[a-zA-Z0-9._\\-]+'} autoCapitalize="none" spellCheck={false} placeholder="juanito" required /></label>
         <label className="login-link-casino">URL personal del casino<input name="casino_url" type="text" inputMode="url" maxLength={8192} placeholder="https://gana777bet.com/?auth=…" spellCheck={false} value={casinoUrl} onChange={event => setCasinoUrl(casinoUrlFieldValue(event.target.value))} onPaste={onCasinoPaste} required /><small>El enlace personal abre «Ir al casino» solo para este jugador. Si pegás solo https://gana777bet.com, se puede usar en varios y el banner queda con el enlace general.</small></label>
       </div>
-      <p className="login-link-note">El enlace de ingreso abre el portal en {redirectTo}. gana777bet.com solo se usa si el jugador toca «Ir al casino». Dura cerca de una hora, funciona una sola vez y hay que pasarlo en privado. La contraseña se muestra después, por si el enlace ya venció.</p>
+      <p className="login-link-note">El enlace abre directamente la cuenta en {redirectTo} durante 24 horas y se puede reutilizar. Pasalo en privado. El casino se abre desde «Ir al casino».</p>
       <button className="cashier-create-submit" disabled={busy}><Link2 size={16} aria-hidden="true" /> Crear usuario y generar enlace</button>
     </form>
     {created && <div className="player-create login-link-result">
@@ -141,8 +141,17 @@ export function LoginLinkAdmin({ demo, busy, action }: { demo: boolean; busy: bo
     <form className="player-create login-link-renew" onSubmit={event => void renewLink(event)}>
       <div className="account-heading"><div><h2>Usuario ya creado</h2><p>Generá otro ingreso para una cuenta que ya existe. No crea otro usuario y no cambia la contraseña ni el enlace del casino.</p></div></div>
       <label>Nombre de usuario<input name="username" minLength={3} maxLength={32} pattern={'[a-zA-Z0-9._\\-]+'} autoCapitalize="none" spellCheck={false} placeholder="juanito" required /></label>
-      <p className="login-link-note">El enlace abre el portal en {redirectTo}. Dura cerca de una hora, funciona una sola vez y hay que pasarlo en privado.</p>
+      <p className="login-link-note">El enlace permite entrar directamente durante 24 horas. Generar otro reemplaza el anterior. Desactivarlo impide nuevos ingresos con ese enlace; las sesiones ya abiertas siguen activas.</p>
       <button className="cashier-create-submit" disabled={busy}><Link2 size={16} aria-hidden="true" /> Generar enlace de nuevo</button>
+      <button type="button" disabled={busy} onClick={event => {
+        const name = new FormData(event.currentTarget.form!).get('username');
+        void action(async () => {
+          if (demo || !supabase) throw new InputError('La vista previa no modifica enlaces.');
+          const result = await supabase.functions.invoke('manage-players', { body: { action: 'revoke-login-link', username: name } });
+          if (result.error || !result.data?.ok) throw await functionError(result.error, result.data, 'No se pudo desactivar el enlace.');
+          setRenewed(null); setCreated(null);
+        });
+      }}>Desactivar enlace de ese usuario</button>
       {renewed && <div className="login-link-result">
         <p className="login-link-note">Listo, @{renewed.username}. La contraseña sigue siendo la que ya tenía.</p>
         <div className="login-link-row"><span>Enlace temporal</span><div><input readOnly value={renewed.actionLink} aria-label="Enlace temporal para el usuario existente" /><button type="button" onClick={() => void copyValue(renewed.actionLink, 'renewed')}>{copied === 'renewed' ? <><Check size={15} /> Copiado</> : <><Copy size={15} /> Copiar</>}</button></div></div>

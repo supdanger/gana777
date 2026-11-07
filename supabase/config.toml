@@ -7,6 +7,8 @@ verify_jwt = false
 verify_jwt = false
 [functions.manage-players]
 verify_jwt = false
+[functions.player-entry]
+verify_jwt = false
 [functions.send-deposit-push]
 verify_jwt = false
 [functions.send-user-push]

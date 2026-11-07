@@ -6,6 +6,16 @@ const host = 'projectrefprojectref.supabase.co';
 const portal = 'https://gana777bet.online/';
 const link = `https://${host}/auth/v1/verify?token=aaaaaaaa&type=magiclink&redirect_to=${encodeURIComponent(portal)}`;
 
+test('acepta enlaces cortos solo en portales permitidos y con secreto completo', () => {
+  const token = 'aBcD0123456789_-aBcD0123456789_-ab'.slice(0, 32);
+  assert.equal(token.length, 32);
+  const short = `${portal}#e=${token}`;
+  assert.equal(entryLinkUrl(entryLinkBody(short), host), short);
+  for (const bad of [`https://evil.example/#e=${token}`, `${portal}otra#e=${token}`, `${portal}?next=evil#e=${token}`, `${portal}#e=short`, `${short}&extra=1`]) {
+    assert.equal(entryLinkUrl(entryLinkBody(bad), host), null);
+  }
+});
+
 test('un ingreso válido se muestra como Entrar y conserva la URL solo para el botón', () => {
   const body = entryLinkBody(link);
   assert.equal(isEntryBody(body), true);

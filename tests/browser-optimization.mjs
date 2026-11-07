@@ -57,6 +57,11 @@ async function openApp(admin, mobile = false, queue = null, bonusPlan = null) {
       receipt.saved = { ...requestRows[0], id: uid(25000), amount: Number(uploaded.get('amount')), status: 'pending', created_at: new Date().toISOString(), receipt_path: 'mock/uploaded.jpg' };
       body = { request: receipt.saved };
     }
+    else if (url.pathname.includes('/functions/') && resource === 'player-entry') {
+      if (bonusPlan?.entryExpired) return route.fulfill({ status: 410, contentType: 'application/json', body: JSON.stringify({ error: 'expired' }) });
+      if (bonusPlan?.entryFailNext) { bonusPlan.entryFailNext = false; return route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }); }
+      body = session(false);
+    }
     else if (url.pathname.includes('/functions/')) body = { ok: true, pending_count: 0, requests: [] };
     else if (url.pathname.includes('/storage/')) return route.abort();
     else if (url.pathname.includes('/rpc/')) {
@@ -148,12 +153,31 @@ async function openApp(admin, mobile = false, queue = null, bonusPlan = null) {
   const page = await context.newPage();
   if (bonusPlan?.now) await page.clock.install({ time: new Date(bonusPlan.now) });
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto(admin ? (process.env.ADMIN_PREVIEW_URL || 'http://127.0.0.1:5181') : (process.env.USER_PREVIEW_URL || 'http://127.0.0.1:5180'));
-  try { await page.waitForSelector(admin ? '.admin-shell' : '.user-app', { timeout: 20000 }); }
+  const appUrl = admin ? (process.env.ADMIN_PREVIEW_URL || 'http://127.0.0.1:5181') : (process.env.USER_PREVIEW_URL || 'http://127.0.0.1:5180');
+  await page.goto(appUrl + (bonusPlan?.entryToken ? `/#e=${bonusPlan.entryToken}` : ''));
+  try { await page.waitForSelector(bonusPlan?.entryExpired || bonusPlan?.entryRetry ? '.entry-access-screen' : admin ? '.admin-shell' : '.user-app', { timeout: 20000 }); }
   catch (error) { console.error(JSON.stringify({ text: await page.locator('body').innerText(), errors, calls }, null, 2)); await page.screenshot({ path: '/tmp/gana777-browser-checks/failure.png', fullPage: true }); throw error; }
   return { context, page, calls, errors };
 }
 try {
+  for (const mode of ['success', 'retry', 'expired']) {
+    const entryPlan = { offers: [], entryToken: 'a'.repeat(32), entryExpired: mode === 'expired', entryFailNext: mode === 'retry', entryRetry: mode === 'retry' };
+    const entry = await openApp(false, true, null, entryPlan);
+    assert.equal(new URL(entry.page.url()).hash, '', 'el secreto desaparece de la dirección');
+    if (mode === 'retry') {
+      await entry.page.getByRole('button', { name: 'Reintentar ingreso', exact: true }).click();
+      await entry.page.waitForSelector('.user-app');
+      assert.equal(entry.calls.filter(call => call.path.endsWith('/player-entry')).length, 2);
+    } else if (mode === 'expired') {
+      await entry.page.getByRole('heading', { name: 'Pedí un enlace nuevo', exact: true }).waitFor();
+      assert.equal(await entry.page.locator('.user-app, .login-card').count(), 0, 'nunca muestra login ni otra cuenta');
+    } else {
+      assert.equal(entry.calls.filter(call => call.path.endsWith('/player-entry')).length, 1, 'StrictMode no duplica el ingreso');
+    }
+    assert.deepEqual(entry.errors, []);
+    await entry.context.close();
+  }
+  records.push({ app: 'direct-player-entry', checks: ['automatic session', 'secret removed from URL', 'retry without login', 'expired link without login', 'single request in StrictMode'] });
   const { context, page, calls, errors } = await openApp(false, true);
   await page.waitForSelector('.action-card');
   assert.equal(calls.filter(call => call.path.endsWith('/unified_chat_messages')).length, 0, 'El inicio no descarga mensajes');

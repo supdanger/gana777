@@ -1,4 +1,5 @@
 import { authenticate, cors, HttpError, json, serverClient } from '../_shared/http.ts';
+import { createPlayerEntry } from '../_shared/player-entry.ts';
 
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new HttpError(400, 'Solicitud no válida.');
@@ -186,14 +187,9 @@ Deno.serve(async request => {
           throw new HttpError(400, 'No se pudo guardar el enlace del casino. La cuenta no quedó guardada.');
         }
       }
-      const { data: link, error: linkError } = await server.auth.admin.generateLink({
-        type: 'magiclink', email, options: { redirectTo },
-      });
-      const actionLink = link?.properties?.action_link;
-      if (linkError || !actionLink) {
-        await server.auth.admin.deleteUser(created.user.id);
-        throw new HttpError(400, 'No se pudo crear el enlace. La cuenta no quedó guardada.');
-      }
+      let actionLink: string;
+      try { actionLink = await createPlayerEntry(server, created.user.id, user.id, redirectTo); }
+      catch (error) { await server.auth.admin.deleteUser(created.user.id); throw error; }
       return json({ user_id: created.user.id, username: playerUsername, action_link: actionLink });
     }
 
@@ -208,11 +204,7 @@ Deno.serve(async request => {
       const { data: authUser, error: authError } = await server.auth.admin.getUserById(profile.user_id);
       const email = authUser.user?.email ?? '';
       if (authError || !authUser.user || !email.endsWith('@players.gana777.internal')) throw new HttpError(400, 'No se pudo preparar el ingreso de ese jugador.');
-      const { data: link, error: linkError } = await server.auth.admin.generateLink({
-        type: 'magiclink', email, options: { redirectTo },
-      });
-      const actionLink = link?.properties?.action_link;
-      if (linkError || !actionLink) throw new HttpError(400, 'No se pudo crear el enlace.');
+      const actionLink = await createPlayerEntry(server, profile.user_id, user.id, redirectTo);
       return json({ user_id: profile.user_id, username: profile.username, action_link: actionLink });
     }
 
@@ -231,6 +223,15 @@ Deno.serve(async request => {
         phone: playerPhone, external_user_id: externalId, whatsapp_principal_slot: principalSlot, updated_at: new Date().toISOString(),
       }).eq('user_id', userId);
       if (error) throw profileError(error);
+      return json({ ok: true });
+    }
+
+    if (action === 'revoke-login-link') {
+      const name = username(payload.username);
+      const { data: profile, error: lookupError } = await server.from('user_profiles').select('user_id').eq('username', name).maybeSingle();
+      if (lookupError || !profile) throw new HttpError(404, 'Ese jugador no existe.');
+      const { error } = await server.from('player_entry_links').update({ revoked_at: new Date().toISOString() }).eq('user_id', profile.user_id);
+      if (error) throw new HttpError(503, 'No pudimos desactivar el enlace.');
       return json({ ok: true });
     }
 
