@@ -34,6 +34,11 @@
   color-scheme: dark;
 }
 .admin-shell.admin-theme-violeta {
+  --panel-surface: #151219;
+  --panel-surface-raised: #231b2d;
+  --panel-surface-soft: #100e14;
+  --panel-surface-inset: #0d0b10;
+  --panel-hover: #2d203a;
   --panel-text: #f5f3ff;
   --panel-muted: #ddd2ee;
   --panel-subtle: #ddd2ee;
@@ -320,7 +325,7 @@
     to { background-position: 100% 50%; }
   }
   .admin-shell.admin-theme-violeta .admin-overview :is(.overview-metric, .bonus-counter-grid .card, .bonus-counter-totals .card, .bonus-shift-history, .deposit-leaderboard, .deposit-leaderboard-list li) {
-    background-image: linear-gradient(115deg, #350067 0%, #510b89 50%, #70249b 100%);
+    background-image: linear-gradient(115deg, #101014 0%, #1c1525 50%, #2c1b3a 100%);
     background-size: 200% 100%;
     background-repeat: no-repeat;
     animation: admin-data-card-enter .36s cubic-bezier(.2, .75, .25, 1) both, admin-violet-card-gradient 24s ease-in-out .36s infinite alternate;
