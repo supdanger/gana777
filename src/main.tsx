@@ -1344,13 +1344,6 @@ function App() {
     const credit = approvedDeposit ? creditAmounts(approvedDeposit.amount, approvedDeposit.bonus_percent, approvedDeposit.bonus_amount ?? 0) : creditAmounts(0, 0);
     const selectedBonus = selected ? requestedBonus(selected) : '';
     const approvedBonus = approvedDeposit ? requestedBonus(approvedDeposit) : '';
-    const selectedAmount = selected?.requested_special_bonus_id ? readMoney(reviewAmount) ?? selected.amount : selected?.amount ?? 0;
-    const selectedAppliesBonus = !!selected && (!selected.requested_special_bonus_id || reviewGrantBonus);
-    const selectedCredit = selected ? creditAmounts(selectedAmount, selectedAppliesBonus ? selected.bonus_percent : 0, selectedAppliesBonus ? selected.bonus_amount ?? 0 : 0) : creditAmounts(0, 0);
-    const selectedExternalBonus = !!selected && selectedAppliesBonus && selected.bonus_reward_type === 'free_spins';
-    const selectedBonusValue = selectedExternalBonus
-      ? selected.bonus_reward_label || 'Giros gratis'
-      : selectedCredit.bonus > 0 ? `+${money(selectedCredit.bonus)}` : 'Sin bono';
     const waitingForSac = !sharedDeposits && !demo && !staffContext.superAdmin && !sacStation;
     const route = selected ? depositRouteLabel(selected, !sharedDeposits && staffContext.superAdmin) : '';
     return <section className="admin-loads" aria-labelledby="loads-title">
@@ -1382,19 +1375,10 @@ function App() {
             <div className="summary-field"><span><Hash size={16} /> Solicitud</span><strong title={selected.id}>{selected.id.slice(0, 8)}</strong></div>
             <div className="summary-field"><span><CalendarClock size={16} /> Fecha y hora</span><strong>{date(selected.created_at)}</strong></div>
             {route ? <div className="summary-field"><span>Cuenta de destino</span><strong>{route}</strong></div> : null}
-          <div className="summary-review-meta"><span>Estado <span className={`badge ${selected.status}`}>{selected.credited_at ? 'Acreditada' : statusLabel[selected.status]}</span></span>{selectedBonus && <span>Bono solicitado: <strong>{selectedBonus}{!selectedExternalBonus && selectedCredit.bonus > 0 ? ` · ${money(selectedCredit.bonus)}` : ''}</strong></span>}{selected.bonus_load_number && <span>Carga n.º <strong>{selected.bonus_load_number}</strong></span>}{selected.requested_special_bonus_id && !selected.bonus_id && selected.status === 'approved' && <span>Bono especial solicitado; {selected.credited_at ? 'acreditada' : 'aprobada'} sin bono</span>}</div>
+          <div className="summary-review-meta"><span>Estado <span className={`badge ${selected.status}`}>{selected.credited_at ? 'Acreditada' : statusLabel[selected.status]}</span></span>{selectedBonus && <span>Bono solicitado: <strong>{selectedBonus}</strong></span>}{selected.bonus_load_number && <span>Carga n.º <strong>{selected.bonus_load_number}</strong></span>}{selected.requested_special_bonus_id && !selected.bonus_id && selected.status === 'approved' && <span>Bono especial solicitado; {selected.credited_at ? 'acreditada' : 'aprobada'} sin bono</span>}</div>
           </div>
           {sharedDeposits && <div className="deposit-claim-status" role="status"><strong>{depositClaimLabel(selected, actor)}</strong>{selected.claimed_at && <small>Tomada el {date(selected.claimed_at)}</small>}{canWorkSelected && selected.status === 'pending' && <button type="button" disabled={busy} onClick={() => void releaseSelected()}>Liberar carga</button>}</div>}
           {sharedDeposits && !demo && <DepositClaimHistory key={selected.id} requestId={selected.id} />}
-          {canWorkSelected && selected.status === 'pending' && <section className="deposit-credit-card" aria-label="Resumen para acreditar">
-            <div className="deposit-credit-card-heading"><span>Datos para acreditar</span><small>El total se calcula automáticamente.</small></div>
-            <div className="credit-copy-field"><span>Usuario</span><div><strong>{selectedName}</strong><button type="button" aria-label="Copiar nombre de usuario" onClick={() => void copyCreditValue(selectedName, 'user')}>{copiedCreditField === 'user' ? <><Check size={17} /> Copiado</> : <><Copy size={17} /> Copiar</>}</button></div></div>
-            <div className="credit-breakdown deposit-credit-breakdown">
-              <div><span>Carga recibida</span><strong>{money(selectedAmount)}</strong></div>
-              <div><span>{selectedExternalBonus ? 'Premio adicional' : 'Bono'}</span><strong>{selectedExternalBonus ? selectedBonusValue : selectedCredit.bonus > 0 ? selectedBonusValue : 'Sin bono'}</strong></div>
-            </div>
-            <div className="credit-copy-field credit-total"><span>{selectedExternalBonus ? 'Total de dinero' : 'Total a acreditar'}</span><div><strong>{money(selectedCredit.total)}</strong><button type="button" aria-label="Copiar total a acreditar" onClick={() => void copyCreditValue(selectedCredit.copyValue, 'amount')}>{copiedCreditField === 'amount' ? <><Check size={17} /> Copiado</> : <><Copy size={17} /> Copiar total</>}</button></div><small>Se copiará {selectedCredit.copyValue}, listo para pegar.</small></div>
-          </section>}
           <div className="request-detail">
             <section className="receipt-viewer" aria-label="Comprobante de transferencia">
               <div className="receipt-canvas" aria-live="polite">

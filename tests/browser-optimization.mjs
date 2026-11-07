@@ -320,8 +320,7 @@ try {
   await qp.keyboard.press('Escape');
   await qp.waitForSelector('.load-modal', { state: 'detached' });
   await qp.getByRole('button', { name: /Carga compartida 0 / }).click();
-  await qp.locator('.deposit-credit-card').waitFor();
-  assert.match(await qp.locator('.deposit-credit-card').innerText(), /TOTAL A ACREDITAR[\s\S]*15\.000/);
+  assert.equal(await qp.locator('.deposit-credit-card').count(), 0, 'El comprobante no repite los datos de acreditación');
   await qp.getByRole('button', { name: 'Confirmar carga', exact: true }).click();
   await qp.waitForSelector('.load-modal', { state: 'detached' });
   await qp.waitForSelector('.credit-ready-modal');
