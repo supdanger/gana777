@@ -1,3 +1,5 @@
+import type { InboxPagination } from './inbox-data';
+import { InboxPager } from './inbox-pager';
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { ArrowLeft, Check, CircleCheck, Copy, Images, Link2, MessageCircle, RotateCcw, Search, Send, Unlink2, X } from 'lucide-react';
 import { useAdminRefreshVersion } from './admin-refresh';
@@ -25,13 +27,14 @@ function shortDate(value: string) {
     : new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: 'short' }).format(when);
 }
 
-export function AdminChat({ inbox, selectedId, demo, canManageExternalLinks, onSelect, onChanged }: {
+export function AdminChat({ inbox, selectedId, demo, canManageExternalLinks, onSelect, onChanged, pagination }: {
+  pagination?: InboxPagination;
   inbox: ChatInboxRow[]; selectedId: string; demo: boolean; canManageExternalLinks: boolean;
   onSelect: (id: string) => void; onChanged: () => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<Filter>('pending');
+  const [search, setSearch] = useState(pagination?.search ?? '');
+  const [filter, setFilter] = useState<Filter>(pagination?.filter ?? 'pending');
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -53,20 +56,38 @@ export function AdminChat({ inbox, selectedId, demo, canManageExternalLinks, onS
   const externalLinksRef = useRef(externalLinks);
   activeThreadId.current = selectedId;
   externalLinksRef.current = externalLinks;
-  const selected = inbox.find(row => row.user_id === selectedId);
+  const selectedSnapshot = useRef<ChatInboxRow | undefined>(undefined);
+  const currentSelected = inbox.find(row => row.user_id === selectedId);
+  const [selectedFallback, setSelectedFallback] = useState<ChatInboxRow | undefined>(undefined);
+  if (currentSelected && (selectedSnapshot.current?.user_id !== selectedId || currentSelected.last_created_at >= selectedSnapshot.current.last_created_at)) selectedSnapshot.current = currentSelected;
+  if (!currentSelected && selectedFallback?.user_id === selectedId && selectedSnapshot.current?.user_id !== selectedId) selectedSnapshot.current = selectedFallback;
+  const latestVisibleMessage = messages.at(-1);
+  if (latestVisibleMessage?.user_id === selectedId && selectedSnapshot.current?.user_id === selectedId && latestVisibleMessage.created_at >= selectedSnapshot.current.last_created_at) {
+    selectedSnapshot.current = { ...selectedSnapshot.current, last_message_id: latestVisibleMessage.id, last_created_at: latestVisibleMessage.created_at, last_body: latestVisibleMessage.body, last_sender_id: latestVisibleMessage.sender_id };
+  }
+  const selected = selectedSnapshot.current?.user_id === selectedId ? selectedSnapshot.current : undefined;
+  useEffect(() => {
+    if (!selectedId || demo || !supabase || currentSelected || selectedSnapshot.current?.user_id === selectedId) return;
+    const controller = new AbortController();
+    void supabase.from('chat_inbox').select('*').eq('user_id', selectedId).abortSignal(controller.signal).maybeSingle().then(({ data, error }) => {
+      if (!controller.signal.aborted && !error && data) setSelectedFallback(data as ChatInboxRow);
+    });
+    return () => controller.abort();
+  }, [selectedId, demo, inbox]);
+  useEffect(() => { if (selected?.username) setEntryUser(selected.username); }, [selectedId, selected?.username]);
   const selectedSubtitle = selected ? [
     selected.completed_at ? 'Conversación completada' : '',
     selected.display_name && selected.display_name !== selected.username ? selected.display_name : '',
   ].filter(Boolean).join(' · ') : '';
-  const pending = pendingChatCount(inbox);
-  const completed = inbox.filter(row => !!row.completed_at).length;
+  const pending = pagination?.pending ?? pendingChatCount(inbox);
+  const completed = pagination?.completed ?? inbox.filter(row => !!row.completed_at).length;
   const title = (row: ChatInboxRow) => row.username || row.display_name || `Usuario ${row.user_id.slice(0, 8)}`;
   const adminRefresh = useAdminRefreshVersion();
 
   useEffect(() => {
     if (!selectedId || demo) { setMessages([]); return; }
     stickToBottom.current = true;
-    setMessages([]); setHasMore(false); setError(''); setNotice(''); setCopied(false); setImage(null);
+    setMessages([]); setLoadingOlder(false); setHasMore(false); setError(''); setNotice(''); setCopied(false); setImage(null);
     setEntryUser(inbox.find(row => row.user_id === selectedId)?.username ?? '');
     if (imageInput.current) imageInput.current.value = '';
   }, [selectedId, demo]);
@@ -231,8 +252,11 @@ export function AdminChat({ inbox, selectedId, demo, canManageExternalLinks, onS
     onChanged();
   }
 
+  const onQueryRef = useRef(pagination?.onQuery);
+  onQueryRef.current = pagination?.onQuery;
+  useEffect(() => { onQueryRef.current?.(search, filter); }, [search, filter]);
   const query = search.trim().toLocaleLowerCase('es');
-  const visible = inbox.filter(row => {
+  const visible = pagination ? inbox : inbox.filter(row => {
     if (filter === 'pending' && !needsChatReply(row)) return false;
     if (filter === 'completed' && !row.completed_at) return false;
     if (!query) return true;
@@ -244,7 +268,7 @@ export function AdminChat({ inbox, selectedId, demo, canManageExternalLinks, onS
     <div className="admin-chat-heading"><div><h1>Chat</h1><p>Respondé las consultas de los jugadores desde una sola bandeja.</p></div><span>{pending} por responder</span></div>
     <div className="admin-chat-layout">
       <aside className="admin-chat-inbox" aria-label="Conversaciones">
-        <div className="admin-chat-inbox-header"><strong>Conversaciones</strong><small>{inbox.length} en total</small></div>
+        <div className="admin-chat-inbox-header"><strong>Conversaciones</strong><small>{pagination?.all ?? inbox.length} en total</small></div>
         <label className="admin-chat-search"><Search size={18} aria-hidden="true" /><span className="sr-only">Buscar conversación</span><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Usuario o último mensaje" /></label>
         <div className="admin-chat-filters" role="group" aria-label="Filtrar conversaciones">
           <button type="button" className={filter === 'pending' ? 'active' : ''} aria-pressed={filter === 'pending'} onClick={() => setFilter('pending')}>Por responder <span>{pending}</span></button>
@@ -258,13 +282,14 @@ export function AdminChat({ inbox, selectedId, demo, canManageExternalLinks, onS
             {needsChatReply(row) && <span className="admin-chat-unanswered" aria-label="Por responder" />}
           </button>) : <p className="admin-chat-list-empty">{query ? 'No encontramos conversaciones con esa búsqueda.' : filter === 'pending' ? 'No hay consultas por responder.' : filter === 'completed' ? 'No hay conversaciones completadas.' : 'Todavía no hay conversaciones.'}</p>}
         </div>
+        <InboxPager pagination={pagination} />
       </aside>
       <section className="admin-chat-thread" aria-label={selected ? `Conversación con ${title(selected)}` : 'Seleccioná una conversación'}>
         {selected ? <>
           <header className="admin-chat-thread-header"><button type="button" className="admin-chat-back" aria-label="Volver a conversaciones" onClick={() => onSelect('')}><ArrowLeft size={19} /></button><span className="admin-chat-avatar">{title(selected).slice(0, 1).toUpperCase()}</span><div><strong>{title(selected)}</strong>{selectedSubtitle && <small>{selectedSubtitle}</small>}</div>{selected.username && <button type="button" className="admin-chat-copy" onClick={() => void copyUsername()} aria-label="Copiar nombre de usuario">{copied ? <Check size={16} /> : <Copy size={16} />}<span>{copied ? 'Copiado' : 'Copiar usuario'}</span></button>}</header>
           <div className="admin-chat-actions"><button type="button" className={selected.completed_at ? 'admin-chat-reopen' : 'admin-chat-complete'} disabled={demo || updatingStatus || sending || sendingEntry} onClick={() => void updateStatus(!selected.completed_at)}>{selected.completed_at ? <RotateCcw size={16} /> : <CircleCheck size={16} />}{updatingStatus ? 'Guardando…' : selected.completed_at ? 'Reabrir chat' : 'Marcar como completado'}</button></div>
           {!!externalLinks.length && <div className="admin-chat-linked"><div><Link2 size={16} /><strong>Burbuja vinculada</strong></div>{externalLinks.map(link => <span key={link.id}><small>{link.nickname}</small>{canManageExternalLinks && <button type="button" disabled={demo || unlinking} onClick={() => void unlinkExternal(link.id, link.nickname)}><Unlink2 size={14} /> Desvincular</button>}</span>)}</div>}
-          <div className="admin-chat-messages" ref={messageLog} role="log" aria-live="polite" aria-relevant="additions text" onScroll={event => { const element = event.currentTarget; stickToBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80; }}>{hasMore && <button type="button" className="admin-chat-older" disabled={loadingOlder} onClick={() => void loadOlder()}>{loadingOlder ? 'Cargando…' : 'Ver mensajes anteriores'}</button>}{loading && <p className="admin-chat-list-empty">Cargando conversación…</p>}{messages.map(message => <div className={`message ${message.sender_id !== message.user_id ? 'mine' : ''}`} key={message.id}><p className={isEntryBody(message.body) ? 'is-entry' : undefined}>{message.body === 'Imagen adjunta' && message.attachment_path ? '' : <ChatMessageText body={message.body} interactive={false} />}{message.attachment_path && <ChatImage path={message.attachment_path} source={message.source} />}</p><small>{message.source === 'external' ? 'Burbuja · ' : ''}{message.sender_id !== message.user_id ? 'Soporte · ' : ''}{date(message.created_at)}</small></div>)}</div>
+          <div className="admin-chat-messages" ref={messageLog} role="log" aria-live="polite" aria-relevant="additions text" onScroll={event => { const element = event.currentTarget; stickToBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80; }}>{hasMore && <button type="button" className="admin-chat-older" disabled={loadingOlder} onClick={() => void loadOlder()}>{loadingOlder ? 'Cargando…' : 'Ver mensajes anteriores'}</button>}{loading && <p className="admin-chat-list-empty">Cargando conversación…</p>}{messages.filter(message => message.user_id === selectedId).map(message => <div className={`message ${message.sender_id !== message.user_id ? 'mine' : ''}`} key={message.id}><p className={isEntryBody(message.body) ? 'is-entry' : undefined}>{message.body === 'Imagen adjunta' && message.attachment_path ? '' : <ChatMessageText body={message.body} interactive={false} />}{message.attachment_path && <ChatImage path={message.attachment_path} source={message.source} />}</p><small>{message.source === 'external' ? 'Burbuja · ' : ''}{message.sender_id !== message.user_id ? 'Soporte · ' : ''}{date(message.created_at)}</small></div>)}</div>
           {(error || notice) && <p className={`admin-chat-feedback${error ? ' is-error' : ''}`} role={error ? 'alert' : 'status'}>{error || notice}</p>}
           {!selected.completed_at && <EntryLinkBar id="admin-chat-entry-user" username={entryUser} onUsername={setEntryUser} disabled={demo || sending || sendingEntry || updatingStatus} onSend={() => void sendEntry()} />}
           {!selected.completed_at && <form className="admin-chat-composer" onSubmit={event => void send(event)}><label htmlFor="admin-chat-message" className="sr-only">Responder a {title(selected)}</label>{imagePreview && <div className="chat-image-preview"><img src={imagePreview} alt="Imagen seleccionada" /><span>{image?.name}</span><button type="button" aria-label="Quitar imagen" onClick={() => { setImage(null); if (imageInput.current) imageInput.current.value = ''; }}><X size={16} /></button></div>}<textarea id="admin-chat-message" name="message" placeholder="Escribí tu respuesta…" maxLength={2000} rows={2} required={!image} disabled={sending || sendingEntry || demo || updatingStatus} onKeyDown={onComposerKeyDown} /><input ref={imageInput} className="chat-file-input" type="file" accept="image/*" disabled={sending || sendingEntry || demo || updatingStatus} onChange={event => setImage(event.target.files?.[0] ?? null)} /><button type="button" className="admin-chat-image-button" aria-label="Adjuntar imagen de la galería" disabled={sending || sendingEntry || demo || updatingStatus} onClick={() => imageInput.current?.click()}><Images size={18} /></button><button type="submit" disabled={sending || sendingEntry || demo || updatingStatus} aria-label="Enviar respuesta"><Send size={18} /> Enviar</button><small>Enter para enviar · Shift + Enter para nueva línea</small></form>}

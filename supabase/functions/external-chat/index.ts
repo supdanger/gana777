@@ -130,6 +130,8 @@ Deno.serve(async request => {
     if (thread.origin !== origin) throw new HttpError(403, 'Origen no autorizado para esta conversación.');
     if (action !== 'send') await touchThread(db, thread.id);
     if (action === 'send') {
+      const validatedBody = typeof input.body === 'string' && input.body.trim() ? parseMessage(input.body) : null;
+      if (!validatedBody && !input.attachment) parseMessage(input.body);
       let attachmentPath: string | null = null;
       if (input.attachment !== undefined && input.attachment !== null) {
         const attachment = input.attachment;
@@ -154,7 +156,7 @@ Deno.serve(async request => {
         });
         if (uploadError) throw new HttpError(503, 'No pudimos guardar la imagen. Intentá nuevamente.');
       }
-      const body = typeof input.body === 'string' && input.body.trim() ? parseMessage(input.body) : attachmentPath ? 'Imagen adjunta' : parseMessage(input.body);
+      const body = validatedBody ?? 'Imagen adjunta';
       const { error } = await db.from('external_chat_messages').insert({ thread_id: thread.id, sender_type: 'visitor', sender_id: null, body, attachment_path: attachmentPath });
       if (error) {
         if (attachmentPath) await db.storage.from('external-chat-files').remove([attachmentPath]);

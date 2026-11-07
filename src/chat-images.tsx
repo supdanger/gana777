@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Image as ImageIcon } from 'lucide-react';
 import { supabase } from './lib';
+import { cachedResource } from './resource-cache';
 import { compressReceipt } from './image-compression';
 import { InputError, validateReceipt } from '../supabase/functions/_shared/validation';
 
@@ -64,7 +65,11 @@ export function ChatImage({ path, source = 'app' }: { path: string; source?: 'ap
     if (!nearViewport || !supabase) return;
     let alive = true;
     setUrl(''); setFailed(false);
-    void supabase.storage.from(source === 'external' ? 'external-chat-files' : bucket).createSignedUrl(path, source === 'external' ? 3600 : 86400).then(({ data, error }) => {
+    void cachedResource(`chat-image:${source}:${path}`, source === 'external' ? 50 * 60_000 : 20 * 60 * 60_000, async () => {
+      const result = await supabase!.storage.from(source === 'external' ? 'external-chat-files' : bucket).createSignedUrl(path, source === 'external' ? 3600 : 86400);
+      if (result.error || !result.data?.signedUrl) throw result.error ?? new Error('Imagen no disponible');
+      return result;
+    }).then(({ data, error }) => {
       if (!alive) return;
       if (error || !data?.signedUrl) setFailed(true);
       else setUrl(data.signedUrl);

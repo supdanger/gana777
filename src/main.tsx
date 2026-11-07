@@ -1,12 +1,13 @@
-import React, { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import React, { lazy, startTransition, useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Session } from '@supabase/supabase-js';
 import { ArrowUpRight, CalendarClock, Check, CheckCircle2, ChevronRight, Clock, Copy, Hash, UserRound, WalletCards, X } from 'lucide-react';
 import { canonicalMoney, percentText, readMoney } from '../supabase/functions/_shared/bonus-rule';
 import { adminApp, supabase, configError, turnstileSiteKey, REQUEST_COLUMNS, REQUEST_COLUMNS_LEGACY, money, date, statusLabel, type RequestRow, type WithdrawalPart, type Message, type Bank, type BankOperationStatus } from './lib';
 import { DEPOSIT_PAGE_SIZE, depositWindow } from './deposit-page';
+import { depositQueueEnabled, readDepositQueue, takeDeposit, releaseDeposit, reassignDeposit, reviewQueueDeposit, confirmQueueCredit, ownsDeposit, depositClaimLabel, type QueueDeposit, type DepositQueueFilter } from './deposit-claims';
 import { bonusCounters } from './bonus-counters';
-import { BonusCounterAdmin } from './bonus-counter-admin';
+const BonusCounterAdmin = lazy(() => import('./bonus-counter-admin').then(module => ({ default: module.BonusCounterAdmin })));
 import { loginFailure, readLoginRetryAt, saveLoginRetryAt } from './login-security';
 import { assertFormFields, InputError, parseAmount, parseAlias, parseCbu, parseHolder, parseMessage, parseUuid, validateReceipt } from '../supabase/functions/_shared/validation';
 import { publicError } from './security';
@@ -14,8 +15,11 @@ import { ContentProvider, useContent } from './content';
 import { DepositRateLimitError, submitDeposit, receiptUrl } from './receipt';
 import { creditAmounts } from './amounts';
 import { userHistoryWindow } from './user-history';
-import { ApprovedReferralNotice, ReferralBonusHistory, ReferralRewardsAdmin } from './referrals';
-import { UserWheel, WheelAdmin } from './wheel';
+const ApprovedReferralNotice = lazy(() => import('./referrals').then(module => ({ default: module.ApprovedReferralNotice })));
+const ReferralBonusHistory = lazy(() => import('./referrals').then(module => ({ default: module.ReferralBonusHistory })));
+const ReferralRewardsAdmin = lazy(() => import('./referrals').then(module => ({ default: module.ReferralRewardsAdmin })));
+const UserWheel = lazy(() => import('./wheel').then(module => ({ default: module.UserWheel })));
+const WheelAdmin = lazy(() => import('./wheel').then(module => ({ default: module.WheelAdmin })));
 
 function missingBonusAmount(error: { message?: string } | null) {
   return !!error && /bonus_amount|requested_special_bonus_id|bonus_reward_type|bonus_reward_label|bonus_load_number/i.test(error.message ?? '');
@@ -29,44 +33,64 @@ function requestedBonus(row: RequestRow) {
   if ((row.bonus_amount ?? 0) > 0) return `+${money(row.bonus_amount ?? 0)}`;
   return '';
 }
-import { Brand, LoginView, UserHeader, UserHome, UserProfile, RequestForm, Conversation, type Page } from './user-views';
-import { AccountAdmin } from './account-admin';
-import { BonusAdmin } from './bonus-admin';
-import { ShiftAdmin } from './shift-admin';
-import { SacBoard } from './sac-board';
+import { Brand, LoginView, UserHeader, type Page } from './user-shell';
+const UserHome = lazy(() => import('./user-views').then(module => ({ default: module.UserHome })));
+const UserProfile = lazy(() => import('./user-views').then(module => ({ default: module.UserProfile })));
+const RequestForm = lazy(() => import('./user-views').then(module => ({ default: module.RequestForm })));
+const Conversation = lazy(() => import('./user-views').then(module => ({ default: module.Conversation })));
+const AccountAdmin = lazy(() => import('./account-admin').then(module => ({ default: module.AccountAdmin })));
+const BonusAdmin = lazy(() => import('./bonus-admin').then(module => ({ default: module.BonusAdmin })));
+const DepositClaimHistory = lazy(() => import('./deposit-claim-history').then(module => ({ default: module.DepositClaimHistory })));
+const ShiftAdmin = lazy(() => import('./shift-admin').then(module => ({ default: module.ShiftAdmin })));
+const SacBoard = lazy(() => import('./sac-board').then(module => ({ default: module.SacBoard })));
 import { SAC_STATION_KEY, depositRouteLabel, parseSacStation, scopedDepositFilter } from './sac';
-import { AdminShell } from './admin-shell';
+const AdminShell = lazy(() => import('./admin-shell').then(module => ({ default: module.AdminShell })));
+const AdminOverview = lazy(() => import('./admin-overview').then(module => ({ default: module.AdminOverview })));
 import { AdminRefreshProvider } from './admin-refresh';
 import { pendingChatCount, pendingRequestCount } from './admin-navigation';
-import { CashierAdmin } from './cashier-admin';
-import { ContactAdmin } from './contact-admin';
-import { PlayerAdmin } from './player-admin';
-import { LoginLinkAdmin } from './login-link-admin';
-import { PortalAdmin } from './portal-admin';
-import { AdminWithdrawals } from './admin-withdrawals';
-import { AdminChat, type ChatInboxRow } from './admin-chat';
-import { AdminExternalChat, type ExternalChatInboxRow } from './admin-external-chat';
-import { AdminExternalChatSettings } from './admin-external-chat-settings';
-import { DepositLeaderboard } from './deposit-leaderboard';
-import { AdminPlayerAccess } from './admin-player-access';
-import { PlatformAdmin } from './platform-admin';
+const CashierAdmin = lazy(() => import('./cashier-admin').then(module => ({ default: module.CashierAdmin })));
+const ContactAdmin = lazy(() => import('./contact-admin').then(module => ({ default: module.ContactAdmin })));
+const PlayerAdmin = lazy(() => import('./player-admin').then(module => ({ default: module.PlayerAdmin })));
+const LoginLinkAdmin = lazy(() => import('./login-link-admin').then(module => ({ default: module.LoginLinkAdmin })));
+const PortalAdmin = lazy(() => import('./portal-admin').then(module => ({ default: module.PortalAdmin })));
+const AdminWithdrawals = lazy(() => import('./admin-withdrawals').then(module => ({ default: module.AdminWithdrawals })));
+import type { ChatInboxRow } from './admin-chat';
+const AdminChat = lazy(() => import('./admin-chat').then(module => ({ default: module.AdminChat })));
+import type { ExternalChatInboxRow } from './admin-external-chat';
+const AdminExternalChat = lazy(() => import('./admin-external-chat').then(module => ({ default: module.AdminExternalChat })));
+const AdminExternalChatSettings = lazy(() => import('./admin-external-chat-settings').then(module => ({ default: module.AdminExternalChatSettings })));
+const DepositLeaderboard = lazy(() => import('./deposit-leaderboard').then(module => ({ default: module.DepositLeaderboard })));
+const AdminPlayerAccess = lazy(() => import('./admin-player-access').then(module => ({ default: module.AdminPlayerAccess })));
+const PlatformAdmin = lazy(() => import('./platform-admin').then(module => ({ default: module.PlatformAdmin })));
 import { AccessSessionError, invokeAdminPlayerAccess } from './admin-player-access-api';
 import { removeChatImage, uploadChatImage } from './chat-images';
 import { playerSignInEmail } from './players';
 import { PlayerNotifications, unlinkDeviceSubscription } from './notifications';
-import { PlayerBonuses } from './player-bonuses';
-import { ScheduledAnnouncementsAdmin } from './scheduled-announcements-admin';
-import { TelegramAdmin } from './telegram-admin';
-import { ThemesAdmin } from './themes-admin';
+const PlayerBonuses = lazy(() => import('./player-bonuses').then(module => ({ default: module.PlayerBonuses })));
+const ScheduledAnnouncementsAdmin = lazy(() => import('./scheduled-announcements-admin').then(module => ({ default: module.ScheduledAnnouncementsAdmin })));
+const TelegramAdmin = lazy(() => import('./telegram-admin').then(module => ({ default: module.TelegramAdmin })));
+const ThemesAdmin = lazy(() => import('./themes-admin').then(module => ({ default: module.ThemesAdmin })));
 import { deviceFootprint } from './device-footprint';
 import { themeSurface } from './portal-theme-design';
 import { allStaffPermissions, canOpenAdminPage, noStaffPermissions, staffPermissionPages, staffPermissionRoute, staffSignInEmail, type StaffPermissions } from './staff';
+import { AsyncView, ViewLoading } from './async-view';
+import { readDevicePreference, writeDevicePreference } from './device-preferences';
+import { clearViewState } from './view-state';
+import { registerPortalWorker } from './worker-registration';
+import { cachedResource, clearResourceCache, invalidateResourcePrefix } from './resource-cache';
+import { MESSAGE_PAGE_SIZE, mergeMessages } from './query-utils';
+import { readRequestPage, readWithdrawalParts } from './request-data';
+import { inboxIds, readInboxPage, type ChatSummary, type ExternalSummary, type InboxFilter } from './inbox-data';
 import './styles.css';
 import './mobile.css';
 import './reference.css';
-import './admin.css';
 
-if (adminApp) document.title = 'GANA777 Panel';
+if (adminApp) { document.title = 'GANA777 Panel'; document.documentElement.classList.add('admin-document'); document.body.classList.add('admin-document'); void import('./admin-login.css'); }
+if (!adminApp && import.meta.env.PROD && 'serviceWorker' in navigator) {
+  const register = () => { void registerPortalWorker().catch(() => {}); };
+  if (document.readyState === 'complete') register();
+  else window.addEventListener('load', register, { once: true });
+}
 
 function playerTextField(target: EventTarget | null) {
   const node = target instanceof Node ? target : null;
@@ -98,6 +122,8 @@ if (!adminApp && typeof document !== 'undefined') {
 function App() {
   const { settings, initialReady, initialError, retryInitialLoad } = useContent();
   const [session, setSession] = useState<Session | null>(null);
+  const currentSessionId = useRef(session?.user.id);
+  currentSessionId.current = session?.user.id;
   const [loading, setLoading] = useState(!!supabase);
   const [demo, setDemo] = useState(false);
   const [page, setPage] = useState<Page>('home');
@@ -112,15 +138,35 @@ function App() {
     superAdmin: false, username: '', displayName: '', avatarPath: null, permissions: noStaffPermissions,
   });
   const [staffReady, setStaffReady] = useState(false);
-  const [sacStation, setSacStation] = useState<number | null>(() => parseSacStation(window.localStorage.getItem(SAC_STATION_KEY)));
-  const [requests, setRequests] = useState<RequestRow[]>([]);
+  const [sharedDeposits, setSharedDeposits] = useState(false);
+  const [depositFilter, setDepositFilter] = useState<DepositQueueFilter>('available');
+  const [activeDeposit, setActiveDeposit] = useState<QueueDeposit | null>(null);
+  const [reassignReason, setReassignReason] = useState('');
+  const [reassignOpen, setReassignOpen] = useState(false);
+  const [depositReadError, setDepositReadError] = useState('');
+  const [sacStation, setSacStation] = useState<number | null>(() => parseSacStation(readDevicePreference(SAC_STATION_KEY)));
+  const [requests, setRequests] = useState<QueueDeposit[]>([]);
   const [withdrawalParts, setWithdrawalParts] = useState<WithdrawalPart[]>([]);
   const [withdrawalReload, setWithdrawalReload] = useState(0);
+  const [withdrawalPages, setWithdrawalPages] = useState({ pending: 0, resolved: 0 });
+  const [withdrawalTotals, setWithdrawalTotals] = useState({ pending: 0, resolved: 0 });
+  const [withdrawalsLoading, setWithdrawalsLoading] = useState(false);
   const [partPreview, setPartPreview] = useState<{ key: string; url: string } | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [chatHasMore, setChatHasMore] = useState(false);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatOlderLoading, setChatOlderLoading] = useState(false);
+  const chatRequestVersion = useRef(0);
+  const [playerHistory, setPlayerHistory] = useState<Record<RequestRow['kind'], { rows: RequestRow[]; total: number; loading: boolean; error: string }>>({ deposit: { rows: [], total: 0, loading: false, error: '' }, withdrawal: { rows: [], total: 0, loading: false, error: '' } });
   const [chatBubbleOpen, setChatBubbleOpen] = useState(false);
   const [chatInbox, setChatInbox] = useState<ChatInboxRow[]>([]);
   const [chatReload, setChatReload] = useState(0);
+  const [chatSummary, setChatSummary] = useState<ChatSummary[]>([]);
+  const [externalSummary, setExternalSummary] = useState<ExternalSummary[]>([]);
+  const [chatQuery, setChatQuery] = useState({ search: '', filter: 'pending' as InboxFilter, page: 0 });
+  const [externalQuery, setExternalQuery] = useState({ search: '', filter: 'pending' as InboxFilter, page: 0 });
+  const [chatPageState, setChatPageState] = useState({ total: 0, loading: false });
+  const [externalPageState, setExternalPageState] = useState({ total: 0, loading: false });
   const [externalChatInbox, setExternalChatInbox] = useState<ExternalChatInboxRow[]>([]);
   const [externalChatReload, setExternalChatReload] = useState(0);
   const [accessRequestCount, setAccessRequestCount] = useState(0);
@@ -132,7 +178,7 @@ function App() {
   const [selectedDepositId, setSelectedDepositId] = useState<string | null>(null);
   const [selectedBonusId, setSelectedBonusId] = useState('');
   const [depositPage, setDepositPage] = useState(0);
-  const [depositRows, setDepositRows] = useState<RequestRow[]>([]);
+  const [depositRows, setDepositRows] = useState<QueueDeposit[]>([]);
   const [depositTotal, setDepositTotal] = useState(0);
   const [depositLoading, setDepositLoading] = useState(false);
   const [depositReload, setDepositReload] = useState(0);
@@ -156,8 +202,10 @@ function App() {
   }, []);
   const [pendingDepositCount, setPendingDepositCount] = useState(0);
   const [pendingWithdrawalCount, setPendingWithdrawalCount] = useState(0);
-  const [approvedDeposit, setApprovedDeposit] = useState<RequestRow | null>(null);
+  const [approvedDeposit, setApprovedDeposit] = useState<QueueDeposit | null>(null);
   const [reviewAmount, setReviewAmount] = useState('');
+  const depositOperation = useRef<{ selected: QueueDeposit | null; approved: QueueDeposit | null }>({ selected: null, approved: null });
+  depositOperation.current = { selected: selectedDepositId ? activeDeposit : null, approved: approvedDeposit };
   const [reviewGrantBonus, setReviewGrantBonus] = useState(true);
   const [copiedCreditField, setCopiedCreditField] = useState<'user' | 'amount' | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<{ url: string; kind: 'image' | 'pdf' } | null>(null);
@@ -176,6 +224,7 @@ function App() {
   const playerHistoryClosing = useRef(false);
   const playerPageRef = useRef<Page>('home');
   const currentPageRef = useRef(page);
+  const scrollPositions = useRef(new Map<Page, number>());
   const playerPopHandler = useRef<((event: PopStateEvent) => void) | null>(null);
   const depositTrigger = useRef<HTMLButtonElement | null>(null);
   const bankAssignmentId = useRef<string | null>(null);
@@ -193,6 +242,7 @@ function App() {
   }, [demo, session?.user.id]);
 
   function navigate(nextPage: Page) {
+    scrollPositions.current.set(currentPageRef.current, window.scrollY);
     if (!adminApp && nextPage === 'chat') {
       if ((session || demo) && window.history.state?.gana777Player) window.history.pushState({ gana777Player: true, page: 'home', chatOverlay: true }, '', window.location.href);
       playerPageRef.current = 'home'; setPage('home'); setChatBubbleOpen(true); return;
@@ -202,7 +252,7 @@ function App() {
     }
     if (nextPage !== 'home') setChatBubbleOpen(false);
     playerPageRef.current = nextPage;
-    setPage(nextPage); if (nextPage !== 'deposit') setSelectedBonusId(''); setSelectedDepositId(null); setApprovedDeposit(null); setError(''); setNotice('');
+    startTransition(() => setPage(nextPage)); if (nextPage !== 'deposit') setSelectedBonusId(''); setSelectedDepositId(null); setActiveDeposit(null); setApprovedDeposit(null); setError(''); setNotice('');
   }
   useEffect(() => {
     if (adminApp || (!session && !demo)) return;
@@ -228,7 +278,7 @@ function App() {
       playerPageRef.current = previousPage;
       setPage(previousPage);
       setChatBubbleOpen(false);
-      setSelectedBonusId(''); setSelectedDepositId(null); setApprovedDeposit(null); setError(''); setNotice('');
+      setSelectedBonusId(''); setSelectedDepositId(null); setActiveDeposit(null); setApprovedDeposit(null); setError(''); setNotice('');
     };
     playerPopHandler.current = handlePopState;
     window.addEventListener('popstate', handlePopState);
@@ -307,7 +357,8 @@ function App() {
     if (adminApp || page !== 'wheel' || !wheelEligibilityReady || settings.wheel_enabled && wheelEligible) return;
     navigate('home');
   }, [page, settings.wheel_enabled, wheelEligibilityReady, wheelEligible]);
-  useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [page, depositPage]);
+  useEffect(() => { window.scrollTo({ top: scrollPositions.current.get(page) ?? 0, behavior: 'instant' }); }, [page]);
+  useEffect(() => { if (adminApp && page === 'deposit') window.scrollTo({ top: 0, behavior: 'instant' }); }, [depositPage]);
   useEffect(() => {
     if (page !== 'profile' || !profileHistoryTarget) return;
     const frame = window.requestAnimationFrame(() => {
@@ -339,13 +390,13 @@ function App() {
       window.removeEventListener('keydown', closeOnEscape);
     };
   }, [approvedDeposit]);
+  const selectedReceiptRequest = selectedDepositId ? activeDeposit?.id === selectedDepositId ? activeDeposit : (adminApp && !demo ? depositRows : requests).find(item => item.id === selectedDepositId) : null;
   useEffect(() => {
     setReceiptPreview(null);
     setReceiptPreviewError('');
     setReceiptPreviewLoading(false);
     if (!selectedDepositId) return;
-    const requestSource = adminApp && !demo ? depositRows : requests;
-    const request = requestSource.find(item => item.id === selectedDepositId);
+    const request = selectedReceiptRequest;
     if (!request) return;
     if (demo) {
       setReceiptPreview({ url: '/preview-assets/demo-receipt.svg', kind: 'image' });
@@ -366,7 +417,7 @@ function App() {
       if (alive) setReceiptPreviewLoading(false);
     });
     return () => { alive = false; };
-  }, [selectedDepositId, demo, depositRows, requests]);
+  }, [selectedDepositId, selectedReceiptRequest?.receipt_path, selectedReceiptRequest?.receipt_url, demo]);
   useEffect(() => {
     if (!supabase) return;
     let alive = true;
@@ -375,9 +426,76 @@ function App() {
       setSession(data.session); setLoading(false);
       if (error) setError(publicError(error));
     });
+    let previousUser: string | undefined;
     const { data } = supabase.auth.onAuthStateChange((_event, value) => {
+      const accountChanged = previousUser !== value?.user.id;
+      if (accountChanged) { clearResourceCache(); clearViewState(); }
+      previousUser = value?.user.id;
       setSession(value);
-      if (!value) { setChatBubbleOpen(false); setRequests([]); setWithdrawalParts([]); setPartPreview(null); setMessages([]); setChatInbox([]); setExternalChatInbox([]); setExternalThread(''); setAccessRequestCount(0); setBank(null); setBankOperation(null); setIsAdmin(false); setStaffReady(false); setStaffContext({ superAdmin: false, username: '', displayName: '', avatarPath: null, permissions: noStaffPermissions }); setThread(''); setDepositRows([]); setDepositTotal(0); setDepositPage(0); setPendingDepositCount(0); setPendingWithdrawalCount(0); setPlayerWhatsAppUrl(null); setPlayerUsername(null); setPlayerCasinoUrl(null); }
+      if (!value || accountChanged) {
+        chatRequestVersion.current++;
+        scrollPositions.current.clear();
+        bankAssignmentId.current = null;
+        setPage('home');
+        setError('');
+        setNotice('');
+        setApprovedDeposit(null);
+        setSelectedDepositId(null);
+        setReceiptPreview(null);
+        setReceiptPreviewError('');
+        setReceiptPreviewLoading(false);
+        setHistoryRows([]);
+        setHistoryTotal(0);
+        setHistoryError('');
+        setHistoryPage(0);
+        setHistoryLoading(false);
+        setChatPageState({ total: 0, loading: false });
+        setExternalPageState({ total: 0, loading: false });
+        setWithdrawalsLoading(false);
+        setReviewAmount('');
+        setCopiedCreditField(null);
+        setWithdrawalPages({ pending: 0, resolved: 0 });
+        setWithdrawalTotals({ pending: 0, resolved: 0 });
+        setChatHasMore(false);
+        setChatLoading(false);
+        setChatOlderLoading(false);
+        setUserHistoryPages({ deposit: 0, withdrawal: 0 });
+        setUserHistoryOpen({ deposit: false, withdrawal: false });
+        setPlayerHistory({ deposit: { rows: [], total: 0, loading: false, error: '' }, withdrawal: { rows: [], total: 0, loading: false, error: '' } });
+        setChatBubbleOpen(false);
+        setRequests([]);
+        setWithdrawalParts([]);
+        setPartPreview(null);
+        setMessages([]);
+        setChatInbox([]);
+        setExternalChatInbox([]);
+        setChatSummary([]);
+        setExternalSummary([]);
+        setChatQuery({ search: '', filter: 'pending', page: 0 });
+        setExternalQuery({ search: '', filter: 'pending', page: 0 });
+        setExternalThread('');
+        setAccessRequestCount(0);
+        setBank(null);
+        setBankOperation(null);
+        setIsAdmin(false);
+        setStaffReady(false);
+        setStaffContext({ superAdmin: false, username: '', displayName: '', avatarPath: null, permissions: noStaffPermissions });
+        setThread('');
+        setDepositRows([]);
+        setSharedDeposits(false);
+        setActiveDeposit(null);
+        setSelectedDepositId(null);
+        setApprovedDeposit(null);
+        setDepositFilter('available');
+        setDepositTotal(0);
+        setDepositPage(0);
+        setPendingDepositCount(0);
+        setPendingWithdrawalCount(0);
+        setPlayerWhatsAppUrl(null);
+        setPlayerUsername(null);
+        setPlayerCasinoUrl(null);
+
+      }
     });
     return () => { alive = false; data.subscription.unsubscribe(); };
   }, []);
@@ -385,92 +503,195 @@ function App() {
     if (!session || !supabase) return;
     const db = supabase;
     let alive = true;
+    let refreshVersion = 0;
     async function refresh() {
-      // El historial de retiros se carga al abrir Retiros; el inicio solo carga los datos del jugador.
-      const requestPromise = adminApp ? Promise.resolve({ data: [] as RequestRow[], error: null }) : (async () => {
-        let requestQuery = db.from('request_summaries').select(REQUEST_COLUMNS).order('created_at', { ascending: false });
-        requestQuery = requestQuery.eq('user_id', session!.user.id);
-        const first = await requestQuery;
-        if (!missingBonusAmount(first.error) && !missingDepositRoute(first.error)) return first;
-        let legacyQuery = db.from('request_summaries').select(REQUEST_COLUMNS_LEGACY).order('created_at', { ascending: false });
-        legacyQuery = legacyQuery.eq('user_id', session!.user.id);
-        const second = await legacyQuery;
-        return { ...second, data: (second.data ?? []).map(row => ({ ...row, bonus_amount: 0 })) };
-      })();
-      const messageQuery = adminApp ? Promise.resolve({ data: [] as Message[], error: null })
-        : db.from('unified_chat_messages').select('id,user_id,sender_id,body,attachment_path,created_at,source,external_thread_id').eq('user_id', session!.user.id).order('created_at').order('id');
-      const pendingWithdrawalsQuery = adminApp
-        ? db.from('request_summaries').select('id', { count: 'exact', head: true }).eq('kind', 'withdrawal').eq('status', 'pending')
-        : Promise.resolve({ count: 0, error: null });
-      const contextQuery = adminApp ? db.rpc('get_admin_context').single() : Promise.resolve({ data: null, error: null });
-      const playerContactQuery = adminApp ? Promise.resolve({ data: null, error: null }) : db.rpc('get_my_whatsapp_url');
-      const playerProfileQuery = adminApp ? Promise.resolve({ data: null, error: null }) : db.from('user_profiles').select('username').eq('user_id', session!.user.id).maybeSingle();
-      const playerCasinoQuery = adminApp ? Promise.resolve({ data: null, error: null }) : db.from('player_casino_links').select('url').eq('user_id', session!.user.id).maybeSingle();
-      const partsQuery = adminApp
-        ? Promise.resolve({ data: [] as WithdrawalPart[], error: null })
-        : db.from('withdrawal_parts').select('request_id,part_number,amount,receipt_path,paid_at');
-      const [r, m, role, pendingWithdrawals, context, playerContact, playerProfile, playerCasino, partsResult] = await Promise.all([
-        requestPromise,
-        messageQuery,
-        db.rpc('is_admin'),
-        pendingWithdrawalsQuery,
-        contextQuery,
-        playerContactQuery,
-        playerProfileQuery,
-        playerCasinoQuery,
-        partsQuery,
-      ]);
-      if (!alive) return;
-      const failure = r.error ?? m.error ?? role.error ?? pendingWithdrawals.error ?? context.error ?? partsResult.error;
-      if (failure) { setError(publicError(failure)); return; }
-      if (!adminApp) { setRequests(r.data as RequestRow[]); setWithdrawalParts((partsResult.data ?? []) as WithdrawalPart[]); }
-      setMessages(m.data as Message[]);
-      setIsAdmin(role.data === true);
-      if (!adminApp) setPlayerWhatsAppUrl(!playerContact.error && typeof playerContact.data === 'string' ? playerContact.data : null);
-      if (!adminApp) setPlayerUsername(!playerProfile.error && typeof playerProfile.data?.username === 'string' ? playerProfile.data.username : null);
-      if (!adminApp) setPlayerCasinoUrl(!playerCasino.error && typeof playerCasino.data?.url === 'string' ? playerCasino.data.url : null);
-      if (adminApp) {
-        const row = context.data as null | { is_super_admin: boolean; username: string | null; display_name: string | null; avatar_path: string | null; permissions: Partial<StaffPermissions> | null };
-        if (row) setStaffContext({
-          superAdmin: row.is_super_admin === true,
-          username: row.username ?? '',
-          displayName: row.display_name ?? '',
-          avatarPath: row.avatar_path ?? null,
-          permissions: { ...noStaffPermissions, ...(row.permissions ?? {}) },
+      const version = ++refreshVersion;
+      try {
+        const requestPromise = adminApp ? Promise.resolve({ data: [] as RequestRow[], error: null }) : Promise.all([
+          readRequestPage({ userId: session!.user.id, status: 'pending', size: 10, count: false }),
+          readRequestPage({ userId: session!.user.id, kind: 'withdrawal', status: 'approved', latestApproved: true, size: 1, count: false }),
+        ]).then(([pending, latest]) => ({ data: [...pending.rows, ...latest.rows], error: null }));
+        const pendingWithdrawalsQuery = adminApp
+          ? db.from('request_summaries').select('id', { count: 'exact', head: true }).eq('kind', 'withdrawal').eq('status', 'pending')
+          : Promise.resolve({ count: 0, error: null });
+        const contextQuery = adminApp ? db.rpc('get_admin_context').single() : Promise.resolve({ data: null, error: null });
+        const queueModeQuery = adminApp ? depositQueueEnabled(session!.user.id) : Promise.resolve(false);
+        const playerMetadata = adminApp ? Promise.resolve(null) : cachedResource(`player-profile:${session!.user.id}`, 60_000, async () => {
+          const [contact, profile, casino] = await Promise.all([
+            db.rpc('get_my_whatsapp_url'),
+            db.from('user_profiles').select('username').eq('user_id', session!.user.id).maybeSingle(),
+            db.from('player_casino_links').select('url').eq('user_id', session!.user.id).maybeSingle(),
+          ]);
+          return { contact, profile, casino };
         });
-        setStaffReady(true);
-        const depositScope = scopedDepositFilter(row?.is_super_admin === true, sacStation);
-        let depositCount = depositScope === 'none'
-          ? { count: 0, error: null as { message?: string } | null }
-          : await (depositScope === 'all'
-            ? db.from('request_summaries').select('id', { count: 'exact', head: true }).eq('kind', 'deposit').eq('status', 'pending')
-            : db.from('request_summaries').select('id', { count: 'exact', head: true }).eq('kind', 'deposit').eq('status', 'pending').eq('deposit_sac', depositScope));
-        if (depositCount.error && missingDepositRoute(depositCount.error)) depositCount = await db.from('request_summaries').select('id', { count: 'exact', head: true }).eq('kind', 'deposit').eq('status', 'pending');
-        if (depositCount.error) { setError(publicError(depositCount.error)); return; }
-        setPendingDepositCount(depositCount.count ?? 0);
-        setPendingWithdrawalCount(pendingWithdrawals.count ?? 0);
-      }
+        const [requestResult, metadata] = await Promise.all([requestPromise, playerMetadata]);
+        const playerContactQuery = Promise.resolve(metadata?.contact ?? { data: null, error: null });
+        const playerProfileQuery = Promise.resolve(metadata?.profile ?? { data: null, error: null });
+        const playerCasinoQuery = Promise.resolve(metadata?.casino ?? { data: null, error: null });
+        const partsQuery = Promise.resolve({ data: [] as WithdrawalPart[], error: null });
+        const [r, role, pendingWithdrawals, context, playerContact, playerProfile, playerCasino, partsResult, queueEnabled] = await Promise.all([
+          Promise.resolve(requestResult),
+          adminApp ? db.rpc('is_admin') : Promise.resolve({ data: false, error: null }),
+          pendingWithdrawalsQuery,
+          contextQuery,
+          playerContactQuery,
+          playerProfileQuery,
+          playerCasinoQuery,
+          partsQuery,
+          queueModeQuery,
+        ]);
+        if (!alive || version !== refreshVersion) return;
+        const failure = r.error ?? role.error ?? pendingWithdrawals.error ?? context.error ?? partsResult.error;
+        if (failure) { setError(publicError(failure)); return; }
+        if (!adminApp) setRequests(r.data as RequestRow[]);
+        setIsAdmin(role.data === true);
+        if (!adminApp) setPlayerWhatsAppUrl(!playerContact.error && typeof playerContact.data === 'string' ? playerContact.data : null);
+        if (!adminApp) setPlayerUsername(!playerProfile.error && typeof playerProfile.data?.username === 'string' ? playerProfile.data.username : null);
+        if (!adminApp) setPlayerCasinoUrl(!playerCasino.error && typeof playerCasino.data?.url === 'string' ? playerCasino.data.url : null);
+        if (adminApp) {
+          const row = context.data as null | { is_super_admin: boolean; username: string | null; display_name: string | null; avatar_path: string | null; permissions: Partial<StaffPermissions> | null };
+          if (row) setStaffContext({
+            superAdmin: row.is_super_admin === true,
+            username: row.username ?? '',
+            displayName: row.display_name ?? '',
+            avatarPath: row.avatar_path ?? null,
+            permissions: { ...noStaffPermissions, ...(row.permissions ?? {}) },
+          });
+          setSharedDeposits(queueEnabled);
+          setStaffReady(true);
+          const depositScope = queueEnabled ? 'all' : scopedDepositFilter(row?.is_super_admin === true, sacStation);
+          let depositCount = depositScope === 'none'
+            ? { count: 0, error: null as { message?: string } | null }
+            : await (depositScope === 'all'
+              ? db.from('request_summaries').select('id', { count: 'exact', head: true }).eq('kind', 'deposit').eq('status', 'pending')
+              : db.from('request_summaries').select('id', { count: 'exact', head: true }).eq('kind', 'deposit').eq('status', 'pending').eq('deposit_sac', depositScope));
+          if (depositCount.error && missingDepositRoute(depositCount.error)) depositCount = await db.from('request_summaries').select('id', { count: 'exact', head: true }).eq('kind', 'deposit').eq('status', 'pending');
+          if (depositCount.error) { setError(publicError(depositCount.error)); return; }
+          if (!alive || version !== refreshVersion) return;
+          setPendingDepositCount(depositCount.count ?? 0);
+          setPendingWithdrawalCount(pendingWithdrawals.count ?? 0);
+        }
+      } catch (cause) { if (alive) setError(publicError(cause)); }
     }
     void refresh();
     if (adminApp) return () => { alive = false; };
-    const onFocus = () => void refresh();
+    let lastRefresh = Date.now();
+    const onFocus = () => { if (document.visibilityState === 'visible' && Date.now() - lastRefresh > 30_000) { lastRefresh = Date.now(); void refresh(); } };
     window.addEventListener('focus', onFocus);
     const ownUser = `user_id=eq.${session.user.id}`;
     let refreshTimer = 0;
+    let refreshing = false;
+    let queued = false;
     const schedulePlayerRefresh = () => {
+      invalidateResourcePrefix('player-rpc:');
       window.clearTimeout(refreshTimer);
-      refreshTimer = window.setTimeout(() => { void refresh(); }, 400);
+      refreshTimer = window.setTimeout(async () => {
+        if (refreshing) { queued = true; return; }
+        refreshing = true;
+        await refresh();
+        refreshing = false;
+        if (alive && queued) { queued = false; schedulePlayerRefresh(); }
+        if (currentPageRef.current === 'profile') setHistoryReload(value => value + 1);
+      }, 200);
     };
     const channel = db.channel(`updates-${session.user.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'requests', filter: ownUser }, schedulePlayerRefresh)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: ownUser }, schedulePlayerRefresh)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'user_notifications', filter: ownUser }, schedulePlayerRefresh)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'external_chat_threads', filter: `linked_user_id=eq.${session.user.id}` }, schedulePlayerRefresh)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'admin_permissions', filter: ownUser }, () => void refresh())
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'cashier_profiles', filter: ownUser }, () => void refresh())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'user_notifications', filter: ownUser }, payload => {
+        if (payload.new.kind === 'withdrawal_paid' && currentPageRef.current === 'profile') setHistoryReload(value => value + 1);
+      })
       .subscribe();
     return () => { alive = false; window.clearTimeout(refreshTimer); window.removeEventListener('focus', onFocus); void db.removeChannel(channel); };
-  }, [session, sacStation, adminApp, adminRefresh]);
+  }, [session?.user.id, sacStation, adminApp, adminRefresh]);
+  useEffect(() => {
+    if (adminApp || demo || !session || !supabase || (!chatBubbleOpen && page !== 'chat')) return;
+    const db = supabase;
+    const controller = new AbortController();
+    const version = ++chatRequestVersion.current;
+    let alive = true;
+    let running = false;
+    let queued = false;
+    let initialized = false;
+    let timer = 0;
+    const load = async () => {
+      if (running) { queued = true; return; }
+      running = true;
+      if (!initialized) setChatLoading(true);
+      try {
+        const [result, links] = await Promise.all([
+          db.from('unified_chat_messages').select('id,user_id,sender_id,body,attachment_path,created_at,source,external_thread_id')
+            .eq('user_id', session.user.id).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(MESSAGE_PAGE_SIZE).abortSignal(controller.signal),
+          db.from('external_chat_threads').select('id').eq('linked_user_id', session.user.id).abortSignal(controller.signal),
+        ]);
+        if (!alive || version !== chatRequestVersion.current) return;
+        if (result.error || links.error) throw result.error ?? links.error;
+        const linkedIds = new Set((links.data ?? []).map(row => row.id as string));
+        const latest = (result.data ?? []) as Message[];
+        setMessages(old => mergeMessages(old.filter(row => row.user_id === session.user.id && (row.source !== 'external' || !!row.external_thread_id && linkedIds.has(row.external_thread_id))), latest));
+        if (!initialized) setChatHasMore(latest.length === MESSAGE_PAGE_SIZE);
+        initialized = true;
+      } catch (cause) { if (alive) setError(publicError(cause)); }
+      finally {
+        running = false;
+        if (alive) setChatLoading(false);
+        if (alive && queued) { queued = false; void load(); }
+      }
+    };
+    const schedule = () => { window.clearTimeout(timer); timer = window.setTimeout(() => void load(), 120); };
+    const onFocus = () => { if (document.visibilityState === 'visible') schedule(); };
+    void load();
+    const channel = db.channel(`player-chat-${session.user.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `user_id=eq.${session.user.id}` }, payload => {
+        const row = payload.new;
+        if (typeof row.id === 'string' && row.user_id === session.user.id && typeof row.body === 'string' && typeof row.created_at === 'string') {
+          setMessages(old => mergeMessages(old, [{ ...row, source: 'app' } as Message]));
+        } else schedule();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'external_chat_threads', filter: `linked_user_id=eq.${session.user.id}` }, schedule)
+      .subscribe();
+    window.addEventListener('focus', onFocus);
+    return () => { alive = false; controller.abort(); window.clearTimeout(timer); window.removeEventListener('focus', onFocus); void db.removeChannel(channel); };
+  }, [adminApp, demo, session?.user.id, chatBubbleOpen, page]);
+
+  async function loadOlderPlayerMessages() {
+    if (!supabase || !session || !messages.length || chatOlderLoading) return;
+    const version = chatRequestVersion.current;
+    const oldest = messages[0];
+    setChatOlderLoading(true);
+    try {
+      const result = await supabase.from('unified_chat_messages').select('id,user_id,sender_id,body,attachment_path,created_at,source,external_thread_id')
+        .eq('user_id', session.user.id).or(`created_at.lt.${oldest.created_at},and(created_at.eq.${oldest.created_at},id.lt.${oldest.id})`)
+        .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(MESSAGE_PAGE_SIZE);
+      if (version !== chatRequestVersion.current) return;
+      if (result.error) throw result.error;
+      setMessages(old => mergeMessages(old, (result.data ?? []) as Message[]));
+      setChatHasMore((result.data ?? []).length === MESSAGE_PAGE_SIZE);
+    } catch (cause) { if (version === chatRequestVersion.current) setError(publicError(cause)); }
+    finally { if (version === chatRequestVersion.current) setChatOlderLoading(false); }
+  }
+
+  useEffect(() => {
+    if (adminApp || demo || !session || page !== 'profile') return;
+    const controller = new AbortController();
+    let alive = true;
+    for (const kind of ['deposit', 'withdrawal'] as const) {
+      if (!userHistoryOpen[kind]) continue;
+      setPlayerHistory(old => ({ ...old, [kind]: { ...old[kind], loading: true, error: '' } }));
+      void (async () => {
+        try {
+          const result = await readRequestPage({ userId: session.user.id, kind, size: 5, page: userHistoryPages[kind], signal: controller.signal });
+          const lastPage = Math.max(0, Math.ceil(result.total / 5) - 1);
+          if (!alive) return;
+          if (userHistoryPages[kind] > lastPage) { setUserHistoryPages(old => ({ ...old, [kind]: lastPage })); return; }
+          const parts = kind === 'withdrawal' ? await readWithdrawalParts(result.rows.map(row => row.id), controller.signal) : [];
+          if (!alive) return;
+          setPlayerHistory(old => ({ ...old, [kind]: { ...result, loading: false, error: '' } }));
+          if (kind === 'withdrawal') setWithdrawalParts(parts);
+        } catch (cause) { if (alive) setPlayerHistory(old => ({ ...old, [kind]: { ...old[kind], loading: false, error: publicError(cause) } })); }
+      })();
+    }
+    return () => { alive = false; controller.abort(); };
+  }, [adminApp, demo, session?.user.id, page, userHistoryOpen, userHistoryPages, historyReload]);
+
   useEffect(() => {
     if (adminApp || demo || !session || !supabase) return;
     const db = supabase;
@@ -491,55 +712,58 @@ function App() {
     return () => { alive = false; window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
   }, [adminApp, demo, session?.user.id, session?.user.last_sign_in_at, session?.user.created_at]);
   useEffect(() => {
-    if (!adminApp || page !== 'withdrawal' || !session || !supabase) return;
+    if (!adminApp || page !== 'withdrawal' || !session || !supabase || !staffReady || (!staffContext.superAdmin && !staffContext.permissions.withdrawal)) return;
     let alive = true;
+    const controller = new AbortController();
+    setWithdrawalsLoading(true);
     void (async () => {
-      const [result, parts] = await Promise.all([
-        supabase!.from('request_summaries').select(REQUEST_COLUMNS).neq('kind', 'deposit').order('created_at', { ascending: false }),
-        supabase!.from('withdrawal_parts').select('request_id,part_number,amount,receipt_path,paid_at,source_bank_account_id,source_bank_name,source_alias'),
-      ]);
-      let rows = (result.data ?? []) as RequestRow[];
-      let requestError = result.error;
-      if (missingBonusAmount(result.error) || missingDepositRoute(result.error)) {
-        const legacy = await supabase!.from('request_summaries').select(REQUEST_COLUMNS_LEGACY).neq('kind', 'deposit').order('created_at', { ascending: false });
-        requestError = legacy.error;
-        rows = (legacy.data ?? []).map(row => ({ ...row, bonus_amount: 0 })) as RequestRow[];
-      }
-      if (!alive) return;
-      const failure = requestError ?? parts.error;
-      if (failure) { setError(publicError(failure)); return; }
-      setRequests(rows);
-      setWithdrawalParts((parts.data ?? []) as WithdrawalPart[]);
+      try {
+        const [pending, resolved] = await Promise.all([
+          readRequestPage({ kind: 'withdrawal', status: 'pending', ascending: true, page: withdrawalPages.pending, size: 10, signal: controller.signal }),
+          readRequestPage({ kind: 'withdrawal', resolved: true, page: withdrawalPages.resolved, size: 10, signal: controller.signal }),
+        ]);
+        if (!alive) return;
+        const pages = { pending: Math.min(withdrawalPages.pending, Math.max(0, Math.ceil(pending.total / 10) - 1)), resolved: Math.min(withdrawalPages.resolved, Math.max(0, Math.ceil(resolved.total / 10) - 1)) };
+        if (pages.pending !== withdrawalPages.pending || pages.resolved !== withdrawalPages.resolved) { setWithdrawalPages(pages); return; }
+        const rows = [...pending.rows, ...resolved.rows];
+        const parts = await readWithdrawalParts(rows.map(row => row.id), controller.signal);
+        if (!alive) return;
+        setRequests(rows);
+        setWithdrawalParts(parts);
+        setWithdrawalTotals({ pending: pending.total, resolved: resolved.total });
+      } catch (cause) { if (alive) setError(publicError(cause)); }
+      finally { if (alive) setWithdrawalsLoading(false); }
     })();
-    return () => { alive = false; };
-  }, [adminApp, page, session?.user.id, withdrawalReload]);
+    return () => { alive = false; controller.abort(); };
+  }, [adminApp, page, session?.user.id, withdrawalReload, withdrawalPages, staffReady, staffContext.superAdmin, staffContext.permissions.withdrawal]);
   useEffect(() => {
-    if (!adminApp || !session || !supabase) return;
+    if (!adminApp || !session || !supabase || !staffReady || (!staffContext.superAdmin && !staffContext.permissions.chat)) { setChatSummary([]); return; }
     const db = supabase;
     let alive = true;
+    const controller = new AbortController();
     let requestVersion = 0;
     async function refreshInbox() {
       const version = ++requestVersion;
-      const rows: ChatInboxRow[] = [];
+      const rows: ChatSummary[] = [];
       const pageSize = 500;
       for (let offset = 0; alive; offset += pageSize) {
         const { data, error } = await db.from('chat_inbox')
-          .select('user_id,username,display_name,last_message_id,last_sender_id,last_body,last_created_at,completed_at,completed_by,last_source')
+          .select('user_id,last_sender_id,completed_at')
           .order('last_created_at', { ascending: false }).order('last_message_id', { ascending: false })
-          .range(offset, offset + pageSize - 1);
+          .range(offset, offset + pageSize - 1).abortSignal(controller.signal);
         if (!alive || version !== requestVersion) return;
         if (error) { setError('No pudimos cargar la bandeja de chat. Actualizá el panel e intentá de nuevo.'); return; }
-        rows.push(...((data ?? []) as ChatInboxRow[]));
+        rows.push(...((data ?? []) as ChatSummary[]));
         if (!data || data.length < pageSize) break;
       }
-      if (alive && version === requestVersion) setChatInbox(rows);
+      if (alive && version === requestVersion) setChatSummary(rows);
     }
     void refreshInbox();
-    return () => { alive = false; };
-  }, [session?.user.id, chatReload]);
+    return () => { alive = false; controller.abort(); };
+  }, [session?.user.id, chatReload, staffReady, staffContext.superAdmin, staffContext.permissions.chat]);
   useEffect(() => {
     if (!adminApp || !session || !supabase || demo || (!staffContext.superAdmin && !staffContext.permissions.external_chat)) {
-      setExternalChatInbox([]);
+      setExternalChatInbox([]); setExternalSummary([]);
       return;
     }
     const db = supabase;
@@ -547,23 +771,47 @@ function App() {
     let requestVersion = 0;
     async function refreshExternalInbox() {
       const version = ++requestVersion;
-      const rows: ExternalChatInboxRow[] = [];
+      const rows: ExternalSummary[] = [];
       const pageSize = 500;
       for (let offset = 0; alive; offset += pageSize) {
         const { data, error } = await db.from('external_chat_inbox')
-          .select('thread_id,nickname,origin,created_at,last_seen_at,completed_at,completed_by,last_message_id,last_sender_type,last_body,last_message_at')
+          .select('thread_id,last_sender_type,completed_at')
           .order('last_message_at', { ascending: false }).order('last_message_id', { ascending: false })
           .range(offset, offset + pageSize - 1);
         if (!alive || version !== requestVersion) return;
         if (error) { setError('No pudimos cargar la bandeja de chat externo. Actualizá el panel e intentá de nuevo.'); return; }
-        rows.push(...((data ?? []) as ExternalChatInboxRow[]));
+        rows.push(...((data ?? []) as ExternalSummary[]));
         if (!data || data.length < pageSize) break;
       }
-      if (alive && version === requestVersion) setExternalChatInbox(rows);
+      if (alive && version === requestVersion) setExternalSummary(rows);
     }
     void refreshExternalInbox();
     return () => { alive = false; };
   }, [session?.user.id, externalChatReload, demo, staffContext.superAdmin, staffContext.permissions.external_chat]);
+  useEffect(() => {
+    if (!adminApp || demo || !session || (page !== 'chat' && page !== 'external-chat')) return;
+    const external = page === 'external-chat';
+    const directory = external ? externalSummary : chatSummary;
+    const query = external ? externalQuery : chatQuery;
+    const updateState = external ? setExternalPageState : setChatPageState;
+    const controller = new AbortController();
+    updateState(old => ({ ...old, loading: true }));
+    const timer = window.setTimeout(async () => {
+      try {
+        const ids = inboxIds(directory, query.filter);
+        const result = external
+          ? await readInboxPage<ExternalChatInboxRow>('external_chat_inbox', ids, query.search, query.page, controller.signal)
+          : await readInboxPage<ChatInboxRow>('chat_inbox', ids, query.search, query.page, controller.signal);
+        if (controller.signal.aborted) return;
+        const lastPage = Math.max(0, Math.ceil(result.total / 50) - 1);
+        if (query.page > lastPage) { (external ? setExternalQuery : setChatQuery)(old => ({ ...old, page: lastPage })); return; }
+        if (external) setExternalChatInbox(result.rows as ExternalChatInboxRow[]);
+        else setChatInbox(result.rows as ChatInboxRow[]);
+        updateState({ total: result.total, loading: false });
+      } catch (cause) { if (!controller.signal.aborted) { updateState(old => ({ ...old, loading: false })); setError(publicError(cause)); } }
+    }, query.search ? 250 : 0);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [adminApp, demo, session?.user.id, page, chatSummary, externalSummary, chatQuery, externalQuery]);
   useEffect(() => {
     if (!adminApp || !session || !supabase || (!staffContext.superAdmin && !staffContext.permissions.access_requests) || demo) { setAccessRequestCount(0); return; }
     let alive = true;
@@ -627,11 +875,26 @@ function App() {
     if (!adminApp || demo || page !== 'deposit' || !session || !supabase || !staffReady) return;
     const db = supabase;
     let alive = true;
-    const depositScope = scopedDepositFilter(staffContext.superAdmin, sacStation);
+    const depositScope = sharedDeposits ? 'all' : scopedDepositFilter(staffContext.superAdmin, sacStation);
     if (depositScope === 'none') { setDepositRows([]); setDepositTotal(0); setDepositLoading(false); return; }
     setDepositLoading(true);
+    setDepositReadError('');
+    const controller = new AbortController();
     const from = depositPage * DEPOSIT_PAGE_SIZE;
     void (async () => {
+      if (sharedDeposits) {
+        try {
+          const result = await readDepositQueue(depositFilter, depositPage, controller.signal);
+          if (!alive) return;
+          const next = depositWindow(depositPage, result.total);
+          setDepositTotal(result.total);
+          setPendingDepositCount(result.pending_count);
+          if (next.current !== depositPage) { setDepositPage(next.current); return; }
+          setDepositRows(result.rows);
+        } catch (cause) { if (alive) { setDepositRows([]); setDepositReadError(publicError(cause)); } }
+        finally { if (alive) setDepositLoading(false); }
+        return;
+      }
       let scoped = db.from('request_summaries').select(REQUEST_COLUMNS, { count: 'exact' }).eq('kind', 'deposit').order('created_at', { ascending: false });
       if (depositScope !== 'all') scoped = scoped.eq('deposit_sac', depositScope);
       const firstPage = await scoped.range(from, from + DEPOSIT_PAGE_SIZE - 1);
@@ -648,15 +911,55 @@ function App() {
       setDepositRows((data ?? []).map(row => ({ ...row, bonus_amount: Number('bonus_amount' in row ? row.bonus_amount : 0) || 0 })) as RequestRow[]);
       setDepositLoading(false);
     })();
-    return () => { alive = false; };
-  }, [session, page, demo, depositPage, depositReload, staffReady, staffContext.superAdmin, sacStation]);
+    return () => { alive = false; controller.abort(); };
+  }, [session, page, demo, depositPage, depositReload, staffReady, staffContext.superAdmin, sacStation, sharedDeposits, depositFilter]);
+  useEffect(() => {
+    if (!adminApp || !sharedDeposits || demo || page !== 'deposit' || !session || !supabase) return;
+    const db = supabase;
+    let timer = 0;
+    let dirty = false;
+    let lastRefresh = Date.now();
+    const refresh = () => {
+      dirty = true;
+      if (document.visibilityState === 'hidden' || timer) return;
+      timer = window.setTimeout(() => {
+        timer = 0;
+        if (document.visibilityState === 'hidden') return;
+        dirty = false; lastRefresh = Date.now();
+        setDepositReload(value => value + 1);
+      }, 600);
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && (dirty || Date.now() - lastRefresh > 15_000)) refresh();
+    };
+    const channel = db.channel(`deposit-queue-${session.user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'deposit_claims' }, payload => {
+        const next = payload.new as { request_id?: string; claim_token?: string };
+        const { selected, approved } = depositOperation.current;
+        if ([selected, approved].some(row => row?.id === next.request_id && row?.claim_token !== next.claim_token)) {
+          setSelectedDepositId(null); setActiveDeposit(null); setApprovedDeposit(null);
+          setNotice('La asignación de esta carga cambió. Volvé a abrirla antes de continuar.');
+        }
+        refresh();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests', filter: 'kind=eq.deposit' }, refresh)
+      .subscribe(status => { if (status === 'SUBSCRIBED') refresh(); });
+    window.addEventListener('focus', onVisible);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('focus', onVisible);
+      document.removeEventListener('visibilitychange', onVisible);
+      void db.removeChannel(channel);
+    };
+  }, [sharedDeposits, demo, page, session?.user.id]);
   useEffect(() => {
     if (!adminApp || page !== 'history' || demo || !session || !supabase || !staffReady) return;
     const db = supabase;
     let alive = true;
     const pageSize = 35;
     const from = historyPage * pageSize;
-    const historyScope = historyKind === 'deposit' ? scopedDepositFilter(staffContext.superAdmin, sacStation) : 'all';
+    const historyScope = historyKind === 'deposit' && !sharedDeposits ? scopedDepositFilter(staffContext.superAdmin, sacStation) : 'all';
     if (historyScope === 'none') { setHistoryRows([]); setHistoryTotal(0); setHistoryLoading(false); setHistoryError(''); return; }
     setHistoryLoading(true);
     setHistoryError('');
@@ -681,7 +984,7 @@ function App() {
       setHistoryLoading(false);
     })();
     return () => { alive = false; };
-  }, [session, page, demo, historyKind, historyPage, historyReload, staffReady, staffContext.superAdmin, sacStation]);
+  }, [session, page, demo, historyKind, historyPage, historyReload, staffReady, staffContext.superAdmin, sacStation, sharedDeposits]);
 
   async function action(task: () => Promise<void>) {
     setBusy(true); setError(''); setNotice('');
@@ -755,7 +1058,9 @@ function App() {
         if (createdParts.error) throw createdParts.error;
         setWithdrawalParts(old => [...old.filter(part => part.request_id !== row.id), ...(createdParts.data as WithdrawalPart[])]);
       }
+      invalidateResourcePrefix('player-rpc:');
       setRequests(old => [row, ...old.filter(r => r.id !== row.id)]);
+      setHistoryReload(value => value + 1);
       if (page === 'deposit') setDepositRetryAt(0);
       element.reset();
       if (page === 'withdrawal') setNotice('Tu solicitud fue enviada. Podés seguir su estado en el historial.');
@@ -777,7 +1082,7 @@ function App() {
       try {
         const { data, error } = await supabase.from('messages').insert({ user_id: target, sender_id: userId, body, attachment_path }).select('id,user_id,sender_id,body,attachment_path,created_at').single();
         if (error) throw error;
-        setMessages(old => [...old.filter(m => m.id !== data.id), data as Message]); element.reset();
+        setMessages(old => mergeMessages(old, [data as Message])); element.reset();
       } catch (cause) {
         if (attachment_path) await removeChatImage(attachment_path);
         throw cause;
@@ -819,6 +1124,7 @@ function App() {
     setDemo(true);
     if (!adminApp) return;
     setIsAdmin(true);
+    setSharedDeposits(true);
     setStaffContext({ superAdmin: true, username: 'superadmin', displayName: 'Superadministrador', avatarPath: null, permissions: allStaffPermissions });
     const now = Date.now();
     const featured: RequestRow[] = [
@@ -840,38 +1146,41 @@ function App() {
   function chooseSac(next: number) {
     const chosen = parseSacStation(next);
     if (!chosen) return;
-    window.localStorage.setItem(SAC_STATION_KEY, String(chosen));
+    writeDevicePreference(SAC_STATION_KEY, String(chosen));
     setSacStation(chosen);
     setDepositPage(0);
     setHistoryPage(0);
   }
   const feedback = <>{error && <div role="alert" className="alert error">{error}</div>}{notice && <div role="status" className="alert">{notice}</div>}</>;
   if (!adminApp && (!initialReady || initialError)) return <PortalBootScreen error={initialError} onRetry={retryInitialLoad} />;
+  if (adminApp && session && !staffReady && !error) return <main className="login"><Brand panel /><ViewLoading /></main>;
   if (loading) return <main className="login"><Brand panel={adminApp} /><p>Cargando tu cuenta…</p></main>;
   if (!session && !demo) return <LoginView admin={adminApp} busy={busy} retryAt={loginRetryAt} siteKey={turnstileSiteKey} configured={!!supabase} feedback={<>{configError && <div role="alert" className="alert error">{configError}</div>}{feedback}</>} onLogin={login} onDemo={startDemo} />;
 
   function history(kind?: RequestRow['kind']) {
     const adminHistory = adminApp && page === 'history' && kind === undefined;
     const currentKind = adminHistory ? historyKind : kind;
-    const items = adminHistory ? demo ? requests.filter(r => r.kind === historyKind) : historyRows : requests.filter(r => (adminApp || r.user_id === userId) && (!kind || r.kind === kind));
+    const remoteHistory = !adminApp && !demo && kind ? playerHistory[kind] : null;
+    const items = remoteHistory ? remoteHistory.rows : adminHistory ? demo ? requests.filter(r => r.kind === historyKind) : historyRows : requests.filter(r => (adminApp || r.user_id === userId) && (!kind || r.kind === kind));
     const paginated = !adminApp && page === 'profile' && kind !== undefined;
-    const window = paginated ? userHistoryWindow(userHistoryPages[kind], items.length) : null;
+    const window = paginated ? userHistoryWindow(userHistoryPages[kind], remoteHistory?.total ?? items.length) : null;
     const pageSize = 35;
     const adminPages = Math.max(1, Math.ceil((demo ? requests.filter(r => r.kind === historyKind).length : historyTotal) / pageSize));
     const adminCurrent = Math.min(historyPage, adminPages - 1);
-    const visibleItems = adminHistory ? demo ? items.slice(adminCurrent * pageSize, (adminCurrent + 1) * pageSize) : items : window ? items.slice(window.from, window.to) : items;
+    const visibleItems = adminHistory ? demo ? items.slice(adminCurrent * pageSize, (adminCurrent + 1) * pageSize) : items : window && !remoteHistory ? items.slice(window.from, window.to) : items;
     const heading = adminApp
       ? currentKind === 'deposit' ? 'Cargas' : currentKind === 'withdrawal' ? 'Retiros' : page === 'history' ? 'Historial' : 'Solicitudes'
       : kind === 'deposit' ? 'Historial de cargas' : 'Tus retiros';
     const empty = currentKind === 'deposit' ? adminApp ? 'Todavía no hay cargas.' : 'Todavía no tenés recargas.' : currentKind === 'withdrawal' ? adminApp ? 'Todavía no hay retiros.' : 'Todavía no tenés retiros.' : 'Todavía no hay solicitudes.';
     const isOpen = !paginated || (kind ? userHistoryOpen[kind] : true);
-    return <section className={`card history-card${isOpen ? ' is-open' : ''}`} id={!adminApp && kind ? `user-${kind}-history` : undefined}>{adminHistory ? <><div className="admin-history-heading"><h2><Clock size={23} />Historial</h2><div className="admin-history-tabs" role="tablist" aria-label="Tipo de historial">{(['deposit', 'withdrawal'] as const).map(item => <button type="button" role="tab" aria-selected={historyKind === item} className={historyKind === item ? 'active' : ''} key={item} onClick={() => { setHistoryKind(item); setHistoryPage(0); }}>{item === 'deposit' ? 'Cargas' : 'Retiros'}</button>)}</div></div>{historyError && <p className="alert error" role="alert">{historyError}</p>}{historyKind === 'deposit' && !demo && !staffContext.superAdmin && !sacStation ? <p className="shift-note">Elegí el SAC de esta computadora en Cargas para ver su historial.</p> : null}</> : <h2>{paginated && kind ? <button type="button" className="history-toggle" aria-expanded={isOpen} aria-controls={`user-${kind}-history-content`} onClick={() => setUserHistoryOpen(old => ({ ...old, [kind]: !old[kind] }))}><Clock size={23} /><span>{heading}</span><small>{items.length}</small><ChevronRight className="history-toggle-chevron" size={20} /></button> : <><Clock size={23} />{heading}</>}</h2>}
+    return <section className={`card history-card${isOpen ? ' is-open' : ''}`} id={!adminApp && kind ? `user-${kind}-history` : undefined}>{adminHistory ? <><div className="admin-history-heading"><h2><Clock size={23} />Historial</h2><div className="admin-history-tabs" role="tablist" aria-label="Tipo de historial">{(['deposit', 'withdrawal'] as const).map(item => <button type="button" role="tab" aria-selected={historyKind === item} className={historyKind === item ? 'active' : ''} key={item} onClick={() => { setHistoryKind(item); setHistoryPage(0); }}>{item === 'deposit' ? 'Cargas' : 'Retiros'}</button>)}</div></div>{historyError && <p className="alert error" role="alert">{historyError}</p>}{historyKind === 'deposit' && !sharedDeposits && !demo && !staffContext.superAdmin && !sacStation ? <p className="shift-note">Elegí el SAC de esta computadora en Cargas para ver su historial.</p> : null}</> : <h2>{paginated && kind ? <button type="button" className="history-toggle" aria-expanded={isOpen} aria-controls={`user-${kind}-history-content`} onClick={() => setUserHistoryOpen(old => ({ ...old, [kind]: !old[kind] }))}><Clock size={23} /><span>{heading}</span><small>{remoteHistory ? userHistoryOpen[kind] ? remoteHistory.total : 'Ver' : items.length}</small><ChevronRight className="history-toggle-chevron" size={20} /></button> : <><Clock size={23} />{heading}</>}</h2>}
       {isOpen && <div id={paginated && kind ? `user-${kind}-history-content` : undefined}>
-      {adminHistory && historyLoading ? <p className="empty">Cargando historial…</p> : !items.length ? <p className="empty">{empty}</p> : visibleItems.map(r => {
+      {remoteHistory?.error && <p className="alert error" role="alert">{remoteHistory.error}</p>}
+      {(adminHistory && historyLoading) || remoteHistory?.loading ? <p className="empty">Cargando historial…</p> : !items.length ? <p className="empty">{empty}</p> : visibleItems.map(r => {
         const requestParts = !adminApp && r.kind === 'withdrawal' ? withdrawalParts.filter(part => part.request_id === r.id).sort((a, b) => a.part_number - b.part_number) : [];
         return <article className={`movement${requestParts.length ? ' user-withdrawal-movement' : ''}`} key={r.id}>
         <div><strong>{money(r.amount)}</strong><small>{r.kind === 'deposit' ? 'Carga' : 'Retiro'} · {date(r.created_at)}</small>{requestedBonus(r) && <small>Bono solicitado: {requestedBonus(r)}</small>}
-          {adminApp && <><small>Usuario: {r.user_name || 'Sin nombre'}</small>{r.holder && <small>{r.holder} · {r.cbu} · {r.alias}</small>}</>}
+          {adminApp && <><small>Usuario: {r.user_name || 'Sin nombre'}</small>{sharedDeposits && !demo && r.kind === 'deposit' && <DepositClaimHistory requestId={r.id} />}{r.holder && <small>{r.holder} · {r.cbu} · {r.alias}</small>}</>}
           {requestParts.map(part => {
             const key = `${part.request_id}-${part.part_number}`;
             const partStatus = r.status === 'rejected' ? 'rejected' : part.paid_at ? 'approved' : 'pending';
@@ -889,19 +1198,63 @@ function App() {
       </article>})}
       {adminHistory && adminPages > 1 && <div className="user-history-pager admin-history-pager" aria-label={`Páginas de ${heading.toLowerCase()}`}><button type="button" disabled={adminCurrent === 0 || historyLoading} onClick={() => setHistoryPage(adminCurrent - 1)}>Anterior</button><span>{adminCurrent + 1} de {adminPages} · {historyTotal} registros</span><button type="button" disabled={adminCurrent + 1 >= adminPages || historyLoading} onClick={() => setHistoryPage(adminCurrent + 1)}>Siguiente</button></div>}
       {kind && window && window.pages > 1 && <div className="user-history-pager" aria-label={`Páginas del ${heading.toLowerCase()}`}>
-        <button type="button" disabled={window.current === 0} onClick={() => setUserHistoryPages(value => ({ ...value, [kind]: window.current - 1 }))}>Anterior</button>
+        <button type="button" disabled={window.current === 0 || remoteHistory?.loading} onClick={() => setUserHistoryPages(value => ({ ...value, [kind]: window.current - 1 }))}>Anterior</button>
         <span>{window.current + 1} de {window.pages}</span>
-        <button type="button" disabled={window.current + 1 >= window.pages} onClick={() => setUserHistoryPages(value => ({ ...value, [kind]: window.current + 1 }))}>Siguiente</button>
+        <button type="button" disabled={window.current + 1 >= window.pages || remoteHistory?.loading} onClick={() => setUserHistoryPages(value => ({ ...value, [kind]: window.current + 1 }))}>Siguiente</button>
       </div>}
       </div>}
     </section>;
   }
   function depositList() {
-    const demoDeposits = requests.filter(request => request.kind === 'deposit').sort((a, b) => b.created_at.localeCompare(a.created_at));
-    const total = demo ? demoDeposits.length : depositTotal;
+    const demoDeposits: QueueDeposit[] = requests.filter(request => request.kind === 'deposit').sort((a, b) => b.created_at.localeCompare(a.created_at));
+    const actor = session?.user.id ?? (demo ? 'demo-operator' : '');
+    const demoQueue = sharedDeposits ? demoDeposits.filter(row => row.status !== 'rejected' && !row.credited_at && (depositFilter === 'all' || depositFilter === 'mine' && ownsDeposit(row, actor) || depositFilter === 'available' && row.status === 'pending' && !row.claimed_by)).sort((a, b) => a.created_at.localeCompare(b.created_at)) : demoDeposits;
+    const total = demo ? demoQueue.length : depositTotal;
     const pager = depositWindow(depositPage, total);
-    const items = demo ? demoDeposits.slice(pager.from, pager.to + 1) : depositRows;
-    const selected = (demo ? demoDeposits : depositRows).find(request => request.id === selectedDepositId) ?? null;
+    const items = demo ? demoQueue.slice(pager.from, pager.to + 1) : depositRows;
+    const selected = selectedDepositId && activeDeposit?.id === selectedDepositId ? activeDeposit : (demo ? demoDeposits : depositRows).find(request => request.id === selectedDepositId) ?? null;
+    const canWorkSelected = !sharedDeposits || !!selected && ownsDeposit(selected, actor);
+    async function openDeposit(request: QueueDeposit) {
+      await action(async () => {
+        const shouldTake = sharedDeposits && (ownsDeposit(request, actor) || !request.claimed_by && request.status === 'pending');
+        let row = request;
+        if (shouldTake) {
+          try {
+            row = demo ? { ...request, claimed_by: actor, claimed_name: 'Vos', claim_token: request.claim_token ?? crypto.randomUUID(), claimed_at: request.claimed_at ?? new Date().toISOString() } : await takeDeposit(request.id);
+          } finally {
+            if (!demo && currentSessionId.current === actor) setDepositReload(value => value + 1);
+          }
+          if (demo) setRequests(old => old.map(item => item.id === row.id ? row : item));
+        }
+        if (currentPageRef.current !== 'deposit' || !demo && currentSessionId.current !== actor) return;
+        setActiveDeposit(row);
+        setSelectedDepositId(row.id);
+        setReviewAmount(canonicalMoney(row.amount));
+        setReviewGrantBonus(true);
+        setReassignOpen(false);
+        setReassignReason('');
+      });
+    }
+    async function releaseSelected() {
+      if (!selected) return;
+      await action(async () => {
+        if (demo) setRequests(old => old.map(item => item.id === selected.id ? { ...item, claimed_by: null, claimed_name: null, claim_token: null, claimed_at: null } : item));
+        else await releaseDeposit(selected);
+        if (!demo && currentSessionId.current !== actor) return;
+        setSelectedDepositId(null); setActiveDeposit(null); setDepositReload(value => value + 1);
+        setNotice('Carga liberada. Ya puede atenderla otro compañero.');
+      });
+    }
+    async function assumeSelected() {
+      if (!selected || !window.confirm('¿Verificaste con el responsable anterior si ya acreditó en la plataforma? Vas a asumir esta carga.')) return;
+      await action(async () => {
+        const row = demo ? { ...selected, claimed_by: actor, claimed_name: 'Vos', claim_token: crypto.randomUUID(), claimed_at: new Date().toISOString() } : await reassignDeposit(selected, reassignReason);
+        if (!demo && currentSessionId.current !== actor) return;
+        if (demo) setRequests(old => old.map(item => item.id === row.id ? row : item));
+        setActiveDeposit(row); setSelectedDepositId(row.id); setReassignOpen(false); setDepositReload(value => value + 1);
+        setNotice('La carga quedó a tu nombre. Verificá su acreditación antes de continuar.');
+      });
+    }
     const selectedName = selected?.user_name || 'Usuario sin nombre';
     function openFullReceipt() {
       if (!selected || !receiptPreview) return;
@@ -912,7 +1265,8 @@ function App() {
       const db = supabase;
       if (!selected) return;
       if (demo || !db) {
-        const reviewed = { ...selected, status };
+        const reviewed = { ...selected, status, credit_started_at: status === 'approved' ? new Date().toISOString() : null };
+        setActiveDeposit(reviewed);
         setRequests(old => old.map(item => item.id === selected.id ? reviewed : item));
         if (status === 'approved') { setApprovedDeposit(reviewed); setCopiedCreditField(null); setSelectedDepositId(null); }
         return;
@@ -921,14 +1275,24 @@ function App() {
         const special = !!selected.requested_special_bonus_id;
         const actual = readMoney(reviewAmount);
         if (status === 'approved' && special && actual === null) throw new InputError('Ingresá el monto que llegó realmente.');
-        const { data, error } = status === 'approved' && special
-          ? await db.rpc('review_special_deposit', { p_request_id: parseUuid(selected.id), p_actual_amount: actual, p_apply_bonus: reviewGrantBonus })
-          : await db.from('requests').update({ status }).eq('id', parseUuid(selected.id)).eq('status', 'pending').select('id,status').single();
-        if (error) throw error;
-        const reviewed = { ...selected, ...data, status: data.status as RequestRow['status'] };
+        let reviewed: QueueDeposit;
+        if (sharedDeposits) reviewed = await reviewQueueDeposit(selected, status, actual, reviewGrantBonus);
+        else {
+          const { data, error } = status === 'approved' && special
+            ? await db.rpc('review_special_deposit', { p_request_id: parseUuid(selected.id), p_actual_amount: actual, p_apply_bonus: reviewGrantBonus })
+            : await db.from('requests').update({ status }).eq('id', parseUuid(selected.id)).eq('status', 'pending').select('id,status').single();
+          if (error) throw error;
+          reviewed = { ...selected, ...data, status: data.status as RequestRow['status'] };
+        }
+        if (currentSessionId.current !== actor) return;
+        const current = depositOperation.current.selected;
+        const stillReviewing = currentPageRef.current === 'deposit' && current?.id === selected.id
+          && (!sharedDeposits || current.claim_token === selected.claim_token);
+        if (stillReviewing) setActiveDeposit(reviewed);
+        if (sharedDeposits) setDepositReload(value => value + 1);
         setDepositRows(old => old.map(item => item.id === selected.id ? reviewed : item));
         if (selected.status === 'pending') setPendingDepositCount(count => Math.max(0, count - 1));
-        if (status === 'approved') { setApprovedDeposit(reviewed); setCopiedCreditField(null); setSelectedDepositId(null); }
+        if (status === 'approved' && stillReviewing) { setApprovedDeposit(reviewed); setCopiedCreditField(null); setSelectedDepositId(null); }
       });
     }
     async function confirmCredit() {
@@ -940,9 +1304,14 @@ function App() {
       }
       await action(async () => {
         const db = supabase!;
-        const { data, error } = await db.rpc('confirm_deposit_credit', { p_request_id: approvedDeposit.id });
-        if (error) throw error;
-        const result = data as { notification_id: string; newly_credited: boolean };
+        let result: { notification_id: string; newly_credited: boolean };
+        if (sharedDeposits) result = await confirmQueueCredit(approvedDeposit);
+        else {
+          const { data, error } = await db.rpc('confirm_deposit_credit', { p_request_id: approvedDeposit.id });
+          if (error) throw error;
+          result = data as { notification_id: string; newly_credited: boolean };
+        }
+        if (currentSessionId.current !== actor) return;
         const creditedAt = new Date().toISOString();
         setDepositRows(old => old.map(item => item.id === approvedDeposit.id ? { ...item, credited_at: creditedAt } : item));
         setApprovedDeposit(null);
@@ -973,22 +1342,23 @@ function App() {
     const credit = approvedDeposit ? creditAmounts(approvedDeposit.amount, approvedDeposit.bonus_percent, approvedDeposit.bonus_amount ?? 0) : creditAmounts(0, 0);
     const selectedBonus = selected ? requestedBonus(selected) : '';
     const approvedBonus = approvedDeposit ? requestedBonus(approvedDeposit) : '';
-    const waitingForSac = !demo && !staffContext.superAdmin && !sacStation;
-    const route = selected ? depositRouteLabel(selected, staffContext.superAdmin) : '';
+    const waitingForSac = !sharedDeposits && !demo && !staffContext.superAdmin && !sacStation;
+    const route = selected ? depositRouteLabel(selected, !sharedDeposits && staffContext.superAdmin) : '';
     return <section className="admin-loads" aria-labelledby="loads-title">
-      {!demo && !staffContext.superAdmin ? <SacBoard demo={demo} busy={busy} action={action} scope="local" station={sacStation} onStation={chooseSac} /> : null}
+      {!sharedDeposits && !demo && !staffContext.superAdmin ? <SacBoard demo={demo} busy={busy} action={action} scope="local" station={sacStation} onStation={chooseSac} /> : null}
       <div className="loads-heading">
         <h1 id="loads-title">Cargas</h1>
         <span className="loads-count">{waitingForSac ? 'SAC sin elegir' : `${total} ${total === 1 ? 'solicitud' : 'solicitudes'}`}</span>
       </div>
-      {waitingForSac ? null : depositLoading && !items.length ? <p className="empty">Cargando cargas…</p> : !items.length ? <section className="card empty loads-empty"><WalletCards size={34} /><strong>No hay solicitudes de carga</strong><p>{staffContext.superAdmin || demo ? 'Las nuevas cargas aparecerán en esta lista.' : 'Las cargas de los teléfonos de este SAC aparecerán en esta lista.'}</p></section> : <div className="loads-list">
+      {sharedDeposits && <><p className="deposit-queue-description">Todos ven las mismas cargas. Al abrir una disponible, queda a tu nombre hasta que la resuelvas o la liberes.</p><div className="deposit-queue-tabs" role="tablist" aria-label="Filtrar cargas">{([['available', 'Disponibles'], ['mine', 'Mis cargas'], ['all', 'Todas']] as const).map(([key, label]) => <button type="button" role="tab" aria-selected={depositFilter === key} key={key} disabled={busy} onClick={() => { setDepositRows([]); setDepositPage(0); setDepositFilter(key); }}>{label}</button>)}</div></>}
+      {depositReadError ? <div className="alert error" role="alert">{depositReadError}<button type="button" onClick={() => setDepositReload(value => value + 1)}>Reintentar</button></div> : waitingForSac ? null : depositLoading && !items.length ? <p className="empty">Cargando cargas…</p> : !items.length ? <section className="card empty loads-empty"><WalletCards size={34} /><strong>No hay solicitudes de carga</strong><p>{sharedDeposits ? depositFilter === 'mine' ? 'Las cargas que tomes aparecerán acá.' : depositFilter === 'available' ? 'No quedan cargas disponibles. En Todas podés ver las que están en atención.' : 'Las nuevas cargas aparecerán acá.' : staffContext.superAdmin || demo ? 'Las nuevas cargas aparecerán en esta lista.' : 'Las cargas de los teléfonos de este SAC aparecerán en esta lista.'}</p></section> : <div className="loads-list">
         {items.map(request => {
           const name = request.user_name || 'Usuario sin nombre';
-          const requestRoute = depositRouteLabel(request, staffContext.superAdmin || demo);
-          return <button className="load-request-button" key={request.id} onClick={event => { depositTrigger.current = event.currentTarget; setSelectedDepositId(request.id); setReviewAmount(canonicalMoney(request.amount)); setReviewGrantBonus(true); }} aria-haspopup="dialog">
+          const requestRoute = depositRouteLabel(request, !sharedDeposits && (staffContext.superAdmin || demo));
+          return <button className="load-request-button" key={request.id} disabled={busy || depositLoading} onClick={event => { depositTrigger.current = event.currentTarget; void openDeposit(request); }} aria-haspopup="dialog">
               <span className="request-avatar" aria-hidden="true">{name.charAt(0).toLocaleUpperCase('es')}</span>
               <span className="request-summary-user"><strong>{name}</strong><small>{date(request.created_at)}</small>{requestRoute ? <small className="request-route">{requestRoute}</small> : null}</span>
-              <span className="request-summary-amount"><strong>{money(request.amount)}</strong><span className={`badge ${request.status}`}>{request.credited_at ? 'Acreditada' : statusLabel[request.status]}</span></span>
+              <span className="request-summary-amount"><strong>{money(request.amount)}</strong><span className={`badge ${request.status}`}>{sharedDeposits ? depositClaimLabel(request, actor) : request.credited_at ? 'Acreditada' : statusLabel[request.status]}</span>{sharedDeposits && <small>{ownsDeposit(request, actor) ? 'Continuar atención' : request.claimed_by || request.status !== 'pending' ? 'Consultar detalle' : 'Abrir y tomar'}</small>}</span>
               <ChevronRight className="request-chevron" aria-hidden="true" />
             </button>;
         })}
@@ -1000,11 +1370,14 @@ function App() {
           <div className="load-modal-summary">
             <div className="summary-field summary-amount"><span><WalletCards size={16} /> Monto solicitado</span><strong>{money(selected.amount)}</strong></div>
             <div className="summary-field"><span><UserRound size={16} /> Nombre del usuario</span><strong>{selectedName}</strong></div>
-            <div className="summary-field"><span><Hash size={16} /> ID USER</span></div>
+            <div className="summary-field"><span><Hash size={16} /> Solicitud</span><strong title={selected.id}>{selected.id.slice(0, 8)}</strong></div>
             <div className="summary-field"><span><CalendarClock size={16} /> Fecha y hora</span><strong>{date(selected.created_at)}</strong></div>
             {route ? <div className="summary-field"><span>Cuenta de destino</span><strong>{route}</strong></div> : null}
           <div className="summary-review-meta"><span>Estado <span className={`badge ${selected.status}`}>{selected.credited_at ? 'Acreditada' : statusLabel[selected.status]}</span></span>{selectedBonus && <span>Bono solicitado: <strong>{selectedBonus}</strong></span>}{selected.bonus_load_number && <span>Carga n.º <strong>{selected.bonus_load_number}</strong></span>}{selected.requested_special_bonus_id && !selected.bonus_id && selected.status === 'approved' && <span>Bono especial solicitado; {selected.credited_at ? 'acreditada' : 'aprobada'} sin bono</span>}</div>
           </div>
+          {sharedDeposits && <div className="deposit-claim-status" role="status"><strong>{depositClaimLabel(selected, actor)}</strong>{selected.claimed_at && <small>Tomada el {date(selected.claimed_at)}</small>}{selected.claimed_at && Date.now() - Date.parse(selected.claimed_at) > 15 * 60_000 && <small>Atención demorada. Consultá con el responsable antes de reasignar.</small>}{canWorkSelected && selected.status === 'pending' && <button type="button" disabled={busy} onClick={() => void releaseSelected()}>Liberar carga</button>}{staffContext.superAdmin && !selected.credited_at && selected.status !== 'rejected' && (!canWorkSelected || selected.status === 'approved') && <button type="button" disabled={busy} onClick={() => setReassignOpen(value => !value)}>Revisar y asumir carga</button>}</div>}
+          {sharedDeposits && !demo && <DepositClaimHistory key={selected.id} requestId={selected.id} />}
+          {sharedDeposits && reassignOpen && <form className="deposit-reassign-form" onSubmit={event => { event.preventDefault(); void assumeSelected(); }}><p>Consultá al responsable anterior y comprobá en la plataforma si ya acreditó. Asumir la carga no realiza una nueva acreditación.</p><label>Motivo de la reasignación<textarea minLength={5} maxLength={300} required value={reassignReason} onChange={event => setReassignReason(event.target.value)} /></label><button type="submit" disabled={busy}>Confirmar y asumir a mi nombre</button></form>}
           <div className="request-detail">
             <section className="receipt-viewer" aria-label="Comprobante de transferencia">
               <div className="receipt-canvas" aria-live="polite">
@@ -1015,15 +1388,15 @@ function App() {
               </div>
             </section>
           </div>
-          {selected.status === 'pending' && selected.requested_special_bonus_id && <div className="special-deposit-review">
+          {canWorkSelected && selected.status === 'pending' && selected.requested_special_bonus_id && <div className="special-deposit-review">
             <label>Monto realmente recibido<input inputMode="decimal" value={reviewAmount} onChange={event => setReviewAmount(event.target.value)} /></label>
             <p>Solicitó {money(selected.amount)}. El monto que pongas acá será el que se acredite.</p>
             <label><input type="radio" name="special-review-bonus" checked={reviewGrantBonus} onChange={() => setReviewGrantBonus(true)} /> Acreditar con bono {selectedBonus}</label>
             <label><input type="radio" name="special-review-bonus" checked={!reviewGrantBonus} onChange={() => setReviewGrantBonus(false)} /> Acreditar solo el dinero recibido, sin bono</label>
             {(() => { const actual = readMoney(reviewAmount); const min = Number(selected.special_min_amount) || 0; const max = Number(selected.special_max_amount) || 0; return actual !== null && (actual < min || actual > max) ? <p className="alert error">El monto recibido no cumple el rango de {money(min)} a {money(max)}. Elegí «sin bono».</p> : null; })()}
           </div>}
-          {selected.status === 'pending' && <div className="load-decision-footer"><button className="approve-load" disabled={busy} onClick={() => void reviewSelected('approved')}>Aceptar carga</button><button className="reject-load" disabled={busy} onClick={() => { if (window.confirm('¿Confirmás que querés rechazar esta carga? Esta acción no se puede deshacer.')) void reviewSelected('rejected'); }}>Rechazar</button></div>}
-          {selected.status === 'approved' && !selected.credited_at && <div className="load-decision-footer"><button className="approve-load" disabled={busy} onClick={() => { setApprovedDeposit(selected); setSelectedDepositId(null); }}>Ver datos para acreditar</button></div>}
+          {canWorkSelected && selected.status === 'pending' && <div className="load-decision-footer"><button className="approve-load" disabled={busy} onClick={() => void reviewSelected('approved')}>Aceptar carga</button><button className="reject-load" disabled={busy} onClick={() => { if (window.confirm('¿Confirmás que querés rechazar esta carga? Esta acción no se puede deshacer.')) void reviewSelected('rejected'); }}>Rechazar</button></div>}
+          {canWorkSelected && selected.status === 'approved' && !selected.credited_at && <div className="load-decision-footer"><button className="approve-load" disabled={busy} onClick={() => { setApprovedDeposit(selected); setSelectedDepositId(null); }}>Ver datos para acreditar</button></div>}
           {selected.credited_at && <div className="load-decision-footer"><button className="approve-load" disabled={busy} onClick={() => void retryCreditPush(selected.id)}>Comprobar o reenviar aviso</button></div>}
         </section>
       </div>}
@@ -1051,23 +1424,23 @@ function App() {
   const pendingCounts = {
     deposit: demo ? pendingRequestCount(requests, 'deposit') : pendingDepositCount,
     withdrawal: adminApp && !demo ? pendingWithdrawalCount : pendingRequestCount(requests, 'withdrawal'),
-    chat: pendingChatCount(chatInbox),
-    externalChat: externalChatInbox.filter(row => !row.completed_at && row.last_sender_type === 'visitor').length,
+    chat: pendingChatCount(demo ? chatInbox : chatSummary),
+    externalChat: (demo ? externalChatInbox : externalSummary).filter(row => !row.completed_at && row.last_sender_type === 'visitor').length,
     access: accessRequestCount,
   };
   const canOpenCurrentPage = !adminApp || demo || canOpenAdminPage(page, staffContext.permissions, staffContext.superAdmin);
-  const content = <>
+  const content = <AsyncView key={userId} viewKey={`${userId}:${page}`}>
     {demo && <div className="demo">Vista previa · las operaciones no se envían</div>}
     {adminApp && !isAdmin && !demo ? <section className="card"><h1>Acceso restringido</h1><p>Esta cuenta no tiene permisos de administración.</p>{feedback}</section> : !canOpenCurrentPage ? <section className="card"><h1>Sin acceso</h1><p>Este apartado no está habilitado para tu usuario.</p>{feedback}</section> : <>
       {(adminApp || (page !== 'deposit' && page !== 'withdrawal')) && feedback}
       {!adminApp && page === 'profile' && <UserProfile name={name} busy={busy} logout={() => void logout()} />}
       {!adminApp && !demo && session && <PlayerNotifications key={session.user.id} userId={session.user.id} settingsPage={page === 'home' || page === 'profile' ? page : null} onOpenChat={() => navigate('chat')} onOpenWheel={() => navigate('wheel')} />}
-      {page === 'home' && (adminApp ? <><div className="welcome"><h1><span>Resumen del turno</span></h1></div>{!demo && !staffContext.superAdmin && !sacStation ? <p className="shift-note">Elegí el SAC de esta computadora en Cargas para ver sus pendientes.</p> : null}<div className="stats">{(['deposit', 'withdrawal'] as const).map(kind => <section className="card" key={kind}><p>{kind === 'deposit' ? 'Cargas pendientes' : 'Retiros pendientes'}</p><h1>{kind === 'deposit' ? pendingCounts.deposit : pendingCounts.withdrawal}</h1></section>)}</div>{bonusBoard()}<DepositLeaderboard demo={demo} requests={requests} reloadKey={leaderboardReload} /></> : <UserHome name={name} navigate={navigate} onClaimSpecialBonus={id => { setSelectedBonusId(id); navigate('deposit'); }} onOpenChat={() => setChatBubbleOpen(true)} whatsappUrl={demo ? undefined : playerWhatsAppUrl} username={demo ? null : playerUsername} casinoUrl={demo ? null : playerCasinoUrl} demo={demo} userId={demo ? '' : userId} wheelEligible={demo || wheelEligible} />)}
+      {page === 'home' && (adminApp ? <AdminOverview counts={pendingCounts} permissions={demo ? allStaffPermissions : staffContext.permissions} superAdmin={demo || staffContext.superAdmin} navigate={navigate} note={!sharedDeposits && !demo && !staffContext.superAdmin && !sacStation ? <p className="shift-note">Elegí el SAC de esta computadora en Cargas para ver sus pendientes.</p> : null} bonuses={bonusBoard()} leaderboard={<DepositLeaderboard demo={demo} requests={requests} reloadKey={leaderboardReload} />} /> : <UserHome name={name} navigate={navigate} onClaimSpecialBonus={id => { setSelectedBonusId(id); navigate('deposit'); }} onOpenChat={() => setChatBubbleOpen(true)} whatsappUrl={demo ? undefined : playerWhatsAppUrl} username={demo ? null : playerUsername} casinoUrl={demo ? null : playerCasinoUrl} demo={demo} userId={demo ? '' : userId} wheelEligible={demo || wheelEligible} />)}
       {!adminApp && page === 'bonuses' && <PlayerBonuses demo={demo} onClaim={id => { setSelectedBonusId(id); navigate('deposit'); }} />}
       {!adminApp && page === 'profile' && <>{history('deposit')}{history('withdrawal')}<ReferralBonusHistory userId={userId} demo={demo} /></>}
       {(page === 'deposit' || page === 'withdrawal') && !adminApp && <RequestForm key={`${page}:${selectedBonusId}`} kind={page} requests={requests.filter(r => r.user_id === userId)} bank={bank} bankOperation={bankOperation} retryAt={page === 'deposit' ? depositRetryAt : 0} initialBonusId={page === 'deposit' ? selectedBonusId : ''} busy={busy} demo={demo} feedback={feedback} onSubmit={submitRequest} onCopy={(text, label) => void action(async () => { await navigator.clipboard.writeText(text); setNotice(`${label} copiado.`); })} onBrowseBonuses={() => navigate('bonuses')} onOpenWithdrawalHistory={() => { setUserHistoryOpen(old => ({ ...old, withdrawal: true })); setProfileHistoryTarget('withdrawal'); navigate('profile'); }} />}
       {adminApp && page === 'deposit' && depositList()}
-      {adminApp && page === 'withdrawal' && <AdminWithdrawals requests={requests} parts={withdrawalParts} busy={busy} demo={demo} onAdjust={async (request, amount) => {
+      {adminApp && page === 'withdrawal' && <AdminWithdrawals pagination={demo ? undefined : { pendingPage: withdrawalPages.pending, resolvedPage: withdrawalPages.resolved, pendingTotal: withdrawalTotals.pending, resolvedTotal: withdrawalTotals.resolved, loading: withdrawalsLoading, onPage: (kind, next) => setWithdrawalPages(old => ({ ...old, [kind]: next })) }} requests={requests} parts={withdrawalParts} busy={busy} demo={demo} onAdjust={async (request, amount) => {
         try {
           if (!supabase || demo || !canOpenAdminPage('withdrawal', staffContext.permissions, staffContext.superAdmin)) throw new InputError('No tenés permiso para modificar retiros.');
           const result = await supabase.rpc('adjust_withdrawal_amount', { p_request_id: request.id, p_amount: amount });
@@ -1105,6 +1478,7 @@ function App() {
             setRequests(old => old.map(item => item.id === request.id ? { ...item, status: 'approved', approved_at: paidAt } : item));
             setPendingWithdrawalCount(value => Math.max(0, value - 1));
             setNotice('Retiro completado. El usuario ya puede ver todos los comprobantes.');
+            setWithdrawalReload(value => value + 1);
           } else setNotice(`Retiro ${part.part_number} de ${withdrawalParts.filter(item => item.request_id === request.id).length} realizado. Faltan transferencias para completar la solicitud.`);
           const { data: pushResult, error: pushError } = await supabase.functions.invoke('send-user-push', { body: { request_id: request.id, part_number: part.part_number } });
           if (pushError) setNotice(`Retiro ${part.part_number} realizado. El aviso está en la cuenta del usuario, pero no pudimos enviar el push.`);
@@ -1123,6 +1497,7 @@ function App() {
         setPendingWithdrawalCount(value => Math.max(0, value - 1));
         setHistoryReload(value => value + 1);
         setNotice('Retiro rechazado.');
+        setWithdrawalReload(value => value + 1);
       })} />}
       {adminApp && page === 'history' && history()}
       {adminApp && page === 'users' && <PlayerAdmin demo={demo} busy={busy} action={action} />}
@@ -1139,20 +1514,20 @@ function App() {
       {adminApp && page === 'wheel' && <WheelAdmin demo={demo} busy={busy} action={action} userId={userId} superAdmin={demo || staffContext.superAdmin} canEditPrizes={demo || staffContext.superAdmin || staffContext.permissions.wheel} />}
       {!adminApp && page === 'wheel' && settings.wheel_enabled && wheelEligibilityReady && wheelEligible && <UserWheel demo={demo} userId={userId} />}
       {adminApp && page === 'accounts' && <AccountAdmin demo={demo} busy={busy} action={action} />}
-      {adminApp && page === 'shifts' && <ShiftAdmin demo={demo} busy={busy} action={action} station={sacStation} onStation={chooseSac} />}
+      {adminApp && page === 'shifts' && <ShiftAdmin demo={demo} busy={busy} action={action} station={sacStation} onStation={chooseSac} sharedDeposits={sharedDeposits} />}
       {adminApp && page === 'cashiers' && staffContext.superAdmin && <CashierAdmin demo={demo} busy={busy} action={action} />}
-      {adminApp && page === 'chat' && <AdminChat inbox={chatInbox} selectedId={thread} demo={demo} canManageExternalLinks={staffContext.superAdmin || staffContext.permissions.external_chat} onSelect={setThread} onChanged={() => setChatReload(value => value + 1)} />}
-      {adminApp && page === 'external-chat' && <AdminExternalChat inbox={externalChatInbox} selectedId={externalThread} demo={demo} canLink={staffContext.superAdmin || staffContext.permissions.chat} onSelect={setExternalThread} onChanged={() => setExternalChatReload(value => value + 1)} onLinked={linkedUserId => { setExternalThread(''); setThread(linkedUserId); setChatReload(value => value + 1); setExternalChatReload(value => value + 1); navigate('chat'); }} />}
+      {adminApp && page === 'chat' && <AdminChat pagination={demo ? undefined : { ...chatPageState, search: chatQuery.search, filter: chatQuery.filter, page: chatQuery.page, all: chatSummary.length, pending: pendingCounts.chat, completed: chatSummary.filter(row => !!row.completed_at).length, onQuery: (search, filter) => { setChatQuery({ search, filter, page: 0 }); }, onPage: next => { setThread(''); setChatQuery(old => ({ ...old, page: next })); } }} inbox={chatInbox} selectedId={thread} demo={demo} canManageExternalLinks={staffContext.superAdmin || staffContext.permissions.external_chat} onSelect={setThread} onChanged={() => setChatReload(value => value + 1)} />}
+      {adminApp && page === 'external-chat' && <AdminExternalChat pagination={demo ? undefined : { ...externalPageState, search: externalQuery.search, filter: externalQuery.filter, page: externalQuery.page, all: externalSummary.length, pending: pendingCounts.externalChat, completed: externalSummary.filter(row => !!row.completed_at).length, onQuery: (search, filter) => { setExternalQuery({ search, filter, page: 0 }); }, onPage: next => { setExternalThread(''); setExternalQuery(old => ({ ...old, page: next })); } }} inbox={externalChatInbox} selectedId={externalThread} demo={demo} canLink={staffContext.superAdmin || staffContext.permissions.chat} onSelect={setExternalThread} onChanged={() => setExternalChatReload(value => value + 1)} onLinked={linkedUserId => { setExternalThread(''); setThread(linkedUserId); setChatReload(value => value + 1); setExternalChatReload(value => value + 1); navigate('chat'); }} />}
       {adminApp && page === 'external-chat-admin' && (demo || staffContext.superAdmin) && <AdminExternalChatSettings demo={demo} />}
     </>}
-  </>;
+  </AsyncView>;
   const staffAvatarUrl = staffContext.avatarPath && supabase ? supabase.storage.from('cashier-avatars').getPublicUrl(staffContext.avatarPath).data.publicUrl : null;
-  if (adminApp) return <AdminRefreshProvider version={adminRefresh} refresh={refreshAdmin}><AdminShell page={page} counts={pendingCounts} permissions={demo ? allStaffPermissions : staffContext.permissions} superAdmin={demo || staffContext.superAdmin} staffName={demo ? 'Superadministrador' : staffContext.displayName || name} avatarUrl={staffAvatarUrl} busy={busy} navigate={navigate} logout={() => void logout()} onRefresh={refreshAdmin}>{content}</AdminShell></AdminRefreshProvider>;
+  if (adminApp) return <AsyncView viewKey={`admin-shell:${userId}`}><AdminRefreshProvider version={adminRefresh} refresh={refreshAdmin}><AdminShell page={page} counts={pendingCounts} permissions={demo ? allStaffPermissions : staffContext.permissions} superAdmin={demo || staffContext.superAdmin} staffName={demo ? 'Superadministrador' : staffContext.displayName || name} avatarUrl={staffAvatarUrl} busy={busy} navigate={navigate} logout={() => void logout()} onRefresh={refreshAdmin}>{content}</AdminShell></AdminRefreshProvider></AsyncView>;
   const surface = themeSurface(settings, path => supabase?.storage.from('app-assets').getPublicUrl(path).data.publicUrl ?? null);
   return <div className={`app user-app page-${page} ${surface.className}`} style={surface.style}>
     <UserHeader page={page} navigate={navigate} name={name} />
     {content}
-    {session && !demo && page === 'home' && <Conversation messages={messages} userId={userId} busy={busy} disabled={false} open={chatBubbleOpen} onOpenChange={setChatBubbleOpen} onSubmit={sendMessage} showLauncher={false} />}
+    {session && !demo && page === 'home' && chatBubbleOpen && <AsyncView viewKey={`conversation:${userId}`}><Conversation loading={chatLoading} hasMore={chatHasMore} loadingOlder={chatOlderLoading} onLoadOlder={loadOlderPlayerMessages} messages={messages} userId={userId} busy={busy} disabled={false} open={chatBubbleOpen} onOpenChange={setChatBubbleOpen} onSubmit={sendMessage} showLauncher={false} /></AsyncView>}
     {exitConfirmationOpen && <div className="player-exit-backdrop" role="presentation" onClick={event => { if (event.target === event.currentTarget) setExitConfirmationOpen(false); }}>
       <section className="player-exit-dialog" role="dialog" aria-modal="true" aria-labelledby="player-exit-title">
         <h2 id="player-exit-title">¿Querés cerrar la app?</h2>

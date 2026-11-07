@@ -73,8 +73,10 @@ export function BonusCounterAdmin({ demo, demoCounters = [] }: { demo: boolean; 
     </div>
     {error && <p className="alert error" role="alert">{error}</p>}{notice && <p className="alert success" role="status">{notice}</p>}
     {loading ? <p className="bonus-shift-loading">Cargando contadores…</p> : <>
-      <div className="bonus-counter-grid">
+      {activeSummary.counters.length > 0 && <div className="bonus-counter-grid">
         {activeSummary.counters.map(item => <article className="card" key={item.key}><p>{item.title}</p><strong>{item.loads}</strong><small>{item.rewardType === 'free_spins' ? `${item.freeSpins} giros gratis${item.rewardLabel ? ` · ${item.rewardLabel}` : ''}` : item.key === 'none' ? 'Sin bono' : money(item.bonusTotal)}</small></article>)}
+      </div>}
+      <div className="bonus-counter-totals">
         <article className="card"><p>Total cargas</p><strong>{activeSummary.totalLoads}</strong><small>Sin bono: {activeSummary.withoutBonus}</small></article>
         <article className="card bonus-total-awarded"><p>Total bonos otorgados</p><strong>{money(activeSummary.totalBonusGranted)}</strong><small>{activeSummary.freeSpinsGranted} premios de giros gratis</small></article>
       </div>

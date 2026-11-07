@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { ChevronRight, UserRound } from 'lucide-react';
-import modernPanda from './assets/panda-login-transparent.png';
+import modernPanda from './assets/panda-login-transparent.webp';
 
 export function ModernBrand() {
   return <span className="brand modern-brand">Gana777bet.com</span>;

@@ -1,7 +1,9 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ChevronDown, KeyRound, LogOut, Pencil, Phone, Search, UserPlus, UserRound, X } from 'lucide-react';
 import { InputError } from '../supabase/functions/_shared/validation';
 import { supabase } from './lib';
+import { useViewState } from './view-state';
+import { searchPattern, searchFilter } from './query-utils';
 
 type Principal = { slot: number; phone: string; active: boolean };
 type Player = {
@@ -35,22 +37,80 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
   const [referrerId, setReferrerId] = useState<string | null>(null);
   const [referrerOpen, setReferrerOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
-  const [playerQuery, setPlayerQuery] = useState('');
+  const [playerQuery, setPlayerQuery] = useViewState('players:query', '');
 
-  async function refresh() {
-    if (demo || !supabase) { setLoading(false); return; }
-    const [directory, contacts] = await Promise.all([
-      supabase.from('player_directory').select('user_id,username,display_name,phone,external_user_id,whatsapp_principal_slot,whatsapp_principal_phone,deposits,withdrawals,created_at,referrer_user_id,referrer_name').order('created_at', { ascending: false }),
-      supabase.from('whatsapp_principals').select('slot,phone,active').order('slot'),
-    ]);
-    setLoading(false);
-    const failure = directory.error ?? contacts.error;
-    if (failure) { setLoadError('No pudimos cargar los jugadores. Aplicá las migraciones hasta la 022 y desplegá manage-players.'); return; }
-    setLoadError('');
-    setPlayers((directory.data ?? []).map(row => ({ ...row, deposits: Number(row.deposits) || 0, withdrawals: Number(row.withdrawals) || 0 })) as Player[]);
-    setPrincipals((contacts.data ?? []) as Principal[]);
+  const [playerPage, setPlayerPage] = useViewState('players:page', 0);
+  const [playerTotal, setPlayerTotal] = useState(0);
+  const [referrerPlayers, setReferrerPlayers] = useState<Player[]>([]);
+  const [referrerLoading, setReferrerLoading] = useState(false);
+  const requestVersion = useRef(0);
+  const pageSize = 20;
+  const columns = 'user_id,username,display_name,phone,external_user_id,whatsapp_principal_slot,whatsapp_principal_phone,deposits,withdrawals,created_at,referrer_user_id,referrer_name';
+  function playerSearch(value: string) {
+    const term = searchPattern(value);
+    const fields = ['username', 'display_name', 'external_user_id'];
+    const filters = [searchFilter(fields, term)];
+    const phone = term.replace(/\D/g, '');
+    if (phone) filters.push(searchFilter(['phone'], phone));
+    if (/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(term)) filters.push(`user_id.eq.${term}`);
+    return filters.join(',');
   }
-  useEffect(() => { void refresh(); }, [demo]);
+  async function refresh(signal?: AbortSignal) {
+    if (demo || !supabase) { setLoading(false); return; }
+    const version = ++requestVersion.current;
+    setLoading(true);
+    try {
+      let query = supabase.from('player_directory').select(columns, { count: 'exact' })
+        .order('created_at', { ascending: false }).order('user_id', { ascending: false })
+        .range(playerPage * pageSize, (playerPage + 1) * pageSize - 1);
+      if (searchPattern(playerQuery)) query = query.or(playerSearch(playerQuery));
+      if (signal) query = query.abortSignal(signal);
+      const directory = await query;
+      if (signal?.aborted || version !== requestVersion.current) return;
+      if (directory.error) throw directory.error;
+      const total = directory.count ?? 0;
+      const lastPage = Math.max(0, Math.ceil(total / pageSize) - 1);
+      if (playerPage > lastPage) { setPlayerPage(lastPage); return; }
+      setLoadError('');
+      setPlayers((directory.data ?? []).map(row => ({ ...row, deposits: Number(row.deposits) || 0, withdrawals: Number(row.withdrawals) || 0 })) as Player[]);
+      setPlayerTotal(total);
+    } catch { if (!signal?.aborted && version === requestVersion.current) setLoadError('No pudimos cargar los jugadores. Revisá tu conexión e intentá nuevamente.'); }
+    finally { if (!signal?.aborted && version === requestVersion.current) setLoading(false); }
+  }
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => void refresh(controller.signal), playerQuery.trim() ? 250 : 0);
+    return () => { window.clearTimeout(timer); controller.abort(); requestVersion.current++; };
+  }, [demo, playerQuery, playerPage]);
+  useEffect(() => {
+    if (demo || !supabase) return;
+    let alive = true;
+    void supabase.from('whatsapp_principals').select('slot,phone,active').order('slot').then(({ data, error }) => {
+      if (!alive) return;
+      if (error) setLoadError('No pudimos cargar los contactos. Actualizá la sección antes de crear un jugador.');
+      else setPrincipals((data ?? []) as Principal[]);
+    });
+    return () => { alive = false; };
+  }, [demo]);
+  useEffect(() => {
+    const term = searchPattern(referrerQuery);
+    if (demo || !supabase || !referrerOpen || referrerId || !term) { setReferrerPlayers([]); setReferrerLoading(false); return; }
+    const db = supabase;
+    const controller = new AbortController();
+    setReferrerLoading(true);
+    setReferrerPlayers([]);
+    const timer = window.setTimeout(async () => {
+      try {
+        const result = await db.from('player_directory').select('user_id,username,display_name,external_user_id')
+          .or(playerSearch(term)).order('username').limit(8).abortSignal(controller.signal);
+        if (controller.signal.aborted) return;
+        if (result.error) throw result.error;
+        setReferrerPlayers((result.data ?? []) as Player[]);
+      } catch { if (!controller.signal.aborted) setLoadError('No pudimos buscar recomendadores. Intentá nuevamente.'); }
+      finally { if (!controller.signal.aborted) setReferrerLoading(false); }
+    }, 250);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [demo, referrerQuery, referrerOpen, referrerId]);
 
   async function invoke(body: Record<string, unknown>, fallback: string) {
     if (demo || !supabase) throw new InputError('La vista previa no modifica jugadores.');
@@ -115,20 +175,14 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
     });
   }
   const activePrincipals = principals.filter(item => item.active);
-  const normalizedPlayerQuery = playerQuery.trim().replace(/^@/, '').toLocaleLowerCase('es');
-  const phoneQuery = playerQuery.replace(/\D/g, '');
-  const filteredPlayers = normalizedPlayerQuery ? players.filter(player =>
-    [player.username, player.display_name, player.external_user_id, player.user_id]
-      .some(value => value?.toLocaleLowerCase('es').includes(normalizedPlayerQuery)) ||
-    (!!phoneQuery && (player.phone ?? '').replace(/\D/g, '').includes(phoneQuery))
-  ) : players.slice(0, 6);
-  const referrerTerm = referrerQuery.trim().replace(/^@/, '').toLocaleLowerCase('es');
-  const referrerMatches = referrerTerm && !referrerId ? players.filter(player =>
-    [player.username, player.display_name, player.external_user_id].some(value => value?.toLocaleLowerCase('es').includes(referrerTerm))
-  ).slice(0, 8) : [];
+  const normalizedPlayerQuery = playerQuery.trim();
+  const filteredPlayers = players;
+  const referrerTerm = referrerQuery.trim();
+  const referrerMatches = referrerPlayers;
+  const playerPages = Math.max(1, Math.ceil(playerTotal / pageSize));
 
   return <section className="player-admin" aria-labelledby="players-title">
-    <div className="account-heading"><div><h1 id="players-title">Jugadores</h1><p>Creá sus accesos y asigná el WhatsApp principal que los atenderá.</p></div><strong>{players.length} jugadores</strong></div>
+    <div className="account-heading"><div><h1 id="players-title">Jugadores</h1><p>Creá sus accesos y asigná el WhatsApp principal que los atenderá.</p></div><strong>{playerTotal} jugadores</strong></div>
     <form className={`player-create${createOpen ? ' is-open' : ' is-collapsed'}`} onSubmit={createPlayer}>
       <button type="button" className="player-form-toggle" aria-expanded={createOpen} aria-controls="player-create-fields" onClick={() => setCreateOpen(open => !open)}><span className="player-form-title"><UserPlus /><span><strong>Nuevo jugador</strong><small>{createOpen ? 'El teléfono y el principal son obligatorios.' : 'Abrí para crear una cuenta.'}</small></span></span><ChevronDown size={19} className={createOpen ? 'is-open' : ''} /></button>
       {createOpen && <div id="player-create-fields" className="player-create-content"><div className="player-create-fields">
@@ -146,7 +200,7 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
           </div>
           <input type="hidden" name="referrer_user_id" value={referrerId ?? ''} />
           {referrerOpen && referrerTerm && !referrerId && <div id="player-referrer-results" className="player-referrer-results" role="listbox" aria-label="Usuarios encontrados">
-            {referrerMatches.length ? referrerMatches.map((player, index) => <button id={`player-referrer-option-${index}`} type="button" role="option" aria-selected={false} key={player.user_id} onClick={() => { setReferrerId(player.user_id); setReferrerQuery(player.username ? `@${player.username}` : player.display_name); setReferrerOpen(false); }} onKeyDown={event => { if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); const next = index + (event.key === 'ArrowDown' ? 1 : -1); if (next < 0) document.getElementById('player-referrer-search')?.focus(); else document.getElementById(`player-referrer-option-${Math.min(next, referrerMatches.length - 1)}`)?.focus(); } }}><strong>{player.username ? `@${player.username}` : player.display_name}</strong>{player.external_user_id && <small>ID {player.external_user_id}</small>}</button>) : <p>No encontramos jugadores con esa búsqueda.</p>}
+            {referrerMatches.length ? referrerMatches.map((player, index) => <button id={`player-referrer-option-${index}`} type="button" role="option" aria-selected={false} key={player.user_id} onClick={() => { setReferrerId(player.user_id); setReferrerQuery(player.username ? `@${player.username}` : player.display_name); setReferrerOpen(false); }} onKeyDown={event => { if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); const next = index + (event.key === 'ArrowDown' ? 1 : -1); if (next < 0) document.getElementById('player-referrer-search')?.focus(); else document.getElementById(`player-referrer-option-${Math.min(next, referrerMatches.length - 1)}`)?.focus(); } }}><strong>{player.username ? `@${player.username}` : player.display_name}</strong>{player.external_user_id && <small>ID {player.external_user_id}</small>}</button>) : <p>{referrerLoading ? 'Buscando jugadores…' : 'No encontramos jugadores con esa búsqueda.'}</p>}
           </div>}
           {referrerId && <small className="player-referrer-selected">Recomendador seleccionado</small>}
           <small>Al aprobar la primera carga del nuevo jugador se generarán $1.000 para cada uno. Elegilo ahora; el vínculo no se puede cambiar después.</small>
@@ -155,9 +209,9 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
       {!activePrincipals.length && <p className="player-form-warning">Primero cargá al menos un número en Contactos.</p>}
       <button className="cashier-create-submit" disabled={busy || loading || !activePrincipals.length}>Crear jugador</button></div>}
     </form>
-    <label className="player-directory-search"><Search size={18} aria-hidden="true" /><input type="search" value={playerQuery} onChange={event => setPlayerQuery(event.target.value)} placeholder="Buscar por usuario, ID o teléfono" aria-label="Buscar jugadores por nombre de usuario, ID o teléfono" /></label>
-    {!normalizedPlayerQuery && players.length > 6 && <small className="player-list-hint">Mostrando los 6 jugadores más recientes.</small>}
-    {loading ? <p className="empty">Cargando jugadores…</p> : loadError ? <p className="empty">{loadError}</p> : !filteredPlayers.length ? <p className="empty">{normalizedPlayerQuery ? 'No encontramos jugadores con esa búsqueda.' : 'Todavía no hay jugadores registrados.'}</p> : <div className="player-list">{filteredPlayers.map(player => <article className="player-card" key={player.user_id}>
+    <label className="player-directory-search"><Search size={18} aria-hidden="true" /><input type="search" value={playerQuery} onChange={event => { setPlayerQuery(event.target.value); setPlayerPage(0); }} placeholder="Buscar por usuario, ID o teléfono" aria-label="Buscar jugadores por nombre de usuario, ID o teléfono" /></label>
+    {loading && players.length > 0 && <p className="list-updating" role="status">Actualizando jugadores…</p>}
+    {loading && !players.length ? <p className="empty">Cargando jugadores…</p> : loadError ? <p className="empty">{loadError}</p> : !filteredPlayers.length ? <p className="empty">{normalizedPlayerQuery ? 'No encontramos jugadores con esa búsqueda.' : 'Todavía no hay jugadores registrados.'}</p> : <div className="player-list">{filteredPlayers.map(player => <article className="player-card" key={player.user_id}>
       <header className="player-card-header"><span className="player-avatar"><UserRound /></span><div><strong>{player.username ? `@${player.username}` : player.display_name}</strong><small>{player.phone ? `+${player.phone}` : 'Teléfono pendiente'}</small></div><span className={player.phone && player.whatsapp_principal_slot ? 'player-complete' : 'player-incomplete'}>{player.phone && player.whatsapp_principal_slot ? 'Completo' : 'Completar'}</span></header>
       <dl className="player-details"><div><dt>Principal</dt><dd>{player.whatsapp_principal_slot ? `Principal ${player.whatsapp_principal_slot}` : 'Sin asignar'}</dd></div><div><dt>ID plataforma</dt><dd>{player.external_user_id || 'Sin cargar'}</dd></div><div><dt>Actividad</dt><dd>{player.deposits} cargas · {player.withdrawals} retiros</dd></div></dl>
       <p className="player-referrer">{player.referrer_user_id ? <>Recomendado por <strong>{player.referrer_name || 'Jugador registrado'}</strong></> : 'Sin recomendador registrado · No genera premios por recomendación.'}</p>
@@ -165,5 +219,6 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
       {passwordId === player.user_id && <form className="player-password-form" onSubmit={event => void changePassword(event, player)}><input name="password" type="password" minLength={8} maxLength={72} autoComplete="new-password" placeholder="Nueva contraseña" required /><button disabled={busy}>Guardar contraseña</button><button type="button" onClick={() => setPasswordId(null)}>Cancelar</button></form>}
       <div className="player-card-actions"><button type="button" onClick={() => { setPasswordId(null); setEditId(player.user_id); }}><Pencil />Editar datos</button><button type="button" onClick={() => { setEditId(null); setPasswordId(player.user_id); }}><KeyRound />Cambiar contraseña</button><button type="button" onClick={() => void forceLogout(player)} disabled={busy || demo}><LogOut />Forzar salida</button><a href={player.whatsapp_principal_phone ? `https://wa.me/${player.whatsapp_principal_phone}` : undefined} aria-disabled={!player.whatsapp_principal_phone} target="_blank" rel="noopener noreferrer"><Phone />Abrir principal</a></div>
     </article>)}</div>}
+    {playerPages > 1 && <nav className="loads-pager" aria-label="Páginas de jugadores"><button type="button" disabled={!playerPage || loading} onClick={() => setPlayerPage(page => page - 1)}>Anterior</button><span>{playerPage + 1} de {playerPages} · {playerTotal} jugadores</span><button type="button" disabled={playerPage + 1 >= playerPages || loading} onClick={() => setPlayerPage(page => page + 1)}>Siguiente</button></nav>}
   </section>;
 }

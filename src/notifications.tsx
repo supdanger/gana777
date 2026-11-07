@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Bell, Check, ChevronDown } from 'lucide-react';
 import { useContent } from './content';
 import { supabase, date } from './lib';
+import { registerPortalWorker } from './worker-registration';
 
 const vapidPublicKey = 'BNtbZNRD_ooezVlDPvQvUCrYbFJQfabwWQbgJpnqNaML1rZEsakHHR8cLc1l0AF26bRZolu1op6SOjtKBz8pgxs';
 const DEVICE_PREFERENCE_KEY = 'gana777-push-device-enabled';
@@ -22,7 +23,7 @@ function applicationServerKey() {
 }
 
 async function readyRegistration() {
-  await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+  await registerPortalWorker();
   let timer = 0;
   try {
     return await Promise.race([

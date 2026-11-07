@@ -1,5 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { ArrowLeft, BookOpen, CheckCircle2, ChevronRight, Disc, Eye, EyeOff, FileText, Gift, Images, Landmark, Link2, LockKeyhole, LogOut, MessageCircle, Send, ShieldCheck, Trash2, UserPlus, UserRound, X } from 'lucide-react';
+import { bonusScheduleOpen, bonusScheduleText, hasBonusSchedule } from '../supabase/functions/_shared/bonus-schedule';
+import { useBonusScheduleClock } from './bonus-schedule-clock';
+import { VisibleVideo } from './visible-video';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
+import { BookOpen, CheckCircle2, ChevronRight, Disc, FileText, Gift, Images, Landmark, Link2, LogOut, MessageCircle, Send, Trash2, X } from 'lucide-react';
 import { StorageImage, useContent } from './content';
 import { HomeBonusCarousel } from './special-bonus-carousel';
 import { asBonusRule, bonusEnabled, moneyInputMaxLength, moneyInputPattern, percentText, readMoney } from '../supabase/functions/_shared/bonus-rule';
@@ -8,90 +11,25 @@ import { date, money, supabase, type Bank, type BankOperationStatus, type Reques
 import { wheelWaitLabel } from './wheel-sequence';
 import { ContactAnimation } from './contact-animation';
 import { safeHttpsLink } from './security';
-import { Turnstile } from './turnstile';
 import { compressReceipt, readableFileSize } from './image-compression';
 import { BankTransferCard } from './bank-transfer-card';
-import { PlayerFooter } from './player-legal';
 import { PortalInstall } from './portal-install';
-import { PlayerBonuses } from './player-bonuses';
+import { ViewLoading } from './async-view';
+const PlayerBonuses = lazy(() => import('./player-bonuses').then(module => ({ default: module.PlayerBonuses })));
 import { homeBannerImage, homeBannerLayout, homeBannerLayoutStyles, homeBannerLink } from './home-banner';
 import { portalBannersFor } from './portal-banners';
-import { headerLogoLayout, headerLogoStyle } from './header-logo-layout';
-import { isImageCardSlot, themeBase, themeSurface } from './portal-theme-design';
+import { isImageCardSlot, themeBase } from './portal-theme-design';
 import { referralShareMessage, referralShareUrl } from './share-referral';
 import referralBannerUrl from './assets/home-casino-banner-v3.png';
-import { PlayerAccessRequest } from './player-access';
 import { ChatImage, useChatImagePreview } from './chat-images';
 import { ChatMessageText } from './chat-entry';
 import { isEntryBody } from './entry-link';
 import { HomeTutorial, useHomeTutorial } from './home-tutorial';
-import { ModernAccountButton, ModernBrand, ModernHomeBody } from './modern-home';
+import { ModernHomeBody } from './modern-home';
 
-export type Page = 'home' | 'profile' | 'deposit' | 'withdrawal' | 'referrals' | 'wheel' | 'history' | 'users' | 'link' | 'platform' | 'access-requests' | 'contacts' | 'portal' | 'themes' | 'bonuses' | 'accounts' | 'shifts' | 'chat' | 'external-chat' | 'external-chat-admin' | 'cashiers' | 'announcements' | 'telegram';
-export const titles = { home: 'Inicio', profile: 'Mi perfil', deposit: 'Cargas', withdrawal: 'Retiros', referrals: 'Recomendados', wheel: 'Ruleta', history: 'Historial', users: 'Usuarios', link: 'Link', platform: 'Platform', 'access-requests': 'Solicitudes', contacts: 'Contactos', portal: 'Portal', themes: 'Temas', bonuses: 'Bonos', accounts: 'Cuentas', shifts: 'Turnos', chat: 'Chat', 'external-chat': 'Chat externo', 'external-chat-admin': 'Admin', cashiers: 'Cajeros', announcements: 'Mensajes', telegram: 'Telegram' };
-export function Brand({ panel = false, homeHeader = false }: { panel?: boolean; homeHeader?: boolean }) {
-  const { settings } = useContent();
-  const name = panel ? 'GANA777 Panel' : 'GANA777';
-  const halloweenHeader = homeHeader && themeBase(settings) === 'halloween';
-  const designLogo = settings.portal_theme_designs?.[settings.portal_theme]?.logoPath;
-  const headerLogo = homeHeader ? designLogo ?? (halloweenHeader ? settings.portal_header_logo_halloween_path : settings.portal_header_logo_path) : null;
-  return <span className={`brand${headerLogo ? ' has-portal-header-logo' : ''}${halloweenHeader ? ' halloween-brand' : ''}`}>{headerLogo ? <span className="portal-header-logo" style={headerLogoStyle(headerLogoLayout(settings, settings.portal_theme)) as CSSProperties}><StorageImage path={headerLogo} alt={name} className="portal-header-logo-image" /></span> : halloweenHeader ? <>Gana<span>777</span><small>bet.com</small></> : settings.logo_path ? <StorageImage path={settings.logo_path} alt={name} className="brand-image" /> : <>GANA<span>777</span></>}{panel && <span className="brand-role">Panel</span>}</span>;
-}
-export function SectionHeading({ icon, title, description }: { icon: ReactNode; title: string; description?: string }) {
-  return <div className="section-heading"><span className="icon-circle">{icon}</span><div><h2>{title}</h2>{description && <p>{description}</p>}</div></div>;
-}
-export function LoginView({ admin, busy, configured, feedback, onLogin, onDemo, retryAt, siteKey }: {
-  admin: boolean; busy: boolean; configured: boolean; feedback: ReactNode; retryAt: number; siteKey: string;
-  onLogin: (event: FormEvent<HTMLFormElement>, captchaToken: string | null) => Promise<void>; onDemo: () => void;
-}) {
-  const [visible, setVisible] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const [captchaReset, setCaptchaReset] = useState(0);
-  const [requestingAccess, setRequestingAccess] = useState(false);
-  const [loginPrefill, setLoginPrefill] = useState<{ username: string; password: string } | null>(null);
-  const [now, setNow] = useState(Date.now);
-  useEffect(() => {
-    setNow(Date.now());
-    if (retryAt <= Date.now()) return;
-    const timer = window.setInterval(() => { const value = Date.now(); setNow(value); if (value >= retryAt) window.clearInterval(timer); }, 1000);
-    return () => window.clearInterval(timer);
-  }, [retryAt]);
-  const retrySeconds = Math.max(0, Math.ceil((retryAt - now) / 1000));
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    try { await onLogin(event, captchaToken); }
-    finally { setCaptchaToken(null); setCaptchaReset(value => value + 1); }
-  }
-  const { settings } = useContent();
-  const surface = themeSurface(settings, path => supabase?.storage.from('app-assets').getPublicUrl(path).data.publicUrl ?? null);
-  return <main className={`login ${admin ? 'admin-login' : `user-login ${surface.className}`}`} style={admin ? undefined : surface.style}>
-    {admin && <Brand panel />}
-    {admin ? <p className="eyebrow">PANEL DE ADMINISTRACIÓN</p> : <div className={`login-character ${settings.login_image_path === 'brand/panda-login-transparent.png' || settings.login_image_path === 'brand/panda-login-bright.png' ? 'transparent-character' : settings.login_image_layout === 'reference' ? 'reference-character' : ''}`}><StorageImage path={settings.login_image_path} fallbackPath="brand/panda-login-transparent.png" alt="Panda GANA777 con gorra y campera morada" /></div>}
-    {!admin && requestingAccess ? <PlayerAccessRequest onBack={() => setRequestingAccess(false)} onCredentialsReady={(username, password) => { setLoginPrefill({ username, password }); setRequestingAccess(false); }} /> : <><section className="card login-card">{!admin && <span className="brand login-domain-brand">gana777bet.com</span>}<h1>Bienvenido</h1>{admin && <p>Ingresá a tu cuenta</p>}
-      <form onSubmit={submit}>
-        {admin && <label htmlFor="email">Usuario o correo electrónico</label>}
-        <div className="icon-input"><span className="input-icon"><UserRound /></span><input id="email" name="email" type="text" defaultValue={!admin ? loginPrefill?.username : undefined} autoComplete="username" aria-label={admin ? undefined : 'Usuario'} placeholder={admin ? 'Ejemplo: carlos' : 'Usuario'} maxLength={254} autoCapitalize="none" spellCheck={false} required /></div>
-        <label htmlFor="password">Contraseña</label>
-        <div className="icon-input password"><span className="input-icon"><LockKeyhole /></span><input id="password" name="password" type={visible ? 'text' : 'password'} defaultValue={!admin ? loginPrefill?.password : undefined} autoComplete="current-password" placeholder={admin ? 'Tu contraseña' : 'Contraseña'} maxLength={1024} required /><button type="button" aria-label={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setVisible(!visible)}>{visible ? <EyeOff /> : <Eye />}</button></div>
-        {siteKey && <Turnstile siteKey={siteKey} resetKey={captchaReset} onToken={setCaptchaToken} />}
-        {feedback}{retrySeconds > 0 && <p className="login-retry" role="status">Podés volver a intentar en {retrySeconds} segundos.</p>}
-        <button className="primary" disabled={busy || retrySeconds > 0 || (!!siteKey && !captchaToken)}>{busy ? 'Ingresando…' : retrySeconds > 0 ? 'Esperá para reintentar' : 'Ingresar'}</button>
-      </form>
-    </section>{!admin && <button type="button" className="player-access-open" onClick={() => setRequestingAccess(true)}><span className="player-access-icon"><UserPlus size={22} aria-hidden="true" /></span><span className="player-access-copy"><strong>Crear usuario</strong><small>¿Primera vez? Solicitá tu acceso</small></span><ChevronRight className="player-access-arrow" size={20} aria-hidden="true" /></button>}</>}
-    {!admin && <PortalInstall />}
-    {(!configured || import.meta.env.DEV) && <button className="text-button" onClick={onDemo}>Explorar vista previa</button>}
-    {admin ? <footer><span className="secure-connection"><ShieldCheck size={17} /> Conexión segura · GANA777 Panel</span></footer> : <PlayerFooter />}
-  </main>;
-}
-export function UserHeader({ page, navigate, name = 'Mi perfil' }: { page: Page; navigate: (page: Page) => void; name?: string }) {
-  const { settings } = useContent();
-  const modernHome = page === 'home' && themeBase(settings) === 'modern';
-  const modernTitle = themeBase(settings) === 'modern';
-  const pageTitle = modernTitle && page === 'deposit' ? 'Cargar saldo' : modernTitle && page === 'withdrawal' ? 'Retirar dinero' : titles[page];
-  return <header className={page === 'home' ? 'home-header' : 'inner-header'}>
-    {modernHome ? <><ModernBrand /><ModernAccountButton onClick={() => navigate('profile')} /></> : page === 'home' ? <><Brand homeHeader /><button className="home-profile-button" onClick={() => navigate('profile')} aria-label={`Ver perfil e historial de ${name}`}><span className="user-avatar"><StorageImage path="avatars/panda-user-avatar.png" alt="" /></span><span className="home-profile-name">{name}</span><ChevronRight size={16} aria-hidden="true" /></button></> : <><button className="back-button" aria-label="Volver al inicio" onClick={() => navigate('home')}><ArrowLeft /></button><h1>{pageTitle}</h1>{!(themeBase(settings) === 'modern' && (page === 'deposit' || page === 'withdrawal')) && <Brand />}</>}
-  </header>;
-}
+import { SectionHeading, type Page } from './user-shell';
+export { Brand, LoginView, UserHeader, SectionHeading, titles, type Page } from './user-shell';
+
 function WhatsAppMark() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.04 2C6.58 2 2.15 6.4 2.15 11.83c0 1.74.46 3.44 1.34 4.94L2 22l5.39-1.41a10 10 0 0 0 4.65 1.15h.01c5.46 0 9.89-4.4 9.89-9.83C21.94 6.4 17.5 2 12.04 2Zm5.78 14.12c-.24.68-1.4 1.3-1.94 1.38-.5.07-1.12.1-1.81-.11-.41-.13-.95-.31-1.64-.61-2.89-1.25-4.77-4.16-4.91-4.35-.14-.19-1.16-1.54-1.16-2.94s.73-2.08 1-2.37c.24-.27.64-.39.85-.39h.61c.19 0 .45-.03.7.53.27.6.91 2.08.99 2.23.08.15.13.33.03.53-.1.19-.15.31-.3.48-.15.17-.31.37-.44.5-.15.14-.3.29-.13.57.17.27.76 1.25 1.63 2.03 1.12 1 2.06 1.31 2.35 1.46.29.14.46.12.63-.07.17-.19.73-.85.92-1.14.19-.29.39-.24.65-.14.27.1 1.69.8 1.98.94.29.15.48.22.55.34.07.13.07.74-.17 1.42Z" /></svg>;
 }
@@ -254,6 +192,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
   onSubmit: (event: FormEvent<HTMLFormElement>, receipt?: File | null) => void; onCopy: (text: string, label: string) => void; onOpenWithdrawalHistory: () => void; onBrowseBonuses?: () => void; feedback?: ReactNode;
 }) {
   const { promotions, reloadPromotions, settings } = useContent();
+  const scheduleNow = useBonusScheduleClock(promotions);
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     setNow(Date.now());
@@ -325,10 +264,11 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
   const selectedOffer = promotions.find(offer => offer.id === bonus && offer.selectable);
   const loadNumberEligible = !!selectedOffer && nextLoadNumber !== null && nextLoadNumber >= selectedOffer.load_number_from
     && (selectedOffer.load_number_to === null || nextLoadNumber <= selectedOffer.load_number_to);
-  const bonusValid = !!selectedOffer && loadNumberEligible && typedAmount !== null && (selectedOffer.reward_type === 'free_spins'
+  const scheduleEligible = !selectedOffer || bonusScheduleOpen(selectedOffer, scheduleNow);
+  const bonusValid = scheduleEligible && !!selectedOffer && loadNumberEligible && typedAmount !== null && (selectedOffer.reward_type === 'free_spins'
     ? typedAmount >= selectedOffer.min_amount && typedAmount <= selectedOffer.max_amount
     : bonusEnabled(asBonusRule(selectedOffer), typedAmount));
-  const bonusIdForForm = loadNumberEligible && selectedOffer?.cooldown_hours && selectedOffer.cooldown_hours > 0 && selectedOffer.reward_type === 'cash' ? selectedOffer.id : bonusValid ? selectedOffer?.id ?? '' : '';
+  const bonusIdForForm = scheduleEligible && loadNumberEligible && selectedOffer?.cooldown_hours && selectedOffer.cooldown_hours > 0 && selectedOffer.reward_type === 'cash' ? selectedOffer.id : bonusValid ? selectedOffer?.id ?? '' : '';
   const bonusCredit = bonusValid && selectedOffer?.reward_type !== 'free_spins' && selectedOffer ? creditAmounts(typedAmount!, selectedOffer.bonus_mode === 'percent' ? selectedOffer.bonus_percent : 0, selectedOffer.bonus_mode === 'fixed' ? selectedOffer.bonus_amount : 0).bonus : 0;
   const bonusCreditLabel = bonusCredit > 0 ? `+ ${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 }).format(bonusCredit)}` : '';
   useEffect(() => { if (bonus && !promotions.some(offer => offer.id === bonus && offer.selectable)) setBonus(''); }, [promotions, bonus]);
@@ -387,12 +327,14 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     const choiceValid = !selectedOffer || bonusValid;
     const changeStep = (step: number) => { setDepositStep(step); };
     return <form className="request-form modern-deposit-flow" onSubmit={event => {
+      if (selectedOffer && !bonusScheduleOpen(selectedOffer)) { event.preventDefault(); setReceiptError('El bono está fuera de horario. Elegí otro bono o continuá sin bono.'); return; }
       if (depositStep !== 2 || !depositAmountValid || !choiceValid || !file || !bank || pendingDeposit || compressing || busy || depositRetrySeconds > 0) { event.preventDefault(); return; }
       onSubmit(event, file);
     }}>
       <input type="hidden" name="bank_assignment_id" value={bank?.assignment_id ?? ''} />
       <input type="hidden" name="bonus_id" value={depositChoice === 'bonus' ? bonusIdForForm : ''} />
       {depositStep > 0 && <input type="hidden" name="amount" value={rawAmount} />}
+      {selectedOffer && hasBonusSchedule(selectedOffer) && <p className="deposit-bonus-note" role="status">{bonusScheduleText(selectedOffer)}{!scheduleEligible && <> · Fuera de horario. <button type="button" onClick={() => { setBonus(''); setDepositChoice('none'); }}>Continuar sin bono</button></>}</p>}
       <nav className="modern-deposit-progress" aria-label="Pasos de la carga">{['Monto y bono', 'Transferencia', 'Comprobante'].map((title, index) => <button key={title} type="button" aria-current={depositStep === index ? 'step' : undefined} disabled={index >= depositStep || busy || pendingDeposit} onClick={() => changeStep(index)}><span>{index < depositStep ? '✓' : index + 1}</span>{title}</button>)}</nav>
       {pendingDeposit ? <section className="card modern-deposit-pending" role="status"><CheckCircle2 size={32} /><h2>Tu carga está en proceso</h2><p>Te avisamos cuando esté acreditada.</p></section> : <>
         {depositStep === 0 && <>
@@ -407,10 +349,10 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
           </div>
           {selectedOffer && <button type="button" className="modern-flow-back" onClick={() => { setBonus(''); setDepositChoice('none'); }}>Quitar bono y cargar sin bono</button>}
           {bonusPickerOpen && <div className="modern-bonus-picker-backdrop" onClick={event => { if (event.target === event.currentTarget) setBonusPickerOpen(false); }}><section className="modern-bonus-picker" role="dialog" aria-modal="true" aria-labelledby="modern-bonus-picker-title"><header><h2 id="modern-bonus-picker-title" className="modern-bonus-gold-title">Elegí tu bono</h2><button type="button" aria-label="Cerrar bonos" autoFocus onClick={() => setBonusPickerOpen(false)}><X size={22} /></button></header><div className="modern-flow-bonuses">
-            <PlayerBonuses demo={demo} onClaim={id => { setBonus(id); setDepositChoice('bonus'); setBonusPickerOpen(false); }} />
+            <Suspense fallback={<ViewLoading />}><PlayerBonuses demo={demo} onClaim={id => { setBonus(id); setDepositChoice('bonus'); setBonusPickerOpen(false); }} /></Suspense>
           </div></section></div>}</section>
           <button type="button" className="primary" disabled={!depositAmountValid || !choiceValid || busy} onClick={() => changeStep(1)}>Continuar</button>
-          {(!depositAmountValid || !choiceValid) && <p className="modern-continue-hint" role="status">{!depositAmountValid ? rawAmount ? 'El monto mínimo es $1.000' : 'Ingresá el monto para continuar' : selectedOffer ? `Este bono requiere una carga desde ${money(selectedOffer.min_amount)} hasta ${money(selectedOffer.max_amount)} y cumplir sus condiciones.` : 'Elegí un bono para continuar'}</p>}
+          {(!depositAmountValid || !choiceValid) && <p className="modern-continue-hint" role="status">{!depositAmountValid ? rawAmount ? 'El monto mínimo es $1.000' : 'Ingresá el monto para continuar' : !scheduleEligible ? 'El bono está fuera de horario. Elegí otro o continuá sin bono.' : selectedOffer ? `Este bono requiere una carga desde ${money(selectedOffer.min_amount)} hasta ${money(selectedOffer.max_amount)} y cumplir sus condiciones.` : 'Elegí un bono para continuar'}</p>}
         </>}
         {depositStep === 1 && <>
           <section className="modern-flow-section modern-transfer-instruction"><h2>Transferí a esta cuenta</h2><p>Monto a transferir: <strong>{money(typedAmount ?? 0)}</strong></p></section>
@@ -438,6 +380,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     </form>;
   }
   return <form className="request-form" onSubmit={event => {
+    if (kind === 'deposit' && selectedOffer && !bonusScheduleOpen(selectedOffer)) { event.preventDefault(); setReceiptError('El bono está fuera de horario. Elegí otro bono o continuá sin bono.'); return; }
     if (kind === 'deposit' && !depositAmountValid) {
       event.preventDefault();
       setAmountAttempted(true);
@@ -461,7 +404,8 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
       </section>
       <section className="card deposit-amount">
         {amount}
-        {selectedOffer && !bonusValid && (typedAmount !== null || !loadNumberEligible) && <p className={`deposit-bonus-note${selectedOffer.cooldown_hours > 0 ? ' is-special' : ''}`}>{!loadNumberReady ? 'Verificando tu número de carga…' : nextLoadNumber === null ? 'No pudimos verificar tu número de carga. Recargá la página; la carga se enviará sin bono.' : !loadNumberEligible ? `Este bono no aplica a tu carga n.º ${nextLoadNumber}. La carga se enviará sin bono.` : selectedOffer.reward_type === 'free_spins' ? 'Este monto está fuera del rango del premio. La carga se enviará sin giros gratis.' : selectedOffer.cooldown_hours > 0 ? 'Este bono especial se enviará para revisión. Si el monto no cumple las condiciones, podrán acreditar la carga sin el bono.' : 'Este monto está fuera del rango del bono. La carga se enviará sin bono.'}</p>}
+        {selectedOffer && hasBonusSchedule(selectedOffer) && <p className="deposit-bonus-note" role="status">{bonusScheduleText(selectedOffer)}{!scheduleEligible && <> · Fuera de horario. <button type="button" onClick={() => setBonus('')}>Continuar sin bono</button></>}</p>}
+        {selectedOffer && !bonusValid && scheduleEligible && (typedAmount !== null || !loadNumberEligible) && <p className={`deposit-bonus-note${selectedOffer.cooldown_hours > 0 ? ' is-special' : ''}`}>{!loadNumberReady ? 'Verificando tu número de carga…' : nextLoadNumber === null ? 'No pudimos verificar tu número de carga. Recargá la página; la carga se enviará sin bono.' : !loadNumberEligible ? `Este bono no aplica a tu carga n.º ${nextLoadNumber}. La carga se enviará sin bono.` : selectedOffer.reward_type === 'free_spins' ? 'Este monto está fuera del rango del premio. La carga se enviará sin giros gratis.' : selectedOffer.cooldown_hours > 0 ? 'Este bono especial se enviará para revisión. Si el monto no cumple las condiciones, podrán acreditar la carga sin el bono.' : 'Este monto está fuera del rango del bono. La carga se enviará sin bono.'}</p>}
       </section>
       <section className="card receipt-card compact-receipt-card">
         <div className="receipt-compact-heading"><span><FileText /></span><strong>Comprobante</strong></div>
@@ -477,7 +421,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
       </section>
     </> : <>
       <section className={`card withdrawal-window${withdrawalArt ? ' has-withdrawal-art' : ''} ${pending ? 'pending' : seconds > 0 ? 'counting' : 'ready'}`} style={withdrawalArt ? homeBannerLayoutStyles(withdrawalArt.layout) as CSSProperties : undefined}>
-        {withdrawalArt && (/\.(mp4|webm)$/i.test(withdrawalArt.path) ? <video className="withdrawal-banner-art" src={supabase?.storage.from('app-assets').getPublicUrl(withdrawalArt.path).data.publicUrl} autoPlay muted loop playsInline preload="metadata" aria-hidden="true" /> : <StorageImage path={withdrawalArt.path} alt="" className="withdrawal-banner-art" />)}
+        {withdrawalArt && (/\.(mp4|webm)$/i.test(withdrawalArt.path) ? <VisibleVideo className="withdrawal-banner-art" src={supabase?.storage.from('app-assets').getPublicUrl(withdrawalArt.path).data.publicUrl} autoPlay muted loop playsInline preload="metadata" aria-hidden="true" /> : <StorageImage path={withdrawalArt.path} alt="" className="withdrawal-banner-art" />)}
         <div className="withdrawal-window-copy">
           {pending ? <><strong className="withdrawal-state-title">Retiro en proceso</strong><p>El contador comenzará cuando se acredite.</p></> : seconds > 0 ? <><p>Próximo retiro disponible en</p><strong className="withdrawal-countdown" role="timer" aria-label="Tiempo restante para solicitar otro retiro">{countdown}</strong></> : <><strong className="withdrawal-state-title">Retiro disponible</strong><p>Ya podés solicitarlo.</p></>}
         </div>
@@ -487,11 +431,11 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     </>}
     {feedback && <div className="request-feedback">{feedback}</div>}
     {depositRetrySeconds > 0 && <div className="deposit-retry-countdown" role="timer" aria-live="polite"><span>Podés volver a enviar en</span><strong>{depositRetryCountdown}</strong></div>}
-    <button className="primary" disabled={busy || demo || withdrawalBlocked || withdrawalPartCount > 100 || pendingDeposit || compressing || depositRetrySeconds > 0 || (kind === 'deposit' && (!file || !bank || (!!selectedOffer && !loadNumberReady)))} aria-describedby={pendingDeposit ? 'deposit-pending-message' : undefined}>{compressing ? 'Optimizando…' : busy ? kind === 'deposit' ? 'Enviando solicitud…' : 'Enviando…' : depositRetrySeconds > 0 ? `Esperá ${depositRetryCountdown}` : kind === 'deposit' ? 'Solicitar carga' : 'Solicitar retiro'}</button>
+    <button className="primary" disabled={busy || demo || withdrawalBlocked || withdrawalPartCount > 100 || pendingDeposit || compressing || depositRetrySeconds > 0 || (kind === 'deposit' && (!file || !bank || (!!selectedOffer && (!loadNumberReady || !scheduleEligible))))} aria-describedby={pendingDeposit ? 'deposit-pending-message' : undefined}>{compressing ? 'Optimizando…' : busy ? kind === 'deposit' ? 'Enviando solicitud…' : 'Enviando…' : depositRetrySeconds > 0 ? `Esperá ${depositRetryCountdown}` : kind === 'deposit' ? 'Solicitar carga' : 'Solicitar retiro'}</button>
     {pendingDeposit && <p id="deposit-pending-message" className="deposit-pending-message" role="status">Tu carga ya está en proceso. Podrás solicitar otra cuando sea aprobada.</p>}
   </form>;
 }
-export function Conversation({ messages, userId, busy, disabled, open, onOpenChange, onSubmit, showLauncher = true }: { messages: Message[]; userId: string; busy: boolean; disabled: boolean; open: boolean; onOpenChange: (open: boolean) => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void; showLauncher?: boolean }) {
+export function Conversation({ messages, userId, busy, disabled, open, onOpenChange, onSubmit, showLauncher = true, loading = false, hasMore = false, loadingOlder = false, onLoadOlder }: { loading?: boolean; hasMore?: boolean; loadingOlder?: boolean; onLoadOlder?: () => Promise<void>; messages: Message[]; userId: string; busy: boolean; disabled: boolean; open: boolean; onOpenChange: (open: boolean) => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void; showLauncher?: boolean }) {
   const log = useRef<HTMLElement>(null);
   const nearBottom = useRef(true);
   const [image, setImage] = useState<File | null>(null);
@@ -581,7 +525,16 @@ export function Conversation({ messages, userId, busy, disabled, open, onOpenCha
       </header>
       <section ref={log} className="player-chat-log" role="log" aria-label="Conversación con soporte" aria-live="polite" onScroll={e => { const el = e.currentTarget; nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }}>
         <div className="chat-date"><span>Tu conversación</span></div>
-        {!messages.length && <p className="player-chat-welcome">¡Hola! Bienvenido a GANA777.<br />¿En qué podemos ayudarte?</p>}
+        {loading && !messages.length && <p role="status">Cargando conversación…</p>}
+        {hasMore && <button className="chat-load-older" type="button" disabled={loadingOlder} onClick={async () => {
+          const viewport = log.current;
+          const oldHeight = viewport?.scrollHeight ?? 0;
+          const oldTop = viewport?.scrollTop ?? 0;
+          nearBottom.current = false;
+          await onLoadOlder?.();
+          requestAnimationFrame(() => { if (viewport) viewport.scrollTop = oldTop + viewport.scrollHeight - oldHeight; });
+        }}>{loadingOlder ? 'Cargando…' : 'Ver mensajes anteriores'}</button>}
+        {!loading && !messages.length && <p className="player-chat-welcome">¡Hola! Bienvenido a GANA777.<br />¿En qué podemos ayudarte?</p>}
         {messages.map(m => <div className={`message ${m.sender_id === userId ? 'mine' : ''}`} key={m.id}><p className={isEntryBody(m.body) ? 'is-entry' : undefined}>{m.body === 'Imagen adjunta' && m.attachment_path ? '' : <ChatMessageText body={m.body} interactive={m.sender_id !== userId} />}{m.attachment_path && <ChatImage path={m.attachment_path} source={m.source} />}</p><small>{m.source === 'external' ? 'Chat externo · ' : ''}{date(m.created_at)}</small></div>)}
       </section>
       <form className="composer chat-composer" onSubmit={onSubmit} onReset={() => setImage(null)}>{imagePreview && <div className="chat-image-preview"><img src={imagePreview} alt="Imagen seleccionada" /><span>{image?.name}</span><button type="button" aria-label="Quitar imagen" onClick={() => { setImage(null); if (imageInput.current) imageInput.current.value = ''; }}><Trash2 size={16} /></button></div>}<input ref={imageInput} className="chat-file-input" name="image" type="file" accept="image/*" disabled={busy || disabled} onChange={event => setImage(event.target.files?.[0] ?? null)} /><button type="button" className="chat-gallery-button" aria-label="Adjuntar imagen de la galería" disabled={busy || disabled} onClick={() => imageInput.current?.click()}><Images size={20} /></button><input ref={messageInput} className="player-chat-message" name="message" aria-label="Mensaje" placeholder="Escribí un mensaje…" maxLength={2000} autoComplete="off" enterKeyHint="send" required={!image} disabled={busy || disabled} /><button className="send" aria-label="Enviar mensaje" disabled={busy || disabled}><Send size={21} /></button></form>

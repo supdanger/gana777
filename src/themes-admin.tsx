@@ -1,3 +1,4 @@
+import { cleanupFailedSettingsUploads } from './asset-cleanup';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Check, ImagePlus, Moon, Palette, Sparkles, Snowflake, Video, Ghost } from 'lucide-react';
 import { supabase } from './lib';
@@ -117,9 +118,11 @@ export function ThemesAdmin({ demo }: { demo: boolean }) {
     }
     setBusy(true);
     const nextPath = `home-bonus/${crypto.randomUUID()}.${extension}`;
+    let uploadedPath: string | null = null;
     try {
       const uploaded = await supabase.storage.from('app-assets').upload(nextPath, file, { contentType: file.type, upsert: false });
       if (uploaded.error) throw new Error('No pudimos subir el archivo. Revisá la conexión y volvé a intentar.');
+      uploadedPath = nextPath;
       const custom = isCustomTheme(theme);
       const field = theme === 'halloween' ? 'home_bonus_halloween_media_path' : 'home_bonus_media_path';
       const nextDesigns = custom ? { ...designs, [theme]: { ...designs[theme], bonusPath: nextPath } } : designs;
@@ -130,7 +133,7 @@ export function ThemesAdmin({ demo }: { demo: boolean }) {
       if (input.current) input.current.value = '';
       setNotice('Banner de bonos actualizado. Ya aparece en el inicio.');
       reloadContent();
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'No pudimos guardar el banner.'); }
+    } catch (cause) { if (uploadedPath) await cleanupFailedSettingsUploads([uploadedPath]); setError(cause instanceof Error ? cause.message : 'No pudimos guardar el banner.'); }
     finally { setBusy(false); }
   }
 

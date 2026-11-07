@@ -10,7 +10,8 @@ import { cooldownLabel, cooldownSeconds, type WithdrawalSourceAccount } from './
 type ReviewStatus = 'rejected';
 const PAGE_SIZE = 10;
 
-export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onAdjust, onPay, onViewReceipt }: {
+export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onAdjust, onPay, onViewReceipt, pagination }: {
+  pagination?: { pendingPage: number; resolvedPage: number; pendingTotal: number; resolvedTotal: number; loading: boolean; onPage: (kind: 'pending' | 'resolved', page: number) => void };
   requests: RequestRow[];
   parts: WithdrawalPart[];
   busy: boolean;
@@ -27,8 +28,12 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onAdju
   const [preparing, setPreparing] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [inspection, setInspection] = useState<{ url: string; name: string; number: number; total: number; amount: number } | null>(null);
-  const [pendingPage, setPendingPage] = useState(0);
-  const [resolvedPage, setResolvedPage] = useState(0);
+  const [localPendingPage, setLocalPendingPage] = useState(0);
+  const [localResolvedPage, setLocalResolvedPage] = useState(0);
+  const pendingPage = pagination?.pendingPage ?? localPendingPage;
+  const resolvedPage = pagination?.resolvedPage ?? localResolvedPage;
+  const setPendingPage = (next: number) => { setSelectedId(null); if (pagination) pagination.onPage('pending', next); else setLocalPendingPage(next); };
+  const setResolvedPage = (next: number) => { setSelectedId(null); if (pagination) pagination.onPage('resolved', next); else setLocalResolvedPage(next); };
   const [sourceAccounts, setSourceAccounts] = useState<WithdrawalSourceAccount[]>([]);
   const [sourceAccountsOpen, setSourceAccountsOpen] = useState(false);
   const [sourceStatus, setSourceStatus] = useState<BankOperationStatus | null>(null);
@@ -102,9 +107,14 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onAdju
 
   useEffect(() => {
     void loadSources();
-    const clock = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(clock);
   }, [demo, adminRefresh]);
+  useEffect(() => {
+    if (!sourceAccountsOpen && !paymentSelection) return;
+    const tick = () => { if (document.visibilityState === 'visible') setNow(Date.now()); };
+    tick();
+    const clock = window.setInterval(tick, 1000);
+    return () => window.clearInterval(clock);
+  }, [sourceAccountsOpen, paymentSelection]);
 
   const serverTime = now + serverOffset;
   const paymentRequest = withdrawals.find(request => request.id === paymentSelection?.requestId);
@@ -267,16 +277,17 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onAdju
   }
 
   function section(items: RequestRow[], page: number, setPage: (page: number) => void, title: string, id: string, icon: ReactNode, empty: string) {
-    const pages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+    const total = pagination ? id === 'withdrawals-pending-title' ? pagination.pendingTotal : pagination.resolvedTotal : items.length;
+    const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
     const current = Math.min(page, pages - 1);
-    return <section aria-labelledby={id}><h2 id={id}>{icon} {title} <span>{items.length}</span></h2>{items.length ? <>
-      <div className="withdrawal-review-list">{items.slice(current * PAGE_SIZE, (current + 1) * PAGE_SIZE).map(row)}</div>
-      {pages > 1 && <nav className="loads-pager" aria-label={`Páginas de retiros ${title.toLowerCase()}`}><button type="button" disabled={current === 0} onClick={() => setPage(current - 1)}>Anterior</button><span>Página {current + 1} de {pages}</span><button type="button" disabled={current + 1 >= pages} onClick={() => setPage(current + 1)}>Siguiente</button></nav>}
+    return <section aria-labelledby={id}><h2 id={id}>{icon} {title} <span>{total}</span></h2>{pagination?.loading && <p role="status" className="list-updating">Actualizando retiros…</p>}{items.length ? <>
+      <div className="withdrawal-review-list">{(pagination ? items.slice(0, PAGE_SIZE) : items.slice(current * PAGE_SIZE, (current + 1) * PAGE_SIZE)).map(row)}</div>
+      {pages > 1 && <nav className="loads-pager" aria-label={`Páginas de retiros ${title.toLowerCase()}`}><button type="button" disabled={current === 0 || pagination?.loading} onClick={() => setPage(current - 1)}>Anterior</button><span>Página {current + 1} de {pages}</span><button type="button" disabled={current + 1 >= pages || pagination?.loading} onClick={() => setPage(current + 1)}>Siguiente</button></nav>}
     </> : <p className="card empty">{empty}</p>}</section>;
   }
 
   return <div className="admin-withdrawals">
-    <div className="withdrawal-page-heading"><div><h1>Retiros</h1><p>Abrí un retiro para revisar los datos y completar sus pagos.</p></div><strong>{withdrawals.length} solicitudes</strong></div>
+    <div className="withdrawal-page-heading"><div><h1>Retiros</h1><p>Abrí un retiro para revisar los datos y completar sus pagos.</p></div><strong>{pagination ? pagination.pendingTotal + pagination.resolvedTotal : withdrawals.length} solicitudes</strong></div>
     {!selected && copyError && <p className="alert error" role="alert">{copyError}</p>}
     {!selected && receiptError && <p className="alert error" role="alert">{receiptError}</p>}
     <section className="withdrawal-source-section" aria-labelledby="withdrawal-source-title">

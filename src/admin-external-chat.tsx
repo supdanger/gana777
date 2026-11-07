@@ -1,3 +1,6 @@
+import { mergeMessages } from './query-utils';
+import type { InboxPagination } from './inbox-data';
+import { InboxPager } from './inbox-pager';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowLeft, CircleCheck, Link2, MessageCircle, RotateCcw, Search, Send } from 'lucide-react';
 import { useAdminRefreshVersion } from './admin-refresh';
@@ -22,14 +25,17 @@ function shortDate(value: string) {
     : new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: 'short' }).format(when);
 }
 
-export function AdminExternalChat({ inbox, selectedId, demo, canLink, onSelect, onChanged, onLinked }: {
+export function AdminExternalChat({ inbox, selectedId, demo, canLink, onSelect, onChanged, onLinked, pagination }: {
+  pagination?: InboxPagination;
   inbox: ExternalChatInboxRow[]; selectedId: string; demo: boolean; canLink: boolean;
   onSelect: (id: string) => void; onChanged: () => void; onLinked: (userId: string) => void;
 }) {
   const [messages, setMessages] = useState<ExternalMessage[]>([]);
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<'pending' | 'all' | 'completed'>('pending');
+  const [search, setSearch] = useState(pagination?.search ?? '');
+  const [filter, setFilter] = useState<'pending' | 'all' | 'completed'>(pagination?.filter ?? 'pending');
   const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [sending, setSending] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
@@ -43,9 +49,29 @@ export function AdminExternalChat({ inbox, selectedId, demo, canLink, onSelect, 
   const adminRefresh = useAdminRefreshVersion();
   const activeId = useRef(selectedId);
   activeId.current = selectedId;
-  const selected = inbox.find(row => row.thread_id === selectedId);
-  const pending = inbox.filter(row => !row.completed_at && row.last_sender_type === 'visitor').length;
-  const visible = inbox.filter(row => {
+  const selectedSnapshot = useRef<ExternalChatInboxRow | undefined>(undefined);
+  const currentSelected = inbox.find(row => row.thread_id === selectedId);
+  const [selectedFallback, setSelectedFallback] = useState<ExternalChatInboxRow | undefined>(undefined);
+  if (currentSelected && (selectedSnapshot.current?.thread_id !== selectedId || currentSelected.last_message_at >= selectedSnapshot.current.last_message_at)) selectedSnapshot.current = currentSelected;
+  if (!currentSelected && selectedFallback?.thread_id === selectedId && selectedSnapshot.current?.thread_id !== selectedId) selectedSnapshot.current = selectedFallback;
+  const latestVisibleMessage = messages.at(-1);
+  if (latestVisibleMessage?.thread_id === selectedId && selectedSnapshot.current?.thread_id === selectedId && latestVisibleMessage.created_at >= selectedSnapshot.current.last_message_at) {
+    selectedSnapshot.current = { ...selectedSnapshot.current, last_message_id: latestVisibleMessage.id, last_message_at: latestVisibleMessage.created_at, last_body: latestVisibleMessage.body, last_sender_type: latestVisibleMessage.sender_type };
+  }
+  const selected = selectedSnapshot.current?.thread_id === selectedId ? selectedSnapshot.current : undefined;
+  useEffect(() => {
+    if (!selectedId || demo || !supabase || currentSelected || selectedSnapshot.current?.thread_id === selectedId) return;
+    const controller = new AbortController();
+    void supabase.from('external_chat_inbox').select('*').eq('thread_id', selectedId).abortSignal(controller.signal).maybeSingle().then(({ data, error }) => {
+      if (!controller.signal.aborted && !error && data) setSelectedFallback(data as ExternalChatInboxRow);
+    });
+    return () => controller.abort();
+  }, [selectedId, demo, inbox]);
+  const onQueryRef = useRef(pagination?.onQuery);
+  onQueryRef.current = pagination?.onQuery;
+  useEffect(() => { onQueryRef.current?.(search, filter); }, [search, filter]);
+  const pending = pagination?.pending ?? inbox.filter(row => !row.completed_at && row.last_sender_type === 'visitor').length;
+  const visible = pagination ? inbox : inbox.filter(row => {
     if (filter === 'pending' && (row.completed_at || row.last_sender_type !== 'visitor')) return false;
     if (filter === 'completed' && !row.completed_at) return false;
     const needle = search.trim().toLocaleLowerCase();
@@ -54,7 +80,7 @@ export function AdminExternalChat({ inbox, selectedId, demo, canLink, onSelect, 
 
   useEffect(() => {
     if (!selectedId || demo) { setMessages([]); return; }
-    setMessages([]); setError(''); setNotice(''); setLinkUsername(''); setLinkMatch(null);
+    setMessages([]); setHasMore(false); setLoadingOlder(false); setError(''); setNotice(''); setLinkUsername(''); setLinkMatch(null);
   }, [selectedId, demo]);
   useEffect(() => {
     if (!selectedId || demo || !supabase) return;
@@ -62,19 +88,40 @@ export function AdminExternalChat({ inbox, selectedId, demo, canLink, onSelect, 
     let alive = true;
     setLoading(true);
     void db.from('external_chat_messages').select('id,thread_id,sender_type,sender_id,body,attachment_path,created_at')
-      .eq('thread_id', selectedId).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(100)
+      .eq('thread_id', selectedId).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(50)
       .then(({ data, error: loadError }) => {
         if (!alive) return;
         setLoading(false);
         if (loadError) { setError('No pudimos cargar esta conversación. Intentá abrirla nuevamente.'); return; }
-        setMessages(((data ?? []) as ExternalMessage[]).reverse());
+        setMessages(old => mergeMessages(old.filter(row => row.thread_id === selectedId), (data ?? []) as ExternalMessage[]));
+        setHasMore((data ?? []).length === 50);
       });
     return () => { alive = false; };
   }, [selectedId, demo, adminRefresh]);
 
   useEffect(() => {
-    if (log.current) log.current.scrollTop = log.current.scrollHeight;
-  }, [messages.length, selectedId]);
+    if (log.current && !loadingOlder) log.current.scrollTop = log.current.scrollHeight;
+  }, [messages.at(-1)?.id, selectedId]);
+
+  async function loadOlder() {
+    if (!supabase || !selectedId || !messages.length || loadingOlder) return;
+    const oldest = messages[0];
+    const viewport = log.current;
+    const height = viewport?.scrollHeight ?? 0;
+    const top = viewport?.scrollTop ?? 0;
+    setLoadingOlder(true);
+    try {
+      const result = await supabase.from('external_chat_messages').select('id,thread_id,sender_type,sender_id,body,attachment_path,created_at')
+        .eq('thread_id', selectedId).or(`created_at.lt.${oldest.created_at},and(created_at.eq.${oldest.created_at},id.lt.${oldest.id})`)
+        .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(50);
+      if (activeId.current !== selectedId) return;
+      if (result.error) throw result.error;
+      setMessages(old => mergeMessages(old, (result.data ?? []) as ExternalMessage[]));
+      setHasMore((result.data ?? []).length === 50);
+      requestAnimationFrame(() => { if (viewport) viewport.scrollTop = top + viewport.scrollHeight - height; });
+    } catch { if (activeId.current === selectedId) setError('No pudimos cargar mensajes anteriores. Intentá nuevamente.'); }
+    finally { if (activeId.current === selectedId) setLoadingOlder(false); }
+  }
 
   async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -167,7 +214,7 @@ export function AdminExternalChat({ inbox, selectedId, demo, canLink, onSelect, 
     <div className="admin-chat-heading"><div><h1>Chat externo</h1><p>Atendé las consultas que llegan desde la burbuja de gana777bet.com.</p></div><span>{pending} por responder</span></div>
     <div className="admin-chat-layout">
       <aside className="admin-chat-inbox" aria-label="Conversaciones externas">
-        <div className="admin-chat-inbox-header"><strong>Conversaciones</strong><small>{inbox.length} en total</small></div>
+        <div className="admin-chat-inbox-header"><strong>Conversaciones</strong><small>{pagination?.all ?? inbox.length} en total</small></div>
         <label className="admin-chat-search"><Search size={18} aria-hidden="true" /><span className="sr-only">Buscar conversación</span><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Apodo o último mensaje" /></label>
         <div className="admin-chat-filters" role="group" aria-label="Filtrar conversaciones">
           {(['pending', 'all', 'completed'] as const).map(value => <button key={value} type="button" className={filter === value ? 'active' : ''} onClick={() => setFilter(value)}>{value === 'pending' ? 'Pendientes' : value === 'all' ? 'Todas' : 'Completadas'}</button>)}
@@ -179,13 +226,14 @@ export function AdminExternalChat({ inbox, selectedId, demo, canLink, onSelect, 
             {!row.completed_at && row.last_sender_type === 'visitor' && <span className="admin-chat-unanswered" aria-label="Por responder" />}
           </button>) : <p className="admin-chat-list-empty">{search ? 'No encontramos apodos con esa búsqueda.' : filter === 'pending' ? 'No hay consultas por responder.' : filter === 'completed' ? 'No hay conversaciones completadas.' : 'Todavía no hay chats externos.'}</p>}
         </div>
+        <InboxPager pagination={pagination} />
       </aside>
       <section className="admin-chat-thread" aria-label={selected ? `Conversación con ${selected.nickname}` : 'Seleccioná una conversación'}>
         {selected ? <>
           <header className="admin-chat-thread-header"><button type="button" className="admin-chat-back" aria-label="Volver a conversaciones" onClick={() => onSelect('')}><ArrowLeft size={19} /></button><span className="admin-chat-avatar">{selected.nickname.slice(0, 1).toUpperCase()}</span><div><strong>{['https://gana777.vercel.app', 'https://gana777bet.online'].includes(selected.origin) ? `PRUEBA · ${selected.nickname}` : selected.nickname}</strong><small>{selected.completed_at ? 'Conversación completada' : ['https://gana777.vercel.app', 'https://gana777bet.online'].includes(selected.origin) ? 'Chat desde la página de prueba' : 'Chat de la plataforma externa'}</small></div></header>
           <div className="admin-chat-actions"><button type="button" className={selected.completed_at ? 'admin-chat-reopen' : 'admin-chat-complete'} disabled={demo || updating || sending || sendingEntry || linkBusy} onClick={() => void setCompleted(!selected.completed_at)}>{selected.completed_at ? <RotateCcw size={16} /> : <CircleCheck size={16} />}{updating ? 'Guardando…' : selected.completed_at ? 'Reabrir chat' : 'Marcar como completado'}</button></div>
           {canLink && <div className="external-chat-link"><div><Link2 size={18} /><strong>Vincular con un jugador</strong></div><p>Buscá el usuario que te indicó. Al vincularlo, este chat seguirá en la bandeja Chat junto con los mensajes de la app.</p><form onSubmit={event => void findPlayer(event)}><input aria-label="Usuario del jugador" value={linkUsername} onChange={event => { setLinkUsername(event.target.value); setLinkMatch(null); }} placeholder="Nombre de usuario exacto" autoCapitalize="none" spellCheck={false} maxLength={32} disabled={demo || linkBusy} /><button type="submit" disabled={demo || linkBusy || !linkUsername.trim()}>Buscar</button></form>{linkMatch && <div className="external-chat-link-match"><span><strong>@{linkMatch.username}</strong><small>{linkMatch.display_name || 'Jugador registrado'}</small></span><button type="button" disabled={demo || linkBusy} onClick={() => void linkPlayer()}>{linkBusy ? 'Vinculando…' : 'Vincular y abrir Chat'}</button></div>}</div>}
-          <div className="admin-chat-messages" ref={log} role="log" aria-live="polite" aria-relevant="additions text">{loading && <p className="admin-chat-list-empty">Cargando conversación…</p>}{messages.map(message => <div className={`message${message.sender_type === 'staff' ? ' mine' : ''}`} key={message.id}>{message.body !== 'Imagen adjunta' && <p className={isEntryBody(message.body) ? 'is-entry' : undefined}><ChatMessageText body={message.body} interactive={false} /></p>}{message.attachment_path && <ChatImage path={message.attachment_path} source="external" />}<small>{message.sender_type === 'staff' ? 'Soporte · ' : ''}{date(message.created_at)}</small></div>)}</div>
+          <div className="admin-chat-messages" ref={log} role="log" aria-live="polite" aria-relevant="additions text">{hasMore && <button type="button" className="admin-chat-older" disabled={loadingOlder} onClick={() => void loadOlder()}>{loadingOlder ? 'Cargando…' : 'Ver mensajes anteriores'}</button>}{loading && <p className="admin-chat-list-empty">Cargando conversación…</p>}{messages.filter(message => message.thread_id === selectedId).map(message => <div className={`message${message.sender_type === 'staff' ? ' mine' : ''}`} key={message.id}>{message.body !== 'Imagen adjunta' && <p className={isEntryBody(message.body) ? 'is-entry' : undefined}><ChatMessageText body={message.body} interactive={false} /></p>}{message.attachment_path && <ChatImage path={message.attachment_path} source="external" />}<small>{message.sender_type === 'staff' ? 'Soporte · ' : ''}{date(message.created_at)}</small></div>)}</div>
           {(error || notice) && <p className={`admin-chat-feedback${error ? ' is-error' : ''}`} role={error ? 'alert' : 'status'}>{error || notice}</p>}
           {!selected.completed_at && <EntryLinkBar id="external-chat-entry-user" username={entryUser} onUsername={setEntryUser} disabled={demo || sending || sendingEntry || updating} onSend={() => void sendEntry()} />}
           {!selected.completed_at && <form className="admin-chat-composer" onSubmit={event => void send(event)}><label htmlFor="external-chat-message" className="sr-only">Responder a {selected.nickname}</label><textarea id="external-chat-message" name="message" placeholder="Escribí tu respuesta…" maxLength={2000} rows={2} required disabled={sending || sendingEntry || demo || updating} /><button type="submit" disabled={sending || sendingEntry || demo || updating} aria-label="Enviar respuesta"><Send size={18} /> Enviar</button><small>Enter para enviar · Shift + Enter para nueva línea</small></form>}

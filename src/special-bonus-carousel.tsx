@@ -1,3 +1,7 @@
+import { bonusScheduleOpen } from '../supabase/functions/_shared/bonus-schedule';
+import { useBonusScheduleClock } from './bonus-schedule-clock';
+import { sharedPlayerRpc } from './player-resource';
+import { VisibleVideo } from './visible-video';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { BonusBanner, StorageImage, useContent } from './content';
@@ -16,8 +20,9 @@ function countdown(milliseconds: number) {
 
 export function HomeBonusCarousel({ onClaim }: { onClaim: (id: string) => void }) {
   const { promotions, settings } = useContent();
-  const specials = promotions.filter(p => p.selectable && p.cooldown_hours > 0 && p.reward_type !== 'free_spins');
-  const hasMainBanner = promotions.some(p => p.show_banner);
+  const scheduleNow = useBonusScheduleClock(promotions);
+  const specials = promotions.filter(p => p.selectable && p.cooldown_hours > 0 && p.reward_type !== 'free_spins' && bonusScheduleOpen(p, scheduleNow));
+  const hasMainBanner = promotions.some(p => p.show_banner && bonusScheduleOpen(p, scheduleNow));
   const homeBanners = portalBannersFor(settings.portal_banners, settings.portal_theme, 'home');
   const [slide, setSlide] = useState(0);
   const [availability, setAvailability] = useState<Record<string, Availability>>({});
@@ -27,16 +32,19 @@ export function HomeBonusCarousel({ onClaim }: { onClaim: (id: string) => void }
   const mainCount = hasMainBanner ? 1 : 0;
   const total = mainCount + homeBanners.length + specials.length;
   useEffect(() => { setSlide(value => Math.max(0, Math.min(value, total - 1))); }, [total]);
+  const hasCountdown = Object.values(availability).some(row => !!row.next_available_at && Date.parse(row.next_available_at) > now + clockOffset);
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
+    if (!hasCountdown) return;
+    const tick = () => { if (document.visibilityState === 'visible') setNow(Date.now()); };
+    const timer = window.setInterval(tick, 1000);
+    document.addEventListener('visibilitychange', tick);
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', tick); };
+  }, [hasCountdown]);
   useEffect(() => {
-    if (!supabase) return;
-    const db = supabase;
+    if (!supabase || !specials.length) { setReady(true); return; }
     let alive = true;
     async function refresh() {
-      const { data, error } = await db.rpc('special_bonus_availability');
+      const { data, error } = await sharedPlayerRpc<Availability[]>('special_bonus_availability');
       if (!alive) return;
       setReady(!error);
       if (!error) {
@@ -51,10 +59,10 @@ export function HomeBonusCarousel({ onClaim }: { onClaim: (id: string) => void }
     document.addEventListener('visibilitychange', onVisible);
     const poll = window.setInterval(() => { if (document.visibilityState !== 'hidden') void refresh(); }, 300_000);
     return () => { alive = false; window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', onVisible); window.clearInterval(poll); };
-  }, []);
+  }, [specials.length]);
   useEffect(() => {
     if (total < 2) return;
-    const timer = window.setInterval(() => setSlide(value => (value + 1) % total), 8000);
+    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') setSlide(value => (value + 1) % total); }, 8000);
     return () => window.clearInterval(timer);
   }, [total]);
   const homeBanner = homeBanners[slide - mainCount] ?? null;
@@ -67,16 +75,16 @@ export function HomeBonusCarousel({ onClaim }: { onClaim: (id: string) => void }
   if (!total) return null;
   return <div className="home-bonus-carousel">
     {special && layout ? <section className="bonus-banner image-banner special-home-banner" style={homeBannerLayoutStyles(specialBonusDisplayLayout(layout)) as CSSProperties} aria-label={special.title}>
-      {special.image_path ? /\.(mp4|webm)$/i.test(special.image_path) ? <video className="bonus-image" src={supabase?.storage.from('app-assets').getPublicUrl(special.image_path).data.publicUrl} autoPlay muted loop playsInline aria-label={special.title} /> : <StorageImage path={special.image_path} alt={special.title} className="bonus-image" /> : <div className="special-home-placeholder"><strong>{special.title}</strong><span>Desde {money(special.min_amount)} recibís +{money(special.bonus_amount)}</span></div>}
+      {special.image_path ? /\.(mp4|webm)$/i.test(special.image_path) ? <VisibleVideo className="bonus-image" src={supabase?.storage.from('app-assets').getPublicUrl(special.image_path).data.publicUrl} autoPlay muted loop playsInline aria-label={special.title} /> : <StorageImage path={special.image_path} alt={special.title} className="bonus-image" /> : <div className="special-home-placeholder"><strong>{special.title}</strong><span>Desde {money(special.min_amount)} recibís +{money(special.bonus_amount)}</span></div>}
       <div className="special-banner-copy">
         <span className="special-banner-name">{special.title}</span>
         <span className="special-banner-minimum">Desde {money(special.min_amount)}</span>
         <strong className="special-banner-reward" aria-label={`Bono de ${money(special.bonus_amount)}`}>+{money(special.bonus_amount)}</strong>
-        {!statusReady ? <span className="special-banner-state">Consultando disponibilidad…</span> : status?.awaiting_credit ? <span className="special-banner-state">Carga con bono en proceso</span> : remaining > 0 ? <><span className="special-banner-state">Disponible nuevamente en</span><strong className="special-banner-countdown" role="timer">{countdown(remaining)}</strong></> : <button type="button" disabled={!canClaim} onClick={() => onClaim(special.id)}>Obtener bono</button>}
+        {!statusReady ? <span className="special-banner-state">Consultando disponibilidad…</span> : status?.awaiting_credit ? <span className="special-banner-state">Carga con bono en proceso</span> : remaining > 0 ? <><span className="special-banner-state">Disponible nuevamente en</span><strong className="special-banner-countdown" role="timer">{countdown(remaining)}</strong></> : <button type="button" disabled={!canClaim} onClick={() => { if (bonusScheduleOpen(special)) onClaim(special.id); }}>Obtener bono</button>}
       </div>
     </section> : homeBanner ? <section className="bonus-banner image-banner portal-home-carousel-banner" style={homeBannerLayoutStyles(homeBanner.layout) as CSSProperties} aria-label={`Banner del inicio ${slide - mainCount + 1}`}>
       {/\.(mp4|webm)$/i.test(homeBanner.path)
-        ? <video className="bonus-image" src={supabase?.storage.from('app-assets').getPublicUrl(homeBanner.path).data.publicUrl} autoPlay muted loop playsInline preload="metadata" aria-label={`Banner del inicio ${slide - mainCount + 1}`} />
+        ? <VisibleVideo className="bonus-image" src={supabase?.storage.from('app-assets').getPublicUrl(homeBanner.path).data.publicUrl} autoPlay muted loop playsInline preload="metadata" aria-label={`Banner del inicio ${slide - mainCount + 1}`} />
         : <StorageImage path={homeBanner.path} alt={`Banner del inicio ${slide - mainCount + 1}`} className="bonus-image" />}
     </section> : <BonusBanner />}
     {total > 1 && <nav className="home-bonus-carousel-nav" aria-label="Banners del inicio"><button type="button" aria-label="Banner anterior" onClick={() => setSlide(value => (value - 1 + total) % total)}><ChevronLeft size={30} strokeWidth={2.8} aria-hidden="true" /></button><button type="button" aria-label="Banner siguiente" onClick={() => setSlide(value => (value + 1) % total)}><ChevronRight size={30} strokeWidth={2.8} aria-hidden="true" /></button></nav>}

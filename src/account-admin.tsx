@@ -155,7 +155,7 @@ export function AccountAdmin({ demo, busy, action }: { demo: boolean; busy: bool
       </div>
     </form>
     {loading ? <p className="empty">Cargando cuentas…</p> : loadError ? <p className="empty">{loadError}</p> : !visibleAccounts.length ? <p className="empty">Todavía no hay cuentas en {shiftLabel[selectedShift].toLowerCase()}.</p> : groupAccountsByPhone(visibleAccounts).map(group => <section className={`account-phone-group${group.phone === null ? ' unassigned' : ''}`} key={group.phone ?? 'none'} aria-label={group.phone === null ? 'Cuentas sin teléfono' : `Teléfono ${group.phone}`}>
-      <header><h2>{group.phone === null ? 'Sin teléfono' : `Teléfono ${group.phone}`}</h2><p>{group.phone === null ? 'Poneles un número para poder elegirlas en un SAC.' : `${group.items.length} ${group.items.length === 1 ? 'cuenta' : 'cuentas'}`}</p></header>
+      <header><h2>{group.phone === null ? 'Sin teléfono' : `Teléfono ${group.phone}`}</h2><p>{group.phone === null ? 'Asignales un número para identificarlas más fácilmente.' : `${group.items.length} ${group.items.length === 1 ? 'cuenta' : 'cuentas'}`}</p></header>
       <div className="account-offers">
       {group.items.map(account => <article className={`account-offer${account.active ? '' : ' inactive'}${editing?.id === account.id ? ' editing' : ''}`} key={account.id}>
         <div className="withdrawal-source-card">

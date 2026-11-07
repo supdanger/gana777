@@ -1,5 +1,5 @@
 import { InputError } from '../supabase/functions/_shared/validation.ts';
-import type { Page } from './user-views';
+import type { Page } from './user-shell';
 
 export const staffPermissionPages = [
   'home', 'deposit', 'withdrawal', 'chat', 'external_chat', 'announcements', 'access_requests', 'users',

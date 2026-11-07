@@ -1,3 +1,5 @@
+import { bonusScheduleColumns, hasBonusSchedule, parseBonusSchedule, bonusScheduleText, bonusWeekdays, everyBonusDay, type BonusSchedule } from '../supabase/functions/_shared/bonus-schedule';
+import { readBonusScheduleColumns } from '../supabase/functions/_shared/promotion-columns';
 import { useEffect, useState, type FormEvent, type ChangeEvent, type CSSProperties } from 'react';
 import { ChevronDown, ChevronUp, ImagePlus, Trash2 } from 'lucide-react';
 import { asBonusRule, percentText, type BonusMode } from '../supabase/functions/_shared/bonus-rule';
@@ -9,7 +11,7 @@ import { bonusButtonLayoutStyles, defaultBonusBannerLayout, normalizeBonusBanner
 import { bannerImageExtension } from './home-banner';
 import { themeBase } from './portal-theme-design';
 
-export type BonusOffer = {
+export type BonusOffer = BonusSchedule & {
   id: string;
   title: string;
   reward_type: 'cash' | 'free_spins';
@@ -36,6 +38,7 @@ const previewNotice = 'La vista previa no guarda los bonos. Entrá con la cuenta
 
 function persistError(error: { code?: string; message?: string }): Error {
   const message = error.message ?? '';
+  if (/bonus_start_time|bonus_end_time|bonus_days|promotions_daily_window/i.test(message)) return new InputError('No se pudo guardar el horario del bono. Revisá la franja y los días seleccionados.');
   if (/reward_type|reward_label/i.test(message)) {
     return new InputError('Falta aplicar la migración 067 de premios de giros gratis en Supabase.');
   }
@@ -54,14 +57,14 @@ function persistError(error: { code?: string; message?: string }): Error {
   return error instanceof Error ? error : new Error(message || 'No se pudo guardar el bono.');
 }
 
-function offerFromRow(row: { id: string; title: string; reward_type?: string | null; reward_label?: string | null; rules_text?: string | null; active: boolean; bonus_mode?: string | null; bonus_percent?: number | null; bonus_amount?: number | null; min_amount?: number | null; max_amount?: number | null; load_number_from?: number | null; load_number_to?: number | null; cooldown_hours?: number | null; daily_reset_time?: string | null; image_path?: string | null; deposit_image_path?: string | null; banner_layout?: unknown; sort_order?: number | null }, theme: ReturnType<typeof themeBase>): BonusOffer {
-  return { id: row.id, title: row.title, reward_type: row.reward_type === 'free_spins' ? 'free_spins' : 'cash', reward_label: row.reward_label ?? '', rules_text: row.rules_text ?? '', active: row.active, ...asBonusRule(row), load_number_from: Number(row.load_number_from) || 1, load_number_to: row.load_number_to == null ? null : Number(row.load_number_to), cooldown_hours: Number(row.cooldown_hours) || 0, daily_reset_time: row.daily_reset_time ?? null, image_path: row.image_path ?? null, deposit_image_path: row.deposit_image_path ?? null, banner_layout: normalizeBonusBannerLayout(row.banner_layout, theme), sort_order: Number(row.sort_order) || 0 };
+function offerFromRow(row: BonusSchedule & { id: string; title: string; reward_type?: string | null; reward_label?: string | null; rules_text?: string | null; active: boolean; bonus_mode?: string | null; bonus_percent?: number | null; bonus_amount?: number | null; min_amount?: number | null; max_amount?: number | null; load_number_from?: number | null; load_number_to?: number | null; cooldown_hours?: number | null; daily_reset_time?: string | null; image_path?: string | null; deposit_image_path?: string | null; banner_layout?: unknown; sort_order?: number | null }, theme: ReturnType<typeof themeBase>): BonusOffer {
+  return { bonus_start_time: row.bonus_start_time ?? null, bonus_end_time: row.bonus_end_time ?? null, bonus_days: row.bonus_days ?? [...everyBonusDay], id: row.id, title: row.title, reward_type: row.reward_type === 'free_spins' ? 'free_spins' : 'cash', reward_label: row.reward_label ?? '', rules_text: row.rules_text ?? '', active: row.active, ...asBonusRule(row), load_number_from: Number(row.load_number_from) || 1, load_number_to: row.load_number_to == null ? null : Number(row.load_number_to), cooldown_hours: Number(row.cooldown_hours) || 0, daily_reset_time: row.daily_reset_time ?? null, image_path: row.image_path ?? null, deposit_image_path: row.deposit_image_path ?? null, banner_layout: normalizeBonusBannerLayout(row.banner_layout, theme), sort_order: Number(row.sort_order) || 0 };
 }
 
 function offerDetail(bonus: BonusOffer) {
   const value = bonus.reward_type === 'free_spins' ? bonus.reward_label : bonus.bonus_mode === 'fixed' ? `+${money(bonus.bonus_amount)}` : `+${percentText(bonus.bonus_percent)}%`;
   const loads = bonus.load_number_to === null ? bonus.load_number_from === 1 ? 'todas las cargas' : `desde carga ${bonus.load_number_from}` : bonus.load_number_from === bonus.load_number_to ? `solo carga ${bonus.load_number_from}` : `cargas ${bonus.load_number_from}–${bonus.load_number_to}`;
-  return `${value} · de ${money(bonus.min_amount)} a ${money(bonus.max_amount)} · ${loads}${bonus.cooldown_hours ? ` · ${bonus.daily_reset_time ? `reinicia ${bonus.daily_reset_time.slice(0,5)}` : `cada ${bonus.cooldown_hours} h`}` : ''} · ${bonus.active ? 'Disponible para cargar' : 'Pausado'}`;
+  return `${value} · de ${money(bonus.min_amount)} a ${money(bonus.max_amount)} · ${loads}${bonus.cooldown_hours ? ` · ${bonus.daily_reset_time ? `reinicia ${bonus.daily_reset_time.slice(0,5)}` : `cada ${bonus.cooldown_hours} h`}` : ''}${hasBonusSchedule(bonus) ? ` · ${bonusScheduleText(bonus)}` : ''} · ${bonus.active ? 'Disponible para cargar' : 'Pausado'}`;
 }
 
 export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolean; action: (task: () => Promise<void>) => Promise<void> }) {
@@ -77,6 +80,11 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
   const [loadNumberTo, setLoadNumberTo] = useState('');
   const [allLoads, setAllLoads] = useState(true);
   const [timed, setTimed] = useState(false);
+  const [scheduled, setScheduled] = useState(false);
+  const [startTime, setStartTime] = useState('14:00');
+  const [endTime, setEndTime] = useState('17:00');
+  const [scheduleDays, setScheduleDays] = useState<number[]>([...everyBonusDay]);
+  const [scheduleSupported, setScheduleSupported] = useState(demo);
   const [resetTime, setResetTime] = useState('23:00');
   const [savedLayoutId, setSavedLayoutId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -102,7 +110,8 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
     if (demo || !supabase) { setLoading(false); return; }
     const db = supabase;
     let alive = true;
-    void db.from('promotions').select(offerColumns).eq('selectable', true).order('sort_order').then(({ data, error }) => {
+    void readBonusScheduleColumns(columns => db.from('promotions').select(columns).eq('selectable', true).order('sort_order').returns<Parameters<typeof offerFromRow>[0][]>(), offerColumns).then(({ result: { data, error }, scheduleSupported }) => {
+      if (alive) setScheduleSupported(scheduleSupported);
       if (!alive) return;
       setLoading(false);
       if (error) {
@@ -126,9 +135,13 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
     const element = event.currentTarget;
     const form = new FormData(element);
     await action(async () => {
-      assertFormFields(form, timed
-        ? ['title', 'reward_type', 'mode', 'value', 'rules_text', 'min_amount', 'max_amount', 'load_number_from', 'load_number_to', 'all_loads', ...(form.get('reward_type') === 'free_spins' ? ['daily_reset_time'] : ['cooldown_hours'])]
-        : ['title', 'reward_type', 'mode', 'value', 'rules_text', 'min_amount', 'max_amount', 'load_number_from', 'load_number_to', 'all_loads']);
+      assertFormFields(form, ['title', 'reward_type', 'mode', 'value', 'rules_text', 'min_amount', 'max_amount', 'load_number_from', 'load_number_to', 'all_loads',
+        ...(timed ? form.get('reward_type') === 'free_spins' ? ['daily_reset_time'] : ['cooldown_hours'] : []),
+        ...(scheduled ? ['bonus_start_time','bonus_end_time','bonus_days'] : [])]);
+      if (scheduled && !scheduleSupported && !demo) throw new InputError('La programación por horario todavía está pendiente de habilitación.');
+      let schedule: ReturnType<typeof parseBonusSchedule>;
+      try { schedule = parseBonusSchedule(scheduled, String(form.get('bonus_start_time') ?? ''), String(form.get('bonus_end_time') ?? ''), String(form.get('bonus_days') ?? '').split(',').filter(Boolean).map(Number)); }
+      catch (cause) { throw new InputError(cause instanceof Error ? cause.message : 'Revisá el horario del bono.'); }
       const selectedRewardType = form.get('reward_type') === 'free_spins' ? 'free_spins' : 'cash';
       const rule = selectedRewardType === 'free_spins'
         ? { title: parseBonusTitle(form.get('title')), bonus_mode: 'fixed' as const, bonus_percent: 0, bonus_amount: 0, min_amount: parseAmount(form.get('min_amount')), max_amount: parseAmount(form.get('max_amount')) }
@@ -146,6 +159,7 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
       const current = bonuses.find(item => item.id === editingId) ?? null;
       if (demo || !supabase) throw new InputError(previewNotice);
       const payload = {
+        ...(scheduleSupported ? schedule : {}),
         reward_type: selectedRewardType, reward_label: rewardLabel, rules_text: rulesText,
         title: rule.title, bonus_mode: rule.bonus_mode, bonus_percent: rule.bonus_percent,
         bonus_amount: rule.bonus_amount, min_amount: rule.min_amount, max_amount: rule.max_amount,
@@ -154,7 +168,7 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
       const query = current
         ? supabase.from('promotions').update(payload).eq('id', current.id).eq('selectable', true)
         : supabase.from('promotions').insert({ ...payload, description: '', active: true, selectable: true, show_banner: false, sort_order: bonuses.length, banner_layout: defaultBonusBannerLayout(theme) });
-      const { data, error } = await query.select(offerColumns).single();
+      const { data, error } = await query.select(scheduleSupported ? `${offerColumns},${bonusScheduleColumns}` : offerColumns).single().returns<Parameters<typeof offerFromRow>[0]>();
       if (error || !data) throw persistError(error ?? { message: 'No se pudo guardar el bono.' });
       const saved = offerFromRow(data, theme);
       setBonuses(old => current ? old.map(item => item.id === saved.id ? { ...item, ...saved } : item) : [...old, saved]);
@@ -163,7 +177,7 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
       setRewardType('cash');
       setRewardValue('');
       setLoadNumberFrom('1'); setLoadNumberTo(''); setAllLoads(true);
-      setTimed(false); setResetTime('23:00');
+      setTimed(false); setResetTime('23:00'); setScheduled(false); setStartTime('14:00'); setEndTime('17:00'); setScheduleDays([...everyBonusDay]);
       element.reset();
       reloadPromotions();
     });
@@ -174,6 +188,7 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
     setRewardType(bonus.reward_type);
     setRewardValue(bonus.reward_type === 'free_spins' ? bonus.reward_label : String(bonus.bonus_mode === 'fixed' ? bonus.bonus_amount : bonus.bonus_percent));
     setLoadNumberFrom(String(bonus.load_number_from)); setLoadNumberTo(bonus.load_number_to === null ? '' : String(bonus.load_number_to)); setAllLoads(bonus.load_number_to === null);
+    setScheduled(hasBonusSchedule(bonus)); setStartTime(bonus.bonus_start_time?.slice(0,5) ?? '14:00'); setEndTime(bonus.bonus_end_time?.slice(0,5) ?? '17:00'); setScheduleDays(bonus.bonus_days ?? [...everyBonusDay]);
     setTimed(bonus.cooldown_hours > 0); setResetTime(bonus.daily_reset_time?.slice(0, 5) ?? '23:00');
     document.getElementById('bonus-title')?.scrollIntoView({ block: 'start' });
   }
@@ -190,7 +205,7 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
       }
       if (!data?.length) throw new InputError('Ese bono ya no está.');
       setBonuses(old => old.filter(item => item.id !== bonus.id));
-      if (editingId === bonus.id) { setEditingId(null); setMode('percent'); setRewardType('cash'); setTimed(false); setLoadNumberFrom('1'); setLoadNumberTo(''); setAllLoads(true); }
+      if (editingId === bonus.id) { setEditingId(null); setMode('percent'); setRewardType('cash'); setTimed(false); setScheduled(false); setLoadNumberFrom('1'); setLoadNumberTo(''); setAllLoads(true); }
       reloadPromotions();
     });
   }
@@ -291,6 +306,16 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
         <label>Monto mínimo<input name="min_amount" inputMode="decimal" maxLength={18} placeholder="10.000" defaultValue={editing ? String(editing.min_amount) : ''} required /></label>
         <label>Monto máximo<input name="max_amount" inputMode="decimal" maxLength={18} placeholder="50.000" defaultValue={editing ? String(editing.max_amount) : ''} required /></label>
       </div>
+      <section className="bonus-schedule-settings" aria-label="Disponibilidad por horario">
+        <label className="bonus-special-toggle"><input type="checkbox" checked={scheduled} onChange={event => setScheduled(event.target.checked)} />Disponible solo en un horario</label>
+        {!loading && !scheduleSupported && !demo && <small>La programación por horario está pendiente de habilitación. Podés seguir guardando bonos sin horario.</small>}
+        {scheduled && <>
+          <div className="bonus-range"><label>Desde (hora de Paraguay)<input name="bonus_start_time" type="time" step="60" value={startTime} onChange={event => setStartTime(event.target.value)} required /></label><label>Hasta (hora de Paraguay)<input name="bonus_end_time" type="time" step="60" value={endTime} onChange={event => setEndTime(event.target.value)} required /></label></div>
+          <input type="hidden" name="bonus_days" value={scheduleDays.join(',')} /><fieldset className="bonus-schedule-days"><legend>Días en que comienza el horario</legend>{bonusWeekdays.map((label,index) => <label key={label}><input type="checkbox" value={index+1} checked={scheduleDays.includes(index+1)} onChange={event => setScheduleDays(days => event.target.checked ? [...days,index+1].sort((a,b)=>a-b) : days.filter(day => day!==index+1))} />{label}</label>)}</fieldset>
+          <small>{startTime > endTime ? 'Termina al día siguiente. ' : ''}El inicio está incluido y la hora de fin queda fuera. Se valida al registrar la solicitud; atenderla después conserva el bono.</small>
+          <small>El monto máximo limita la carga del jugador, no el importe del bono.</small>
+        </>}
+      </section>
       <div className="bonus-load-window">
         <strong>¿En qué cargas se puede usar?</strong>
         <small>Se cuentan las cargas aprobadas. Solo la primera: desde 1 hasta 1. Todas: desde 1 y sin límite.</small>
@@ -301,8 +326,8 @@ export function BonusAdmin({ demo, busy, action }: { demo: boolean; busy: boolea
         <label className="bonus-special-toggle"><input name="all_loads" type="checkbox" value="true" checked={allLoads} onChange={event => setAllLoads(event.target.checked)} />Sin límite: desde la carga inicial en adelante</label>
       </div>
       <div className="bonus-form-actions">
-        <button type="submit" disabled={busy || loading}>{busy ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear bono'}</button>
-        {editing && <button type="button" disabled={busy} onClick={() => { setEditingId(null); setMode('percent'); setRewardType('cash'); setRewardValue(''); setTimed(false); setLoadNumberFrom('1'); setLoadNumberTo(''); setAllLoads(true); }}>Cancelar</button>}
+        <button type="submit" disabled={busy || loading || scheduled && !scheduleSupported && !demo}>{busy ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear bono'}</button>
+        {editing && <button type="button" disabled={busy} onClick={() => { setEditingId(null); setMode('percent'); setRewardType('cash'); setRewardValue(''); setTimed(false); setScheduled(false); setLoadNumberFrom('1'); setLoadNumberTo(''); setAllLoads(true); }}>Cancelar</button>}
       </div>
     </form>
     {loading ? <p className="empty">Cargando bonos…</p> : loadError ? <p className="empty">{loadError}</p> : !bonuses.length ? <p className="empty">Todavía no hay bonos. Los que crees aparecerán en el apartado Bonos del portal.</p> : <div className="bonus-offers">

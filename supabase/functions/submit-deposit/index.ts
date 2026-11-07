@@ -1,13 +1,22 @@
+import { bonusScheduleOpen, type BonusSchedule } from '../_shared/bonus-schedule.ts';
+import { readBonusScheduleColumns } from '../_shared/promotion-columns.ts';
 import { authenticate, cors, HttpError, json, serverClient } from '../_shared/http.ts';
 import { cloudName, destroyReceipt, signedParams } from '../_shared/cloudinary.ts';
-import { asBonusRule, bonusEnabled } from '../_shared/bonus-rule.ts';
+import { asBonusRule, bonusEnabled, type BonusRule } from '../_shared/bonus-rule.ts';
 import { assertFormFields, InputError, parseAmount, parseUuid, validateReceipt } from '../_shared/validation.ts';
+
+type DepositBonus = BonusSchedule & BonusRule & {
+  reward_type: 'cash' | 'free_spins'; reward_label: string;
+  load_number_from: number; load_number_to: number | null; cooldown_hours: number;
+};
+const rejectedInsertCodes = new Set(['P0001', '22001', '22003', '22023', '22P02', '23502', '23503', '23505', '23514', '42501', '40001', '40P01', '57014']);
 
 Deno.serve(async request => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (request.method !== 'POST') return json({ error: 'Método no permitido.' }, 405);
   let uploadedId: string | null = null;
   let saved = false;
+  let insertUncertain = false;
   try {
     const { db, user } = await authenticate(request);
     if (Number(request.headers.get('Content-Length') ?? 0) > 6 * 1024 * 1024) return json({ error: 'El comprobante supera los 5 MB.' }, 413);
@@ -26,7 +35,8 @@ Deno.serve(async request => {
       const { data: loadNumberData, error: loadNumberError } = await db.rpc('player_next_deposit_number');
       const nextLoadNumber = Number(loadNumberData);
       if (loadNumberError || !Number.isInteger(nextLoadNumber) || nextLoadNumber < 1) return json({ error: 'No pudimos verificar tu número de carga. Intentá nuevamente.' }, 503);
-      const lookup = await db.from('promotions').select('reward_type,reward_label,bonus_mode,bonus_percent,bonus_amount,min_amount,max_amount,load_number_from,load_number_to,cooldown_hours').eq('id', bonusId).eq('active', true).eq('selectable', true).maybeSingle();
+      const { result: lookup } = await readBonusScheduleColumns(columns => db.from('promotions').select(columns).eq('id', bonusId).eq('active', true).eq('selectable', true).maybeSingle().returns<DepositBonus>(), 'reward_type,reward_label,bonus_mode,bonus_percent,bonus_amount,min_amount,max_amount,load_number_from,load_number_to,cooldown_hours');
+      if (!lookup.error && lookup.data && !bonusScheduleOpen(lookup.data)) return json({ error: 'El bono está fuera de su horario disponible.' }, 400);
       const missingRule = lookup.error && /reward_type|reward_label|bonus_mode|bonus_amount|min_amount|max_amount|load_number_from|load_number_to|cooldown_hours/i.test(lookup.error.message ?? '');
       if (missingRule) {
         const legacy = await db.from('promotions').select('id').eq('id', bonusId).eq('active', true).eq('selectable', true).gt('bonus_percent', 0).maybeSingle();
@@ -53,10 +63,20 @@ Deno.serve(async request => {
     uploadedId = result.public_id;
     const expected = `https://res.cloudinary.com/${cloudName()}/image/authenticated/`;
     if (typeof result.secure_url !== 'string' || !result.secure_url.startsWith(expected) || typeof result.asset_id !== 'string') throw new Error('Cloudinary devolvió un comprobante inválido.');
+    // A failed/lost HTTP response does not prove that PostgreSQL rolled back.
+    insertUncertain = true;
     const { data, error } = await serverClient().from('requests').insert({ user_id: user.id, kind: 'deposit', amount,
       receipt_url: result.secure_url, cloudinary_asset_id: result.asset_id, bonus_id: bonusId, bank_assignment_id: bankAssignmentId,
     }).select('id,user_id,kind,amount,status,created_at,holder,cbu,alias,receipt_path,receipt_url,bonus_id,bonus_percent').single();
     if (error) {
+      if (rejectedInsertCodes.has(error.code)) {
+        try {
+          const existing = await serverClient().from('requests').select('id')
+            .eq('cloudinary_asset_id', result.asset_id).limit(1).abortSignal(AbortSignal.timeout(5000)).maybeSingle();
+          if (!existing.error && !existing.data) insertUncertain = false;
+        } catch { /* Keep the receipt when the verification cannot be completed. */ }
+      }
+      if ((error.message ?? '') === 'El bono está fuera de su horario disponible.') return json({ error: error.message }, 400);
       if (/bono especial todavía está en espera|bono pendiente de acreditación/i.test(error.message ?? '')) return json({ error: error.message }, 409);
       if ((error.message ?? '').includes('El bono no está habilitado')) return json({ error: 'El bono no está habilitado para ese monto.' }, 400);
       if ((error.message ?? '').includes('asignación de la cuenta venció')) return json({ error: 'La asignación de la cuenta venció. Volvé a iniciar la carga.' }, 400);
@@ -72,7 +92,7 @@ Deno.serve(async request => {
     console.error('submit-deposit failed', { type: error instanceof Error ? error.name : 'unknown' });
     return json({ error: 'No pudimos enviar la carga. Intentá nuevamente.' }, 500);
   } finally {
-    if (uploadedId && !saved) {
+    if (uploadedId && !saved && !insertUncertain) {
       try { await destroyReceipt(uploadedId); } catch { console.error('Cloudinary cleanup pending for an unregistered receipt.'); }
     }
   }

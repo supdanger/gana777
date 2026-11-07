@@ -1,5 +1,7 @@
 # GANA777 · Gestión
 
+Cambios de rendimiento, caché y verificación: [OPTIMIZACION.md](docs/OPTIMIZACION.md).
+
 Vite, React y TypeScript estricto. Una base de código genera dos aplicaciones con el mismo Supabase: usuarios y administración.
 
 La app de usuarios sigue las cinco referencias móviles: login con panda, inicio con banner y tres acciones, cargas, retiros y chat. Los recursos visuales se leen desde Supabase Storage; los comprobantes nuevos van a Cloudinary mediante funciones de servidor y Supabase guarda sus referencias.

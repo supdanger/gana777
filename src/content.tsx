@@ -1,13 +1,18 @@
+import { useBonusScheduleClock } from './bonus-schedule-clock';
+import { bonusScheduleOpen, type BonusSchedule } from '../supabase/functions/_shared/bonus-schedule';
+import { readBonusScheduleColumns } from '../supabase/functions/_shared/promotion-columns';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { asBonusRule } from '../supabase/functions/_shared/bonus-rule';
-import { supabase } from './lib';
+import { adminApp, supabase } from './lib';
+import { cachedResource, readPublicSnapshot, writePublicSnapshot } from './resource-cache';
+import { VisibleVideo } from './visible-video';
 import { defaultHomeBanner, homeBannerLayoutStyles, type HomeBannerSettings } from './home-banner';
 import { bonusBannerLayout } from './bonus-banner-layout';
 import { portalBannersFor, type PortalBannerPlace } from './portal-banners';
 import type { PortalTheme, ThemeDesigns } from './portal-theme-design';
 import { themeBase } from './portal-theme-design';
-import pandaLogin from './assets/panda-login-transparent.png';
-import pandaAvatar from './assets/panda-user-avatar.png';
+import pandaLogin from './assets/panda-login-transparent.webp';
+import pandaAvatar from './assets/panda-user-avatar.webp';
 
 export type { PortalTheme } from './portal-theme-design';
 export type AppContent = HomeBannerSettings & {
@@ -38,7 +43,7 @@ export type AppContent = HomeBannerSettings & {
   home_tutorial_first_login_enabled: boolean;
   deposit_bonus_button_path: string | null;
 };
-export type Promotion = {
+export type Promotion = BonusSchedule & {
   id: string; title: string; description: string; image_path: string | null;
   rules_text: string;
   reward_type: 'cash' | 'free_spins'; reward_label: string;
@@ -72,6 +77,7 @@ function toPromotion(row: {
   id: string; title: string; description?: string | null; image_path?: string | null; image_layout?: string | null;
   reward_type?: string | null; reward_label?: string | null;
   rules_text?: string | null;
+  bonus_start_time?: string | null; bonus_end_time?: string | null; bonus_days?: number[] | null;
   bonus_mode?: string | null; bonus_percent?: number | null; bonus_amount?: number | null; min_amount?: number | null; max_amount?: number | null;
   load_number_from?: number | null; load_number_to?: number | null;
   cooldown_hours?: number | null; daily_reset_time?: string | null; deposit_image_path?: string | null; banner_layout?: unknown;
@@ -81,6 +87,7 @@ function toPromotion(row: {
     id: row.id, title: row.title, description: row.description ?? '', image_path: row.image_path ?? null,
     reward_type: row.reward_type === 'free_spins' ? 'free_spins' : 'cash', reward_label: row.reward_label ?? '',
     rules_text: row.rules_text ?? '',
+    bonus_start_time: row.bonus_start_time ?? null, bonus_end_time: row.bonus_end_time ?? null, bonus_days: row.bonus_days ?? [1,2,3,4,5,6,7],
     image_layout: row.image_layout === 'reference' ? 'reference' : 'image', ...asBonusRule(row),
     load_number_from: Number(row.load_number_from) || 1, load_number_to: row.load_number_to == null ? null : Number(row.load_number_to),
     cooldown_hours: Number(row.cooldown_hours) || 0, daily_reset_time: row.daily_reset_time ?? null, deposit_image_path: row.deposit_image_path ?? null, banner_layout: row.banner_layout ?? {},
@@ -89,26 +96,22 @@ function toPromotion(row: {
 }
 const ContentContext = createContext({ settings: defaults, promotions: [welcome], contactAnimations: emptyAnimations, reloadPromotions: () => {}, initialReady: !supabase, initialError: '', retryInitialLoad: () => {} });
 export const useContent = () => useContext(ContentContext);
-function preloadImage(path: string | null | undefined) {
-  if (!path || !supabase) return Promise.resolve();
-  const url = supabase.storage.from('app-assets').getPublicUrl(path).data.publicUrl;
-  return new Promise<void>(resolve => {
-    const image = new Image();
-    const finish = () => { image.onload = null; image.onerror = null; resolve(); };
-    const timeout = window.setTimeout(finish, 6000);
-    image.onload = () => { window.clearTimeout(timeout); finish(); };
-    image.onerror = () => { window.clearTimeout(timeout); finish(); };
-    image.src = url;
-    if (image.complete) { window.clearTimeout(timeout); finish(); }
-  });
+type PublicContentSnapshot = { settings: Partial<AppContent> };
+const contentStorageKey = `gana777:public-content:v1:${import.meta.env.VITE_SUPABASE_URL ?? 'preview'}:${adminApp ? 'admin' : 'user'}`;
+function savedContent(): PublicContentSnapshot | null {
+  try {
+    const cached = readPublicSnapshot<PublicContentSnapshot>(window.localStorage, contentStorageKey, 30 * 60_000);
+    return cached?.settings && typeof cached.settings === 'object' && !Array.isArray(cached.settings) ? cached : null;
+  } catch { return null; }
 }
 export function ContentProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings] = useState(defaults);
+  const [snapshot] = useState(savedContent);
+  const [settings, setSettings] = useState<AppContent>(() => ({ ...defaults, ...snapshot?.settings }));
   const [promotions, setPromotions] = useState<Promotion[]>([welcome]);
   const [contactAnimations, setContactAnimations] = useState(emptyAnimations);
-  const [initialReady, setInitialReady] = useState(!supabase);
+  const [initialReady, setInitialReady] = useState(!supabase || !!snapshot);
   const [initialError, setInitialError] = useState('');
-  const initialSettled = useRef(!supabase);
+  const initialSettled = useRef(!supabase || !!snapshot);
   const reloadRef = useRef<() => void>(() => {});
   const reloadPromotions = useCallback(() => { reloadRef.current(); }, []);
   const retryInitialLoad = useCallback(() => {
@@ -121,25 +124,31 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     if (!supabase) return;
     const db = supabase;
     let alive = true;
-    async function refresh() {
-      const [config, promos, contacts] = await Promise.all([
-        db.from('app_settings').select('*').eq('id', true).maybeSingle(),
-        db.from('promotions').select(promotionColumns).eq('active', true).order('sort_order'),
-        db.from('contact_animations').select('channel,animation_path'),
-      ]);
+    let inFlight = false;
+    let queued = false;
+    let lastLoaded = 0;
+    let contentRevision = 0;
+    async function refresh(force = false) {
+      if (inFlight) { queued ||= force; return; }
+      if (!force && Date.now() - lastLoaded < 60_000) return;
+      inFlight = true;
+      try {
+      const [config, promos, contacts] = await cachedResource(`public-content:${contentStorageKey}:${force ? ++contentRevision : contentRevision}`, 5_000, async () => {
+        const result = await Promise.all([
+          db.from('app_settings').select('*').eq('id', true).maybeSingle(),
+          readBonusScheduleColumns(columns => db.from('promotions').select(columns).eq('active', true).order('sort_order').returns<Parameters<typeof toPromotion>[0][]>(), promotionColumns).then(value => value.result),
+          db.from('contact_animations').select('channel,animation_path'),
+        ]);
+        if (result[0].error) throw result[0].error;
+        return result;
+      });
       if (!alive) return;
       if (!config.error && config.data) {
         const saved = { ...defaults, ...config.data } as AppContent;
-        if (!initialSettled.current) {
-          const design = saved.portal_theme_designs?.[saved.portal_theme];
-          const paths = [...new Set([
-            saved.login_image_path, saved.logo_path, saved.portal_header_logo_path,
-            saved.portal_theme === 'halloween' ? saved.portal_header_logo_halloween_path : null,
-            design?.backgroundPath, design?.logoPath,
-          ].filter((path): path is string => typeof path === 'string' && path.length > 0))];
-          await Promise.all(paths.map(preloadImage));
-          if (!alive) return;
-        }
+        // Persist only known, public presentation fields, never future columns
+        // added to app_settings or authenticated responses.
+        const publicSettings = Object.fromEntries(Object.keys(defaults).map(key => [key, saved[key as keyof AppContent]]));
+        try { writePublicSnapshot(window.localStorage, contentStorageKey, { settings: publicSettings }); } catch { /* Optional cache. */ }
         // Upgrade the initial screenshot reference without requiring a SQL change.
         setSettings(saved.login_image_path === 'brand/login-reference.png'
           ? { ...saved, login_image_path: defaults.login_image_path, login_image_layout: 'image' }
@@ -160,17 +169,27 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
         }
         setContactAnimations(next);
       }
+      lastLoaded = Date.now();
       initialSettled.current = true;
       setInitialReady(true);
+      } catch {
+        if (alive && !initialSettled.current) {
+          setInitialError('No pudimos cargar el portal. Revisá tu conexión e intentá nuevamente.');
+          setInitialReady(true);
+        }
+      } finally {
+        inFlight = false;
+        if (alive && queued) { queued = false; void refresh(true); }
+      }
     }
-    reloadRef.current = () => { void refresh(); };
+    reloadRef.current = () => { void refresh(true); };
     void refresh();
-    const onFocus = () => { void refresh(); };
+    const onFocus = () => { if (document.visibilityState === 'visible') void refresh(); };
     window.addEventListener('focus', onFocus);
     const channel = db.channel('user-content')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, () => void refresh())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'promotions' }, () => void refresh())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'contact_animations' }, () => void refresh())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, () => void refresh(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'promotions' }, () => void refresh(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'contact_animations' }, () => void refresh(true))
       .subscribe();
     return () => { alive = false; window.removeEventListener('focus', onFocus); void db.removeChannel(channel); };
   }, []);
@@ -184,8 +203,9 @@ const previewFiles: Record<string, string> = {
   'avatars/panda-user-avatar.png': pandaAvatar,
 };
 export function StorageImage({ path, alt, className = '', fallbackPath }: { path: string; alt: string; className?: string; fallbackPath?: string }) {
-  const remote = supabase?.storage.from('app-assets').getPublicUrl(path).data.publicUrl;
-  const local = previewFiles[path] ?? (fallbackPath ? previewFiles[fallbackPath] : undefined);
+  const bundled = previewFiles[path];
+  const remote = !bundled ? supabase?.storage.from('app-assets').getPublicUrl(path).data.publicUrl : undefined;
+  const local = bundled ?? (fallbackPath ? previewFiles[fallbackPath] : undefined);
   const [loadedRemote, setLoadedRemote] = useState<string | null>(null);
   useEffect(() => {
     if (!remote || !local) return;
@@ -202,33 +222,34 @@ export function StorageImage({ path, alt, className = '', fallbackPath }: { path
 }
 export function BonusBanner() {
   const { promotions, settings } = useContent();
-  const promotion = promotions.find(p => p.show_banner);
+  const scheduleNow = useBonusScheduleClock(promotions);
+  const promotion = promotions.find(p => p.show_banner && bonusScheduleOpen(p, scheduleNow));
   if (!promotion) return null;
   const layoutStyle = homeBannerLayoutStyles(bonusBannerLayout(settings, settings.portal_theme)) as CSSProperties;
   const designPath = settings.portal_theme_designs?.[settings.portal_theme]?.bonusPath;
   if (designPath) {
     const video = /\.(mp4|webm)$/i.test(designPath);
     return <section className="bonus-banner image-banner custom-bonus-media" style={layoutStyle} aria-label={promotion.title}>
-      {video ? <video key={designPath} className="bonus-image" src={supabase?.storage.from('app-assets').getPublicUrl(designPath).data.publicUrl} autoPlay muted loop playsInline preload="metadata" aria-label={promotion.title} /> : <StorageImage key={designPath} path={designPath} alt={promotion.title} className="bonus-image" />}
+      {video ? <VisibleVideo key={designPath} className="bonus-image" src={supabase?.storage.from('app-assets').getPublicUrl(designPath).data.publicUrl} autoPlay muted loop playsInline preload="metadata" aria-label={promotion.title} /> : <StorageImage key={designPath} path={designPath} alt={promotion.title} className="bonus-image" />}
     </section>;
   }
   const visualTheme = themeBase(settings);
   if (visualTheme === 'dark') return <section className="bonus-banner image-banner dark-bonus-banner" style={layoutStyle} aria-label="Bonos por carga">
     <img className="bonus-image" src="/preview-assets/dark-bonus-banner-card.png" alt="Bonos por carga: desde $5.000 recibís $1.000 y desde $10.000 recibís $2.000" draggable={false} decoding="async" />
-    <video className="bonus-image" src="/preview-assets/dark-bonus-banner.mp4" poster="/preview-assets/dark-bonus-banner-card.png" autoPlay muted loop playsInline preload="metadata" aria-hidden="true" onPlaying={event => { event.currentTarget.dataset.ready = 'true'; }} />
+    <VisibleVideo className="bonus-image" src="/preview-assets/dark-bonus-banner.mp4" poster="/preview-assets/dark-bonus-banner-card.png" autoPlay muted loop playsInline preload="metadata" aria-hidden="true" onPlaying={event => { event.currentTarget.dataset.ready = 'true'; }} />
   </section>;
   if (visualTheme === 'halloween' && ((settings.portal_theme === 'halloween' && settings.home_bonus_halloween_media_path) || promotion.id === loadBonusPromotionId)) {
     const path = settings.portal_theme === 'halloween' ? settings.home_bonus_halloween_media_path : null;
     const video = path ? /\.(mp4|webm)$/i.test(path) : false;
     return <section className={`bonus-banner image-banner halloween-bonus-banner${path ? ' custom-bonus-media' : ''}`} style={layoutStyle} aria-label={promotion.title}>
-      {path ? video ? <video key={path} className="bonus-image" src={supabase?.storage.from('app-assets').getPublicUrl(path).data.publicUrl} poster="/preview-assets/halloween-bonus-banner.webp" autoPlay muted loop playsInline preload="metadata" aria-label={promotion.title} /> : <StorageImage key={path} path={path} alt={promotion.title} className="bonus-image" /> : <><img className="bonus-image" src="/preview-assets/halloween-bonus-banner.webp" alt="Panda disfrazado de Halloween con una calabaza" draggable={false} decoding="async" /><div className="bonus-offer-copy"><span>Cargá y sumá más</span><strong>Bonos por carga</strong><div className="bonus-offer-tiers"><p>Desde <b>$5.000</b><small>Recibís +$1.000</small></p><p>Desde <b>$10.000</b><small>Recibís +$2.000</small></p></div></div></>}
+      {path ? video ? <VisibleVideo key={path} className="bonus-image" src={supabase?.storage.from('app-assets').getPublicUrl(path).data.publicUrl} poster="/preview-assets/halloween-bonus-banner.webp" autoPlay muted loop playsInline preload="metadata" aria-label={promotion.title} /> : <StorageImage key={path} path={path} alt={promotion.title} className="bonus-image" /> : <><img className="bonus-image" src="/preview-assets/halloween-bonus-banner.webp" alt="Panda disfrazado de Halloween con una calabaza" draggable={false} decoding="async" /><div className="bonus-offer-copy"><span>Cargá y sumá más</span><strong>Bonos por carga</strong><div className="bonus-offer-tiers"><p>Desde <b>$5.000</b><small>Recibís +$1.000</small></p><p>Desde <b>$10.000</b><small>Recibís +$2.000</small></p></div></div></>}
     </section>;
   }
   if (settings.home_bonus_media_path) {
     const path = settings.home_bonus_media_path;
     const video = /\.(mp4|webm)$/i.test(path);
     return <section className="bonus-banner image-banner custom-bonus-media" style={layoutStyle} aria-label={promotion.title}>
-      {video ? <video key={path} className="bonus-image" src={supabase?.storage.from('app-assets').getPublicUrl(path).data.publicUrl} poster="/preview-assets/load-bonus-banner-v2.webp" autoPlay muted loop playsInline preload="metadata" aria-label={promotion.title} /> : <StorageImage key={path} path={path} alt={promotion.title} className="bonus-image" />}
+      {video ? <VisibleVideo key={path} className="bonus-image" src={supabase?.storage.from('app-assets').getPublicUrl(path).data.publicUrl} poster="/preview-assets/load-bonus-banner-v2.webp" autoPlay muted loop playsInline preload="metadata" aria-label={promotion.title} /> : <StorageImage key={path} path={path} alt={promotion.title} className="bonus-image" />}
     </section>;
   }
   if (promotion.image_path) return <section className="bonus-banner image-banner has-copy" style={layoutStyle} aria-label={promotion.title}>
@@ -263,7 +284,7 @@ export function PortalBanners({ place }: { place: PortalBannerPlace }) {
     const source = supabase?.storage.from('app-assets').getPublicUrl(banner.path).data.publicUrl;
     const text = `${label} ${index + 1}`;
     return <section className="portal-extra-banner" style={homeBannerLayoutStyles(banner.layout) as CSSProperties} key={banner.id} aria-label={text}>
-      {video ? <video className="bonus-image" src={source} autoPlay muted loop playsInline preload="metadata" aria-label={text} /> : <StorageImage path={banner.path} alt={text} className="bonus-image" />}
+      {video ? <VisibleVideo className="bonus-image" src={source} autoPlay muted loop playsInline preload="metadata" aria-label={text} /> : <StorageImage path={banner.path} alt={text} className="bonus-image" />}
     </section>;
   })}</div>;
 }

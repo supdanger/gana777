@@ -1,3 +1,4 @@
+import { cleanupFailedSettingsUploads } from './asset-cleanup';
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { ImagePlus, RotateCcw } from 'lucide-react';
 import { InputError } from '../supabase/functions/_shared/validation';
@@ -69,6 +70,7 @@ export function ThemeDesignAdmin({ theme, designs, demo, onSaved }: {
     const name = draft.name?.trim();
     if (isCustomTheme(theme) && (!name || name.length > 40)) { setError('Escribí un nombre de entre 1 y 40 caracteres.'); return; }
     setBusy(true);
+    const uploadedPaths: string[] = [];
     try {
       let backgroundPath = draft.backgroundPath ?? null;
       if (file) {
@@ -82,6 +84,7 @@ export function ThemeDesignAdmin({ theme, designs, demo, onSaved }: {
         backgroundPath = `theme-backgrounds/${crypto.randomUUID()}.${extension}`;
         const uploaded = await supabase.storage.from('app-assets').upload(backgroundPath, file, { contentType: file.type, upsert: false });
         if (uploaded.error) throw new InputError('No pudimos subir el fondo. Revisá la migración 053 y los permisos.');
+        uploadedPaths.push(backgroundPath);
       }
       const nextDesign: ThemeDesign = { ...draft, name, backgroundPath };
       for (const imageSlot of imageCardSlots) {
@@ -91,6 +94,7 @@ export function ThemeDesignAdmin({ theme, designs, demo, onSaved }: {
         const imagePath = `theme-card-images/${theme}/${imageSlot}-${crypto.randomUUID()}.${extension}`;
         const uploaded = await supabase.storage.from('app-assets').upload(imagePath, imageFile, { contentType: imageFile.type, upsert: false });
         if (uploaded.error) throw new InputError(`No pudimos subir la imagen de ${cardSlots.find(item => item.id === imageSlot)?.label ?? imageSlot}. Revisá la migración 053 y los permisos.`);
+        uploadedPaths.push(imagePath);
         nextDesign[`${imageSlot}Path`] = imagePath;
       }
       const next = { ...designs, [theme]: nextDesign };
@@ -98,7 +102,7 @@ export function ThemeDesignAdmin({ theme, designs, demo, onSaved }: {
       if (result.error) throw new InputError('No pudimos guardar el diseño. Revisá la migración 053 y tus permisos.');
       onSaved(next); setDraft(nextDesign); setFile(null); setCardImageFiles({}); if (input.current) input.current.value = '';
       setSaved(true);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'No pudimos guardar el diseño.'); }
+    } catch (cause) { await cleanupFailedSettingsUploads(uploadedPaths); setError(cause instanceof Error ? cause.message : 'No pudimos guardar el diseño.'); }
     finally { setBusy(false); }
   }
 

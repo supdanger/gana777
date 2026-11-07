@@ -14,7 +14,7 @@ function countdown(deadline: string | null, now: number) {
 }
 function label(key: string | null) { return key && key in shiftLabel ? shiftLabel[key as ShiftKey] : 'Sin turno'; }
 
-export function ShiftAdmin({ demo, busy, action, station, onStation }: { demo: boolean; busy: boolean; action: (task: () => Promise<void>) => Promise<void>; station: number | null; onStation: (station: number) => void }) {
+export function ShiftAdmin({ demo, busy, action, station, onStation, sharedDeposits = false }: { demo: boolean; busy: boolean; action: (task: () => Promise<void>) => Promise<void>; sharedDeposits?: boolean; station: number | null; onStation: (station: number) => void }) {
   const previewRows = shifts.map((shift, index) => ({ ...shift, active: index === 0, updated_at: new Date().toISOString() }));
   const [rows, setRows] = useState<ShiftRow[]>(demo ? previewRows : []);
   const [status, setStatus] = useState<BankOperationStatus | null>(demo ? { mode: 'online', resumes_at: null, outgoing_shift_key: null, next_shift_key: null, active_shift_key: 'morning' } : null);
@@ -114,7 +114,7 @@ export function ShiftAdmin({ demo, busy, action, station, onStation }: { demo: b
           </article>;
         })}
       </div>
-      <SacBoard demo={demo} busy={busy} action={action} scope="all" station={station} onStation={onStation} liveShift={status?.active_shift_key ?? null} />
+      {!sharedDeposits && <SacBoard demo={demo} busy={busy} action={action} scope="all" station={station} onStation={onStation} liveShift={status?.active_shift_key ?? null} />}
       <p className="shift-note">Las asignaciones entregadas antes del cierre continúan disponibles para que esos usuarios puedan enviar su comprobante.</p>
     </>}
   </section>;

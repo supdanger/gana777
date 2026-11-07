@@ -16,6 +16,8 @@ export type Bank = {
 export type BankOperationStatus = { mode: 'online' | 'closing' | 'maintenance'; resumes_at: string | null; outgoing_shift_key: string | null; next_shift_key: string | null; active_shift_key: string | null };
 export const REQUEST_COLUMNS = 'id,user_id,user_name,kind,amount,status,created_at,holder,cbu,alias,receipt_path,receipt_url,bonus_id,bonus_percent,bonus_amount,approved_at,credited_at,deposit_holder,deposit_phone,deposit_sac,requested_special_bonus_id,special_min_amount,special_max_amount,bonus_reward_type,bonus_reward_label,bonus_load_number' as const;
 export const REQUEST_COLUMNS_LEGACY = 'id,user_id,user_name,kind,amount,status,created_at,holder,cbu,alias,receipt_path,receipt_url,bonus_id,bonus_percent,approved_at' as const;
-export const money = (amount: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(amount);
-export const date = (value: string) => new Intl.DateTimeFormat('es-AR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date(value));
+const moneyFormatter = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 });
+export const money = (amount: number) => moneyFormatter.format(amount);
+const dateFormatter = new Intl.DateTimeFormat('es-AR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Argentina/Buenos_Aires' });
+export const date = (value: string) => dateFormatter.format(new Date(value));
 export const statusLabel = { pending: 'Pendiente', approved: 'Aprobado', rejected: 'Rechazado' };
