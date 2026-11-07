@@ -1,7 +1,7 @@
 /* Shared panel tokens. Surfaces stay dark; accent and state colors stay saturated
    so badges, borders and actions stay readable. Portal/bank previews keep theirs. */
 .admin-shell {
-  --panel-bg: #100e16;
+  --panel-bg: #000000;
   --panel-sidebar: #161222;
   --panel-surface: #1c1728;
   --panel-surface-raised: #282236;
@@ -34,25 +34,25 @@
   color-scheme: dark;
 }
 .admin-shell.admin-theme-grafito {
-  --panel-bg: #10141c; --panel-sidebar: #141a24; --panel-surface: #1a2230; --panel-surface-raised: #243044;
+  --panel-bg: #000000; --panel-sidebar: #141a24; --panel-surface: #1a2230; --panel-surface-raised: #243044;
   --panel-hover: #2c3c54; --panel-border: #5d7ea3; --panel-border-soft: #3d5570;
   --panel-accent: #8ec5ff; --panel-accent-strong: #2563eb;
   --panel-accent-soft: #143056; --panel-accent-border: #60a5fa; --panel-accent-text: #dbeafe;
 }
 .admin-shell.admin-theme-esmeralda {
-  --panel-bg: #0c1412; --panel-sidebar: #101c18; --panel-surface: #14241e; --panel-surface-raised: #1c342c;
+  --panel-bg: #000000; --panel-sidebar: #101c18; --panel-surface: #14241e; --panel-surface-raised: #1c342c;
   --panel-hover: #234438; --panel-border: #3e8f72; --panel-border-soft: #2a5e4a;
   --panel-accent: #3ee0a8; --panel-accent-strong: #059669;
   --panel-accent-soft: #0c3d2c; --panel-accent-border: #10d98a; --panel-accent-text: #d1fae5;
 }
 .admin-shell.admin-theme-dorado {
-  --panel-bg: #16110c; --panel-sidebar: #1e1710; --panel-surface: #261c12; --panel-surface-raised: #342616;
+  --panel-bg: #000000; --panel-sidebar: #1e1710; --panel-surface: #261c12; --panel-surface-raised: #342616;
   --panel-hover: #44321c; --panel-border: #a07840; --panel-border-soft: #6a5030;
   --panel-accent: #ffc14d; --panel-accent-strong: #d97706;
   --panel-accent-soft: #3a2808; --panel-accent-border: #f5b942; --panel-accent-text: #fff1cc;
 }
 .admin-shell.admin-theme-negro {
-  --panel-bg: #09090b; --panel-sidebar: #0e0e12; --panel-surface: #141418; --panel-surface-raised: #1e1e26;
+  --panel-bg: #000000; --panel-sidebar: #0e0e12; --panel-surface: #141418; --panel-surface-raised: #1e1e26;
   --panel-hover: #2a2a36; --panel-border: #6a6680; --panel-border-soft: #444056;
   --panel-accent: #c4b5fd; --panel-accent-strong: #7c5cff;
   --panel-accent-soft: #2a2048; --panel-accent-border: #a78bfa; --panel-accent-text: #f3eeff;
