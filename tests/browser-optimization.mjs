@@ -67,8 +67,10 @@ async function openApp(admin, mobile = false, queue = null, bonusPlan = null) {
         const actor = uid(9000);
         const fail = message => route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: 'P0001', message }) });
         if (resource === 'list_deposit_queue') {
-          let rows = queue.rows.filter(row => row.status === 'pending' && !row.credited_at);
-          rows = rows.filter(row => args.p_filter === 'all' || args.p_filter === 'mine' && row.claimed_by === actor || args.p_filter === 'available' && !row.claimed_by);
+          let rows = queue.rows.filter(row => !row.archived);
+          if (args.p_filter === 'available') rows = rows.filter(row => row.status === 'pending' && !row.credited_at && !row.claimed_by);
+          else if (args.p_filter === 'mine') rows = rows.filter(row => row.status === 'pending' && !row.credited_at && row.claimed_by === actor);
+          else rows = rows.filter(row => row.status === 'pending' || row.status === 'approved' || row.status === 'rejected' || row.credited_at);
           rows.sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id));
           body = { total: rows.length, pending_count: queue.rows.filter(row => row.status === 'pending').length, rows: rows.slice(args.p_page * 30, args.p_page * 30 + 30) };
         } else if (resource === 'list_deposit_claim_events') body = queue.events.filter(event => event.request_id === args.p_request_id);
@@ -310,6 +312,13 @@ try {
   await qp.keyboard.press('Escape');
   await qp.waitForSelector('.load-modal', { state: 'detached' });
   await qp.getByRole('tab', { name: 'Todas', exact: true }).click();
+  const completed = qp.getByRole('button', { name: /Carga compartida 2 / });
+  assert.match(await completed.innerText(), /Cargada/);
+  await completed.click();
+  await qp.waitForSelector('.deposit-claim-status');
+  assert.equal(await qp.getByRole('button', { name: 'Ya cargué', exact: true }).count(), 0, 'El historial no vuelve a pedir la carga');
+  await qp.keyboard.press('Escape');
+  await qp.waitForSelector('.load-modal', { state: 'detached' });
   await qp.getByRole('button', { name: /Carga compartida 0 / }).click();
   await qp.getByRole('button', { name: 'Ya cargué', exact: true }).click();
   await qp.waitForSelector('.load-modal', { state: 'detached' });
@@ -348,7 +357,7 @@ try {
   await qp.getByRole('button', { name: /Carga compartida 1 / }).waitFor();
   assert.equal(await qp.locator('.credit-ready-modal').count(), 0, 'Una aprobación tardía no reabre una ventana después de navegar');
   assert.deepEqual(shared.errors, []);
-  records.push({ app: 'shared-deposit-queue', checks: ['30 rows per page', 'newest deposits first across pages', 'no SAC selector', 'server-confirmed take', 'explicit release', 'close returns to disponibles', 'take conflict', 'one step load', 'foreign claim read-only', 'no supervisor step', 'audit on demand', 'mobile without overflow', 'late approval does not reopen a dismissed screen'] });
+  records.push({ app: 'shared-deposit-queue', checks: ['30 rows per page', 'newest deposits first across pages', 'completed history in Todas', 'no SAC selector', 'server-confirmed take', 'explicit release', 'close returns to disponibles', 'take conflict', 'one step load', 'foreign claim read-only', 'no supervisor step', 'audit on demand', 'mobile without overflow', 'late approval does not reopen a dismissed screen'] });
   await shared.context.close();
   const legacyBonusPlan = { offers: [], scheduleSupported: false };
   const legacyBonus = await openApp(true, false, null, legacyBonusPlan);

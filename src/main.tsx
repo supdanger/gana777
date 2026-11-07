@@ -1208,7 +1208,7 @@ function App() {
   function depositList() {
     const demoDeposits: QueueDeposit[] = requests.filter(request => request.kind === 'deposit').sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id));
     const actor = session?.user.id ?? (demo ? 'demo-operator' : '');
-    const demoQueue = sharedDeposits ? demoDeposits.filter(row => row.status === 'pending' && !row.credited_at && (depositFilter === 'all' || depositFilter === 'mine' && ownsDeposit(row, actor) || depositFilter === 'available' && !row.claimed_by)) : demoDeposits;
+    const demoQueue = sharedDeposits ? demoDeposits.filter(row => depositFilter === 'all' ? row.status === 'pending' || row.status === 'approved' || row.status === 'rejected' : row.status === 'pending' && !row.credited_at && (depositFilter === 'mine' ? ownsDeposit(row, actor) : !row.claimed_by)) : demoDeposits;
     const total = demo ? demoQueue.length : depositTotal;
     const pager = depositWindow(depositPage, total);
     const items = demo ? demoQueue.slice(pager.from, pager.to + 1) : depositRows;
@@ -1216,7 +1216,7 @@ function App() {
     const canWorkSelected = !sharedDeposits || !!selected && ownsDeposit(selected, actor);
     async function openDeposit(request: QueueDeposit) {
       await action(async () => {
-        const shouldTake = sharedDeposits && (ownsDeposit(request, actor) || !request.claimed_by && request.status === 'pending');
+        const shouldTake = sharedDeposits && request.status === 'pending' && !request.credited_at && (ownsDeposit(request, actor) || !request.claimed_by);
         let row = request;
         if (shouldTake) {
           try {
@@ -1351,15 +1351,15 @@ function App() {
         <h1 id="loads-title">Cargas</h1>
         <span className="loads-count">{waitingForSac ? 'SAC sin elegir' : `${total} ${total === 1 ? 'solicitud' : 'solicitudes'}`}</span>
       </div>
-      {sharedDeposits && <><p className="deposit-queue-description">Abrí una disponible y sale de esa lista. La X la devuelve. Ya cargué la termina.</p><div className="deposit-queue-tabs" role="tablist" aria-label="Filtrar cargas">{([['available', 'Disponibles'], ['all', 'Todas']] as const).map(([key, label]) => <button type="button" role="tab" aria-selected={depositFilter === key} key={key} disabled={busy} onClick={() => { setDepositRows([]); setDepositPage(0); setDepositFilter(key); }}>{label}</button>)}</div></>}
-      {depositReadError ? <div className="alert error" role="alert">{depositReadError}<button type="button" onClick={() => setDepositReload(value => value + 1)}>Reintentar</button></div> : waitingForSac ? null : depositLoading && !items.length ? <p className="empty">Cargando cargas…</p> : !items.length ? <section className="card empty loads-empty"><WalletCards size={34} /><strong>No hay solicitudes de carga</strong><p>{sharedDeposits ? depositFilter === 'available' ? 'No quedan cargas disponibles. En Todas se ven las que alguien está atendiendo.' : 'No hay cargas pendientes.' : staffContext.superAdmin || demo ? 'Las nuevas cargas aparecerán en esta lista.' : 'Las cargas de los teléfonos de este SAC aparecerán en esta lista.'}</p></section> : <div className="loads-list">
+      {sharedDeposits && <><p className="deposit-queue-description">Disponibles son las que nadie tomó. Todas junta esas, las que están en atención y las ya cargadas, de 30 en 30.</p><div className="deposit-queue-tabs" role="tablist" aria-label="Filtrar cargas">{([['available', 'Disponibles'], ['all', 'Todas']] as const).map(([key, label]) => <button type="button" role="tab" aria-selected={depositFilter === key} key={key} disabled={busy} onClick={() => { setDepositRows([]); setDepositPage(0); setDepositFilter(key); }}>{label}</button>)}</div></>}
+      {depositReadError ? <div className="alert error" role="alert">{depositReadError}<button type="button" onClick={() => setDepositReload(value => value + 1)}>Reintentar</button></div> : waitingForSac ? null : depositLoading && !items.length ? <p className="empty">Cargando cargas…</p> : !items.length ? <section className="card empty loads-empty"><WalletCards size={34} /><strong>No hay solicitudes de carga</strong><p>{sharedDeposits ? depositFilter === 'available' ? 'No quedan cargas disponibles. En Todas está el historial.' : 'No hay cargas en el historial.' : staffContext.superAdmin || demo ? 'Las nuevas cargas aparecerán en esta lista.' : 'Las cargas de los teléfonos de este SAC aparecerán en esta lista.'}</p></section> : <div className="loads-list">
         {items.map(request => {
           const name = request.user_name || 'Usuario sin nombre';
           const requestRoute = depositRouteLabel(request, !sharedDeposits && (staffContext.superAdmin || demo));
           return <button className="load-request-button" key={request.id} disabled={busy || depositLoading} onClick={event => { depositTrigger.current = event.currentTarget; void openDeposit(request); }} aria-haspopup="dialog">
               <span className="request-avatar" aria-hidden="true">{name.charAt(0).toLocaleUpperCase('es')}</span>
               <span className="request-summary-user"><strong>{name}</strong><small>{date(request.created_at)}</small>{requestRoute ? <small className="request-route">{requestRoute}</small> : null}</span>
-              <span className="request-summary-amount"><strong>{money(request.amount)}</strong><span className={`badge ${request.status}`}>{sharedDeposits ? depositClaimLabel(request, actor) : request.credited_at ? 'Acreditada' : statusLabel[request.status]}</span>{sharedDeposits && <small>{ownsDeposit(request, actor) ? 'Continuar' : request.claimed_by ? 'Ver quién la tiene' : 'Abrir y tomar'}</small>}</span>
+              <span className="request-summary-amount"><strong>{money(request.amount)}</strong><span className={`badge ${request.status}`}>{sharedDeposits ? depositClaimLabel(request, actor) : request.credited_at ? 'Acreditada' : statusLabel[request.status]}</span>{sharedDeposits && <small>{request.status === 'pending' && !request.credited_at ? ownsDeposit(request, actor) ? 'Continuar' : request.claimed_by ? 'Ver quién la tiene' : 'Abrir y tomar' : 'Ver detalle'}</small>}</span>
               <ChevronRight className="request-chevron" aria-hidden="true" />
             </button>;
         })}
