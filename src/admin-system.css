@@ -33,6 +33,11 @@
   --panel-shadow: 0 4px 16px #00000040;
   color-scheme: dark;
 }
+.admin-shell.admin-theme-violeta {
+  --panel-text: #f5f3ff;
+  --panel-muted: #ddd2ee;
+  --panel-subtle: #ddd2ee;
+}
 .admin-shell.admin-theme-grafito {
   --panel-bg: #000000; --panel-sidebar: #141a24; --panel-surface: #1d3655; --panel-surface-raised: #294b76;
   --panel-hover: #315b90; --panel-border: #5d7ea3; --panel-border-soft: #3d5570;
