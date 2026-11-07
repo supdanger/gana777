@@ -12,14 +12,8 @@ import { titles, type Page } from './user-shell';
 import { normalizePanelTheme, panelThemes } from './admin-appearance';
 import { canOpenAdminPage, type StaffPermissions } from './staff';
 
-const panelMark = 'GANA777bet';
-function panelLetterClass(index: number) {
-  if (index < 4) return 'is-gana';
-  if (index < 7) return 'is-digits';
-  return 'is-bet';
-}
 function PanelWordmark() {
-  return <span className="admin-wordmark" aria-hidden="true">{[...panelMark].map((char, index) => <span key={`${char}${index}`} className={panelLetterClass(index)} style={{ animationDelay: `${index * 0.12}s` }}>{char}</span>)}<span className="is-role">PANEL</span></span>;
+  return <span className="admin-wordmark" aria-hidden="true">GANA777<span className="is-bet">bet</span><span className="is-role">PANEL</span></span>;
 }
 function PanelHomeBrand({ onHome }: { onHome: () => void }) {
   return <button type="button" className="admin-home-brand" onClick={onHome} aria-label="GANA777bet Panel. Ir a Inicio"><PanelWordmark /></button>;
