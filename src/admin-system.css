@@ -312,12 +312,12 @@
   }
   @keyframes admin-violet-card-gradient {
     from { background-position: 0% 50%; }
-    to { background-position: 100% 50%; }
+    to { background-position: 200% 50%; }
   }
   .admin-shell.admin-theme-violeta .admin-overview :is(.overview-metric, .bonus-counter-grid .card, .bonus-counter-totals .card, .bonus-shift-history, .deposit-leaderboard, .deposit-leaderboard-list li) {
-    background-image: linear-gradient(115deg, #350067 0%, #7400cf 48%, #cf25ff 100%);
-    background-size: 230% 100%;
-    animation: admin-data-card-enter .36s cubic-bezier(.2, .75, .25, 1) both, admin-violet-card-gradient 3.2s ease-in-out .36s infinite alternate;
+    background-image: linear-gradient(115deg, #350067 0%, #7400cf 33%, #cf25ff 66%, #350067 100%);
+    background-size: 200% 100%;
+    animation: admin-data-card-enter .36s cubic-bezier(.2, .75, .25, 1) both, admin-violet-card-gradient 8s linear .36s infinite;
   }
 }
 
