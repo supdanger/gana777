@@ -69,6 +69,7 @@ async function openApp(admin, mobile = false, queue = null, bonusPlan = null) {
         if (resource === 'list_deposit_queue') {
           let rows = queue.rows.filter(row => row.status !== 'rejected' && !row.credited_at);
           rows = rows.filter(row => args.p_filter === 'all' || args.p_filter === 'mine' && row.claimed_by === actor || args.p_filter === 'available' && row.status === 'pending' && !row.claimed_by);
+          rows.sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id));
           body = { total: rows.length, pending_count: queue.rows.filter(row => row.status === 'pending').length, rows: rows.slice(args.p_page * 30, args.p_page * 30 + 30) };
         } else if (resource === 'list_deposit_claim_events') body = queue.events.filter(event => event.request_id === args.p_request_id);
         else if (resource === 'take_deposit') {
@@ -272,7 +273,9 @@ try {
     records.push({ app: 'admin-tablet', checks: ['914 px dashboard', 'readable card headings', 'single search focus ring', 'menu keyboard navigation'] });
     await tablet.context.close();
   }
-  const queue = { version: 9200, events: [], rows: Array.from({ length: 75 }, (_, i) => ({ ...requestRows[0], id: uid(20000 + i), user_name: `Carga compartida ${i}`, status: i === 2 ? 'approved' : 'pending', receipt_path: i === 0 ? 'mock/receipt.jpg' : null, created_at: stamp(i), claimed_by: i === 1 ? uid(9001) : null, claimed_name: i === 1 ? 'Bea' : null, claim_token: i === 1 ? uid(9199) : null })) };
+  const queue = { version: 9200, events: [], rows: Array.from({ length: 75 }, (_, i) => ({ ...requestRows[0], id: uid(20000 + i), user_name: `Carga compartida ${i}`, status: i === 2 ? 'approved' : 'pending', receipt_path: i === 0 ? 'mock/receipt.jpg' : null, created_at: stamp(75 - i), claimed_by: i === 1 ? uid(9001) : null, claimed_name: i === 1 ? 'Bea' : null, claim_token: i === 1 ? uid(9199) : null })) };
+  queue.rows.reverse();
+  const expectedDeposits = queue.rows.filter(row => row.status === 'pending' && !row.claimed_by).sort((a,b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id));
   const shared = await openApp(true, false, queue);
   const qp = shared.page;
   const qnav = qp.getByRole('navigation', { name: 'Navegación principal', exact: true });
@@ -280,10 +283,13 @@ try {
   await qnav.getByRole('button', { name: /^Cargas/ }).click();
   await qp.waitForFunction(() => document.querySelectorAll('.load-request-button').length === 30);
   assert.equal(await qp.locator('.sac-board').count(), 0);
+  assert.equal(await qp.locator('.request-summary-user strong').first().innerText(), expectedDeposits[0].user_name);
   await qp.getByRole('button', { name: 'Siguiente', exact: true }).click();
   await qp.waitForFunction(() => document.querySelector('.loads-pager')?.textContent.includes('Página 2'));
+  await qp.waitForFunction(name => document.querySelector('.request-summary-user strong')?.textContent === name, expectedDeposits[30].user_name);
   await qp.getByRole('button', { name: 'Anterior', exact: true }).click();
   await qp.waitForFunction(() => document.querySelector('.loads-pager')?.textContent.includes('Página 1'));
+  await qp.waitForFunction(name => document.querySelector('.request-summary-user strong')?.textContent === name, expectedDeposits[0].user_name);
   await qp.locator('.load-request-button').first().click();
   await qp.waitForSelector('.deposit-claim-status');
   assert.ok((await qp.locator('.deposit-claim-status').innerText()).includes('Tomada por vos'));
@@ -346,7 +352,7 @@ try {
   await qp.getByRole('button', { name: /Carga compartida 1 / }).waitFor();
   assert.equal(await qp.locator('.credit-ready-modal').count(), 0, 'Una aprobación tardía no reabre una ventana después de navegar');
   assert.deepEqual(shared.errors, []);
-  records.push({ app: 'shared-deposit-queue', checks: ['30 rows per page', 'no SAC selector', 'server-confirmed take', 'explicit release', 'take conflict', 'mine filter', 'credit confirmation', 'foreign claim read-only', 'supervisor reassignment', 'audit on demand', 'mobile without overflow', 'late approval does not reopen a dismissed screen'] });
+  records.push({ app: 'shared-deposit-queue', checks: ['30 rows per page', 'newest deposits first across pages', 'no SAC selector', 'server-confirmed take', 'explicit release', 'take conflict', 'mine filter', 'credit confirmation', 'foreign claim read-only', 'supervisor reassignment', 'audit on demand', 'mobile without overflow', 'late approval does not reopen a dismissed screen'] });
   await shared.context.close();
   const legacyBonusPlan = { offers: [], scheduleSupported: false };
   const legacyBonus = await openApp(true, false, null, legacyBonusPlan);

@@ -57,6 +57,10 @@ await db.exec('create trigger guard_request_input before update on public.reques
 const banking=source('migrations/038_sac_stations.sql').split('create or replace function public.assign_bank_account()')[1].split('do $$ begin')[0];
 await db.exec('create or replace function public.assign_bank_account()'+banking);
 await db.exec(source('optimization-drafts/06_bandeja_compartida.sql'));
+const installedQueue=(await db.query("select pg_get_functiondef('public.list_deposit_queue(text,integer)'::regprocedure) as definition")).rows[0].definition;
+await db.exec(installedQueue.replace('order by page.created_at desc, page.id desc','order by page.created_at, page.id').replace('order by r.created_at desc, r.id desc limit 30','order by r.created_at, r.id limit 30'));
+await db.exec(source('optimization-drafts/08_cargas_recientes_primero.sql'));
+await db.exec(source('optimization-drafts/08_cargas_recientes_primero.sql'));
 const as = async actor => { await db.exec(`reset role; select set_config('request.jwt.claim.sub','${actor}',false); select set_config('request.jwt.claim.role','authenticated',false); set role authenticated;`); };
 const rpc=async (name,args=[]) => {
   const params=args.map((_,i)=>`$${i+1}`).join(',');
@@ -64,13 +68,15 @@ const rpc=async (name,args=[]) => {
   return (await db.query(`select public.${name}(${params}) as value`,args)).rows[0].value;
 };
 const rejects=async (task,pattern)=>assert.rejects(task,pattern);
-await db.exec(`insert into public.requests(id,user_id,kind,amount,created_at) select ('10000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'${P}','deposit',1000,now()+n*interval '1 second' from generate_series(100,165) n;
+await db.exec(`insert into public.requests(id,user_id,kind,amount,created_at) select ('10000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'${P}','deposit',1000,now()+(case when n=164 then 165 else n end)*interval '1 second' from generate_series(100,165) n;
 insert into public.requests(id,user_id,kind,status,amount) values('${uid(166)}','${P}','deposit','approved',5000),('${uid(167)}','${P}','withdrawal','pending',1000);`);
 await as(A);
 assert.equal(await rpc('get_deposit_queue_mode'),1);
 const page=await rpc('list_deposit_queue',['available',0]);
-assert.equal(page.total,66); assert.equal(page.rows.length,30); assert.equal(page.rows[0].id,uid(100));
-assert.equal((await rpc('list_deposit_queue',['available',1])).rows[0].id,uid(130));
+assert.equal(page.total,66); assert.equal(page.rows.length,30); assert.equal(page.rows[0].id,uid(165)); assert.equal(page.rows[1].id,uid(164),'id descendente estabiliza las cargas con la misma fecha');
+const secondPage=await rpc('list_deposit_queue',['available',1]);
+assert.equal(secondPage.rows[0].id,uid(135));
+assert.equal(new Set([...page.rows,...secondPage.rows].map(row=>row.id)).size,60,'no hay duplicados entre páginas');
 const first=await rpc('take_deposit',[uid(100)]);
 assert.equal(first.claimed_name,'Ana'); assert.ok(first.claim_token);
 assert.equal((await rpc('take_deposit',[uid(100)])).claim_token,first.claim_token,'retomar es idempotente');
@@ -205,5 +211,58 @@ const onTime=await rpc('take_deposit',[uid(855)]);
 const onTimeReviewed=await rpc('review_queue_deposit',[uid(855),onTime.claim_token,'approved',null,true]);
 assert.equal(Number(onTimeReviewed.bonus_percent),50);
 await rpc('confirm_queue_deposit_credit',[uid(855),onTime.claim_token]);
+// Archivo de pruebas: corte fijo, sin modificar dinero ni comprobantes y con protección de pantallas abiertas.
+const archiveOperation=source('optimization-drafts/10_archivar_pruebas_hasta_ahora.sql');
+const cutoff=archiveOperation.match(/'([^']+)'::timestamptz/)[1];
+await db.exec(`reset role; alter table public.requests disable trigger validate_request;
+insert into public.requests(id,user_id,kind,status,amount,created_at,receipt_url) values
+ ('${uid(900)}','${P}','deposit','approved',1000,'${cutoff}'::timestamptz-interval '1 second','https://example.test/old'),
+ ('${uid(901)}','${P}','deposit','approved',2000,'${cutoff}'::timestamptz+interval '1 second','https://example.test/new'),
+ ('${uid(902)}','${P}','deposit','pending',3000,'${cutoff}'::timestamptz-interval '1 day',null),
+ ('${uid(903)}','${P}','deposit','approved',4000,'${cutoff}'::timestamptz-interval '1 day',null),
+ ('${uid(904)}','${P}','withdrawal','approved',5000,'${cutoff}'::timestamptz-interval '1 day',null);
+alter table public.requests enable trigger validate_request;
+insert into public.deposit_credits(request_id,user_id,confirmed_by) values('${uid(903)}','${P}','${S}');
+insert into public.deposit_claims(request_id,claimed_by,claimed_at,credit_started_at) values('${uid(900)}','${A}',now(),now());`);
+const staleToken=(await db.query(`select claim_token from public.deposit_claims where request_id='${uid(900)}'`)).rows[0].claim_token;
+const snapshot=async()=> (await db.query(`select
+ (select jsonb_agg(r order by r.id) from public.requests r) as requests,
+ (select jsonb_agg(d order by d.request_id) from public.deposit_credits d) as credits,
+ (select jsonb_agg(n order by n.id) from public.user_notifications n) as notifications`)).rows[0];
+const beforeArchive=await snapshot();
+await db.exec(source('optimization-drafts/09_archivo_pruebas_cargas.sql'));
+await db.exec(source('optimization-drafts/09_archivo_pruebas_cargas.sql'));
+await as(A);
+const beforeQueue=await rpc('list_deposit_queue',['all',0]);
+await db.exec('reset role');
+await db.exec(archiveOperation);
+assert.deepEqual(await snapshot(),beforeArchive,'archivar no cambia solicitudes, créditos ni avisos');
+const archived=(await db.query('select request_id from public.deposit_queue_archives')).rows.map(r=>r.request_id);
+assert.ok(archived.includes(uid(900)));
+for(const id of [901,902,903,904]) assert.ok(!archived.includes(uid(id)),`preservar ${id}`);
+await as(A);
+for(const filter of ['all','mine']) {
+ const queue=await rpc('list_deposit_queue',[filter,0]);
+ const rows=[...queue.rows];
+ for(let page=1;page<Math.ceil(queue.total/30);page++) rows.push(...(await rpc('list_deposit_queue',[filter,page])).rows);
+ assert.ok(!rows.some(r=>r.id===uid(900)));
+ if(filter==='all') {
+   assert.equal(queue.total,beforeQueue.total-archived.length);
+   assert.equal(queue.pending_count,beforeQueue.pending_count);
+   assert.ok(rows.some(r=>r.id===uid(901)),'la carga posterior al corte sigue visible');
+ }
+}
+await rejects(()=>rpc('confirm_queue_deposit_credit',[uid(900),staleToken]),/archivada/);
+await rejects(()=>rpc('take_deposit',[uid(900)]),/disponible/);
+assert.ok((await rpc('list_deposit_claim_events',[uid(900)])).some(e=>e.event==='archived_test'));
+await as(S);
+await rejects(()=>rpc('reassign_deposit',[uid(900),S,'Intento desde pantalla antigua']),/disponible/);
+await as(P);
+assert.equal((await db.query('select * from public.deposit_queue_archives')).rows.length,0);
+await rejects(()=>db.query(`delete from public.deposit_queue_archives where request_id='${uid(900)}'`),/permission denied/);
+await db.exec('reset role');
+await db.exec(archiveOperation);
+assert.equal((await db.query('select count(*)::int as n from public.deposit_queue_archives')).rows[0].n,archived.length);
+assert.deepEqual(await snapshot(),beforeArchive);
 await db.close();
-console.log('OK: bandeja compartida, permisos, tokens, auditoría, idempotencia, reparto sin SAC y bonos por horario con límite de carga y aprobación posterior al cierre.');
+console.log('OK: bandeja compartida, permisos, tokens, auditoría, idempotencia, reparto sin SAC y bonos por horario con límite de carga y aprobación posterior al cierre; archivo reversible de pruebas con corte fijo y pantallas antiguas bloqueadas.');

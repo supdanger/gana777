@@ -3,7 +3,7 @@ import { date, supabase } from './lib';
 import { publicError } from './security';
 
 type Event = { event: string; actor_name: string; previous_name: string | null; next_name: string | null; reason: string | null; created_at: string };
-const labels: Record<string, string> = { taken: 'Tomó la carga', released: 'Liberó la carga', reassigned: 'Reasignó la carga', approved: 'Aceptó la carga', rejected: 'Rechazó la carga', credited: 'Confirmó la acreditación' };
+const labels: Record<string, string> = { taken: 'Tomó la carga', released: 'Liberó la carga', reassigned: 'Reasignó la carga', approved: 'Aceptó la carga', rejected: 'Rechazó la carga', credited: 'Confirmó la acreditación', archived_test: 'Archivó la carga de prueba' };
 
 export function DepositClaimHistory({ requestId }: { requestId: string }) {
   const [open, setOpen] = useState(false);

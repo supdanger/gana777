@@ -1,8 +1,11 @@
 # Optimización SQL pendiente de revisión
 
-Estos archivos son **borradores**, fuera de `supabase/migrations`. No se ejecutaron,
-no se publicaron y el frontend optimizado funciona con el esquema actual.
-No ejecutar el directorio completo ni convertirlo en una migración automática.
+Estos archivos de referencia están fuera de `supabase/migrations`. Los cambios
+01–07 tienen versiones posteriores en las migraciones 090–095. Los archivos 08 y
+09 tienen versiones posteriores en las migraciones 096 y 097. El archivo 10 sigue
+preparado y no se ejecuta solo: archivar las aprobadas sin acreditación las saca
+de la bandeja y bloquea la confirmación de fichas. No ejecutar el directorio
+completo ni convertirlo en una migración automática.
 
 Orden propuesto:
 
@@ -40,6 +43,29 @@ Orden propuesto:
    en una copia del esquema completo, desplegar específicamente `submit-deposit`
    para el control previo a la subida y recargar el panel antes de configurar
    promociones con horario. Los bonos previos quedan sin restricción horaria.
+8. `08_cargas_recientes_primero.sql`: para bases que ya tienen la bandeja del 06.
+   Corrige únicamente el orden de `list_deposit_queue`: fecha e id descendentes
+   antes de paginar y al formar la respuesta. Se puede repetir y no cambia datos
+   ni permisos. Para instalaciones nuevas, el archivo 06 ya incluye ese orden.
+
+9. `09_archivo_pruebas_cargas.sql`: requiere la bandeja instalada (094). Instala
+   un archivo reversible, excluye esas marcas de todas las vistas de la bandeja
+   y bloquea tomar, reasignar o confirmar una prueba desde una pantalla antigua.
+   Conserva el orden más reciente primero. Instalarlo por sí solo no archiva cargas.
+10. `10_archivar_pruebas_hasta_ahora.sql`: operación puntual autorizada, después de
+    09. Archiva solo depósitos aprobados sin crédito, creados hasta el corte fijo
+    **7 de noviembre de 2026, 14:54:33 (-03:00)**. No avanzar el corte al reintentar.
+    Conserva pendientes de revisión, cargas posteriores, retiros y cargas acreditadas.
+    No cambia estados, importes, comprobantes, créditos ni avisos. Invalida las tomas
+    antiguas y devuelve lote, corte y cantidad archivada. Antes de ejecutar, guardar
+    las definiciones vigentes de las RPC afectadas; el parche de protecciones aborta
+    si encuentra una definición no reconocida. Los bloqueos tienen un máximo de 3 s.
+    No ejecutar en bloque con otros borradores ni usar como limpieza recurrente.
+
+Para revertir el archivo de una prueba, un administrador de base puede eliminar
+solo su marca en `deposit_queue_archives`, filtrando por request_id y lote verificados.
+No borrar solicitudes ni modificar créditos. Conservar las protecciones de 09;
+las pantallas abiertas deben recargarse porque sus tokens ya fueron invalidados.
 
 La función de retención no reduce necesariamente el archivo físico del disco:
 autovacuum permite reutilizar espacio. No ejecutar `VACUUM FULL` como una tarea

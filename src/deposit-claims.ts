@@ -12,6 +12,7 @@ export const queueMessages = [
   'La carga ya fue tomada por otro compañero. Actualizá la bandeja.',
   'La asignación de esta carga cambió. Volvé a abrirla.',
   'La carga ya no está disponible.',
+  'Esta carga fue archivada como prueba.',
   'Una carga aceptada requiere revisión del supervisor para cambiar de responsable.',
   'Escribí un motivo de entre 5 y 300 caracteres.',
   'No tenés permiso para operar esta carga.',

@@ -895,11 +895,11 @@ function App() {
         finally { if (alive) setDepositLoading(false); }
         return;
       }
-      let scoped = db.from('request_summaries').select(REQUEST_COLUMNS, { count: 'exact' }).eq('kind', 'deposit').order('created_at', { ascending: false });
+      let scoped = db.from('request_summaries').select(REQUEST_COLUMNS, { count: 'exact' }).eq('kind', 'deposit').order('created_at', { ascending: false }).order('id', { ascending: false });
       if (depositScope !== 'all') scoped = scoped.eq('deposit_sac', depositScope);
       const firstPage = await scoped.range(from, from + DEPOSIT_PAGE_SIZE - 1);
       const pageResult = missingBonusAmount(firstPage.error) || missingDepositRoute(firstPage.error)
-        ? await db.from('request_summaries').select(REQUEST_COLUMNS_LEGACY, { count: 'exact' }).eq('kind', 'deposit').order('created_at', { ascending: false }).range(from, from + DEPOSIT_PAGE_SIZE - 1)
+        ? await db.from('request_summaries').select(REQUEST_COLUMNS_LEGACY, { count: 'exact' }).eq('kind', 'deposit').order('created_at', { ascending: false }).order('id', { ascending: false }).range(from, from + DEPOSIT_PAGE_SIZE - 1)
         : firstPage;
       const { data, error, count } = pageResult;
       if (!alive) return;
@@ -1206,9 +1206,9 @@ function App() {
     </section>;
   }
   function depositList() {
-    const demoDeposits: QueueDeposit[] = requests.filter(request => request.kind === 'deposit').sort((a, b) => b.created_at.localeCompare(a.created_at));
+    const demoDeposits: QueueDeposit[] = requests.filter(request => request.kind === 'deposit').sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id));
     const actor = session?.user.id ?? (demo ? 'demo-operator' : '');
-    const demoQueue = sharedDeposits ? demoDeposits.filter(row => row.status !== 'rejected' && !row.credited_at && (depositFilter === 'all' || depositFilter === 'mine' && ownsDeposit(row, actor) || depositFilter === 'available' && row.status === 'pending' && !row.claimed_by)).sort((a, b) => a.created_at.localeCompare(b.created_at)) : demoDeposits;
+    const demoQueue = sharedDeposits ? demoDeposits.filter(row => row.status !== 'rejected' && !row.credited_at && (depositFilter === 'all' || depositFilter === 'mine' && ownsDeposit(row, actor) || depositFilter === 'available' && row.status === 'pending' && !row.claimed_by)) : demoDeposits;
     const total = demo ? demoQueue.length : depositTotal;
     const pager = depositWindow(depositPage, total);
     const items = demo ? demoQueue.slice(pager.from, pager.to + 1) : depositRows;

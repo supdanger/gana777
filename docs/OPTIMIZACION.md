@@ -176,6 +176,12 @@ historial general mantiene su paginación. La suscripción de Cargas agrupa even
 se elimina al salir de la sección y pospone consultas cuando la pestaña está oculta.
 La auditoría se carga a pedido y trae los últimos 20 movimientos de una solicitud.
 
+Las cargas se ordenan por fecha e id descendentes, con las más recientes arriba.
+El orden se aplica antes del límite de 30 filas y al construir la respuesta JSON;
+no se invierte solamente la página visible. El archivo 06 incluye ese criterio y
+`08_cargas_recientes_primero.sql` corrige las instalaciones que tenían el orden
+ascendente. La vista previa y el modo anterior conservan el mismo criterio.
+
 Tomar, liberar, revisar, reasignar y confirmar bloquean primero la misma fila de
 `requests`. Cada asignación tiene un token nuevo: una pantalla anterior no puede
 confirmar usando una asignación que fue liberada o reasignada, incluso si vuelve
@@ -248,3 +254,11 @@ mensajes anteriores, chat externo y salida. Capturas y resultados se escriben en
 La ejecución real de transferencias, Cloudinary, Telegram y push, y los planes SQL
 de producción requieren una verificación de integración posterior. No se realizaron
 operaciones financieras reales para probar esta versión.
+
+
+Archivo de pruebas de cargas (7/11/2026): el SQL 09 instala la tabla reversible,
+excluye las marcas de la bandeja y bloquea tomar, reasignar o confirmar una prueba
+desde una pantalla abierta. No cambia créditos, solicitudes, comprobantes ni
+notificaciones, y por sí solo no archiva cargas. El SQL 10 queda preparado con el
+corte fijo 14:54:33 (-03:00) y no se ejecuta en producción mientras existan cargas
+aprobadas sin acreditación: sacarlas de la bandeja impediría confirmar sus fichas.

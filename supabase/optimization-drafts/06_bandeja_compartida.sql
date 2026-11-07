@@ -88,7 +88,7 @@ begin
       and (p_filter = 'all' or (p_filter = 'mine' and c.claimed_by = auth.uid())
         or (p_filter = 'available' and r.status = 'pending' and c.claimed_by is null));
   -- Seleccionar ids antes de construir las filas evita resolver perfiles/rutas del historial completo.
-  select coalesce(jsonb_agg(app_private.deposit_queue_row(page.id) order by page.created_at, page.id), '[]') into v_rows
+  select coalesce(jsonb_agg(app_private.deposit_queue_row(page.id) order by page.created_at desc, page.id desc), '[]') into v_rows
   from (
     select r.id, r.created_at from public.requests r
       left join public.deposit_claims c on c.request_id = r.id
@@ -96,7 +96,7 @@ begin
         and not exists (select 1 from public.deposit_credits d where d.request_id = r.id)
         and (p_filter = 'all' or (p_filter = 'mine' and c.claimed_by = auth.uid())
           or (p_filter = 'available' and r.status = 'pending' and c.claimed_by is null))
-      order by r.created_at, r.id limit 30 offset (p_page * 30)
+      order by r.created_at desc, r.id desc limit 30 offset (p_page * 30)
   ) page;
   return jsonb_build_object('rows', v_rows, 'total', v_total, 'pending_count', v_pending);
 end $$;
