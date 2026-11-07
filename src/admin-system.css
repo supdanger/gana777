@@ -118,6 +118,22 @@
 .admin-shell .admin-breadcrumb > small { color: var(--panel-subtle); font-size: 11px; font-weight: 400; line-height: 1.4; letter-spacing: 0; text-transform: none; }
 .admin-breadcrumb > small > span { padding: 0 5px; opacity: .5; }
 .admin-shell .admin-breadcrumb > strong { margin-top: 2px; color: var(--panel-text); font-size: 18px; font-weight: 600; line-height: 1.4; }
+.admin-shell .admin-home-brand { display: inline-flex; align-items: baseline; max-width: 100%; margin: 0; padding: 0; border: 0; background: transparent; box-shadow: none; color: #fff; font-size: clamp(20px, 2vw, 28px); font-style: italic; font-weight: 900; letter-spacing: -1px; line-height: 1; }
+.admin-shell .admin-home-brand:hover, .admin-shell .admin-home-brand:focus-visible { border-color: transparent; background: transparent; transform: none; }
+.admin-shell .admin-wordmark { display: inline-flex; align-items: baseline; min-width: 0; }
+.admin-shell .admin-wordmark > span { display: inline-block; animation: admin-letter-live 2.6s ease-in-out infinite; }
+.admin-shell .admin-wordmark .is-gana { color: #fff; text-shadow: 0 0 10px #79e7ff; }
+.admin-shell .admin-wordmark .is-digits { color: #ff4fd8; text-shadow: 0 0 10px #ff4fd8, 0 0 2px #7af6ff; }
+.admin-shell .admin-wordmark .is-bet { color: #7af6ff; font-size: .72em; text-shadow: 0 0 8px #00c8ff; }
+.admin-shell .admin-wordmark .is-role { margin-left: 8px; color: #d9f6ff; font-size: .4em; font-style: normal; font-weight: 800; letter-spacing: .14em; text-shadow: 0 0 8px #79e7ff; animation: none; }
+.admin-shell .admin-sidebar-brand .admin-home-brand { font-size: 22px; }
+@keyframes admin-letter-live {
+  0%, 100% { transform: translateY(0); filter: brightness(1); }
+  40% { transform: translateY(-2px); filter: brightness(1.45); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-shell .admin-wordmark > span { animation: none; }
+}
 .admin-shell .admin-refresh { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; margin: 0; padding: 8px 12px; border: 1px solid var(--panel-border); border-radius: 7px; background: var(--panel-surface); color: var(--panel-text); box-shadow: none; font-size: 12px; font-weight: 500; }
 .admin-shell .admin-refresh:hover:not(:disabled) { border-color: var(--panel-accent-border); background: var(--panel-surface-raised); }
 .admin-shell .admin-staff-identity { gap: 9px; padding: 0 0 0 18px; border: 0; border-left: 1px solid var(--panel-border); border-radius: 0; background: transparent; }
@@ -214,6 +230,8 @@
 }
 @media (max-width: 600px) {
   .admin-shell .admin-topbar { min-height: 68px; gap: 10px; padding: 10px 16px; }
+  .admin-shell .admin-topbar .admin-home-brand { font-size: 16px; }
+  .admin-shell .admin-wordmark .is-role { margin-left: 5px; letter-spacing: .08em; }
   .admin-shell .admin-breadcrumb > small { font-size: 10px; }
   .admin-shell .admin-breadcrumb > strong { font-size: 16px; }
   .admin-shell .admin-content { min-height: calc(100dvh - 68px); padding: 20px 16px 32px; }

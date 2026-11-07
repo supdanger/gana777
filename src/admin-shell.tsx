@@ -8,9 +8,22 @@ import {
   Users, X, PanelsTopLeft, UserRound, Layers3, BellRing, Palette, RefreshCw, Settings2,
   Search, ChevronDown,
 } from 'lucide-react';
-import { Brand, titles, type Page } from './user-shell';
+import { titles, type Page } from './user-shell';
 import { normalizePanelTheme, panelThemes } from './admin-appearance';
 import { canOpenAdminPage, type StaffPermissions } from './staff';
+
+const panelMark = 'GANA777bet';
+function panelLetterClass(index: number) {
+  if (index < 4) return 'is-gana';
+  if (index < 7) return 'is-digits';
+  return 'is-bet';
+}
+function PanelWordmark() {
+  return <span className="admin-wordmark" aria-hidden="true">{[...panelMark].map((char, index) => <span key={`${char}${index}`} className={panelLetterClass(index)} style={{ animationDelay: `${index * 0.12}s` }}>{char}</span>)}<span className="is-role">PANEL</span></span>;
+}
+function PanelHomeBrand({ onHome }: { onHome: () => void }) {
+  return <button type="button" className="admin-home-brand" onClick={onHome} aria-label="GANA777bet Panel. Ir a Inicio"><PanelWordmark /></button>;
+}
 
 type PendingCounts = { deposit: number; withdrawal: number; chat: number; externalChat: number; access: number };
 type NavItem = { page: Page; Icon: typeof LayoutDashboard; count?: keyof PendingCounts; label?: string };
@@ -109,7 +122,7 @@ export function AdminShell({ page, counts, permissions, superAdmin, staffName, a
     <a className="admin-skip-link" href="#admin-main-content">Ir al contenido</a>
     <button className={`admin-menu-backdrop ${menuOpen ? 'visible' : ''}`} aria-label="Cerrar menú" aria-hidden={!menuOpen} tabIndex={menuOpen ? 0 : -1} onClick={closeMenu} />
     <aside ref={sidebar} id="admin-sidebar" className={`admin-sidebar ${menuOpen ? 'open' : ''}`} aria-label="Menú del panel" inert={compact && !menuOpen}>
-      <div className="admin-sidebar-brand"><div><Brand panel /><small className="admin-brand-caption">Centro de gestión</small></div><button className="admin-sidebar-close" aria-label="Cerrar menú" onClick={closeMenu}><X /></button></div>
+      <div className="admin-sidebar-brand"><div><PanelHomeBrand onHome={() => go('home')} /><small className="admin-brand-caption">Centro de gestión</small></div><button className="admin-sidebar-close" aria-label="Cerrar menú" onClick={closeMenu}><X /></button></div>
       <label className="admin-menu-search"><Search size={16} aria-hidden="true" /><span className="sr-only">Buscar sección del panel</span><input ref={searchInput} type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar sección…" /></label>
       <nav className="admin-navigation" aria-label="Navegación principal">
         {visibleGroups.map((group, index) => {
@@ -134,7 +147,7 @@ export function AdminShell({ page, counts, permissions, superAdmin, staffName, a
     <section className="admin-workspace">
       <header className="admin-topbar">
         <button ref={menuButton} className="admin-menu-toggle" aria-label="Abrir menú" aria-expanded={menuOpen} aria-controls="admin-sidebar" onClick={() => setMenuOpen(true)}><Menu /></button>
-        <div className="admin-breadcrumb"><small>Panel <span aria-hidden="true">/</span> {sectionLabel(page)}</small><strong>{page === 'external-chat-admin' ? 'Opciones de chat' : titles[page]}</strong></div>
+        <div className="admin-breadcrumb"><PanelHomeBrand onHome={() => go('home')} /><strong>{page === 'external-chat-admin' ? 'Opciones de chat' : titles[page]}</strong></div>
         <button type="button" className="admin-refresh" disabled={busy} onClick={onRefresh} title="Actualizar los datos del panel"><RefreshCw size={15} aria-hidden="true" /><span>Actualizar</span></button>
         <div className="admin-staff-identity"><span className="admin-staff-avatar">{avatarUrl ? <img src={avatarUrl} alt="" /> : staffName.slice(0, 1).toUpperCase()}</span><span><strong>{staffName}</strong><small>{superAdmin ? 'Superadministrador' : 'Cajero'}</small></span></div>
       </header>
