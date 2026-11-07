@@ -534,6 +534,23 @@ article.theme-preset:hover:not(.active) { border-color: var(--panel-border); bac
 .credit-ready-heading h2 { display: block; margin: 6px 42px 3px; font-size: 23px; }
 .credit-ready-heading p { margin: 0; font-size: 13px; }
 .deposit-load-copy { display: grid; gap: 8px; margin: 12px 0; }
+.deposit-credit-card {
+  display: grid;
+  grid-template-columns: minmax(180px, .85fr) minmax(260px, 1.15fr);
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 10px 14px 12px;
+  border-bottom: 1px solid var(--panel-border);
+  background: var(--panel-surface);
+}
+.deposit-credit-card-heading { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.deposit-credit-card-heading > span { color: var(--panel-text); font-size: 13px; font-weight: 800; }
+.deposit-credit-card-heading small { color: var(--panel-muted); font-size: 11px; }
+.deposit-credit-card .credit-breakdown { margin: 0; }
+.deposit-credit-card .credit-total { grid-column: 2; }
+.deposit-credit-card .credit-copy-field { background: var(--panel-surface-inset); }
+.deposit-credit-breakdown > div { min-width: 0; }
+.deposit-credit-breakdown strong { overflow-wrap: anywhere; }
 .credit-copy-field { overflow: hidden; border: 1px solid var(--panel-border); border-radius: 10px; background: var(--panel-surface-inset); }
 .credit-copy-field > span { display: block; padding: 8px 12px 0; color: var(--panel-muted); font-size: 10px; font-weight: 700; text-transform: uppercase; }
 .credit-copy-field > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 9px 10px 12px; }
@@ -630,6 +647,9 @@ article.theme-preset:hover:not(.active) { border-color: var(--panel-border); bac
   .credit-copy-field strong { font-size: 16px; }
   .credit-copy-field button { padding: 8px 9px; }
   .credit-total strong { font-size: 21px; }
+  .deposit-credit-card { grid-template-columns: 1fr; padding: 9px 8px 10px; }
+  .deposit-credit-card .credit-total { grid-column: auto; }
+  .deposit-credit-card-heading { align-items: flex-start; flex-direction: column; gap: 2px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
