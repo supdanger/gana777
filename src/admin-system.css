@@ -271,6 +271,23 @@
   .overview-metric-action { white-space: nowrap; }
 }
 
+/* Las tarjetas de lectura del inicio se separan por superficie y espacio, no por marcos. */
+.admin-shell .admin-overview :is(.overview-metric, .bonus-counter-grid .card, .bonus-counter-totals .card, .bonus-shift-history, .bonus-shift-report, .deposit-leaderboard, .deposit-leaderboard-list li, .deposit-leaderboard-rank, .deposit-leaderboard-empty) {
+  border-color: transparent;
+  box-shadow: none;
+}
+.admin-shell .admin-overview .overview-metric { background: var(--panel-surface); }
+.admin-shell .admin-overview .bonus-counter-grid .card,
+.admin-shell .admin-overview .bonus-counter-totals .card { background: var(--panel-surface); }
+.admin-shell .admin-overview .bonus-shift-history,
+.admin-shell .admin-overview .bonus-shift-report,
+.admin-shell .admin-overview .deposit-leaderboard { background: var(--panel-surface); }
+.admin-shell .admin-overview .deposit-leaderboard-heading,
+.admin-shell .admin-overview .bonus-shift-report > div { border-color: transparent; }
+.admin-shell .admin-overview .deposit-leaderboard-list li { background: var(--panel-surface-inset); }
+.admin-shell .admin-overview .deposit-leaderboard-list li:is(.top-1, .top-2, .top-3) { background: var(--panel-surface-inset); box-shadow: none; }
+.admin-shell .admin-overview .deposit-leaderboard-rank { background: var(--panel-surface-raised); }
+
 .admin-shell .admin-content .eyebrow { color: var(--panel-subtle); font-weight: 600; letter-spacing: .1em; }
 .admin-shell .admin-content :is(.account-form-actions button:first-child, .principal-create > button, .bonus-form-actions button:first-child, .contact-link-form button) { border-color: var(--panel-accent-strong); background: var(--panel-accent-strong); color: #fff; box-shadow: none; }
 .admin-shell .admin-chat .admin-chat-messages .message,
