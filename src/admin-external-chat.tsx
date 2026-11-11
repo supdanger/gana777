@@ -1,3 +1,4 @@
+import { AttentionConversationList, useAttentionList } from './attention-conversation-list';
 import { mergeMessages } from './query-utils';
 import type { InboxPagination } from './inbox-data';
 import { InboxPager } from './inbox-pager';
@@ -18,21 +19,16 @@ export type ExternalChatInboxRow = {
 };
 type ExternalMessage = { id: string; thread_id: string; sender_type: 'visitor' | 'staff'; sender_id: string | null; body: string; attachment_path: string | null; created_at: string };
 
-function shortDate(value: string) {
-  const when = new Date(value);
-  return when.toDateString() === new Date().toDateString()
-    ? new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit' }).format(when)
-    : new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: 'short' }).format(when);
-}
 
 export function AdminExternalChat({ inbox, selectedId, demo, canLink, onSelect, onChanged, onLinked, pagination }: {
   pagination?: InboxPagination;
   inbox: ExternalChatInboxRow[]; selectedId: string; demo: boolean; canLink: boolean;
   onSelect: (id: string) => void; onChanged: () => void; onLinked: (userId: string) => void;
 }) {
+  const { listRef, select, threadHeadingRef } = useAttentionList(selectedId, onSelect);
   const [messages, setMessages] = useState<ExternalMessage[]>([]);
   const [search, setSearch] = useState(pagination?.search ?? '');
-  const [filter, setFilter] = useState<'pending' | 'all' | 'completed'>(pagination?.filter ?? 'pending');
+  const [filter, setFilter] = useState<'pending' | 'waiting' | 'all' | 'completed'>(pagination?.filter ?? 'all');
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -74,9 +70,10 @@ export function AdminExternalChat({ inbox, selectedId, demo, canLink, onSelect, 
   const visible = pagination ? inbox : inbox.filter(row => {
     if (filter === 'pending' && (row.completed_at || row.last_sender_type !== 'visitor')) return false;
     if (filter === 'completed' && !row.completed_at) return false;
+    if (filter === 'waiting' && (row.completed_at || row.last_sender_type !== 'staff')) return false;
     const needle = search.trim().toLocaleLowerCase();
     return !needle || `${row.nickname} ${entryPreview(row.last_body)}`.toLocaleLowerCase().includes(needle);
-  });
+  }).sort((a, b) => filter === 'pending' ? a.last_message_at.localeCompare(b.last_message_at) || a.last_message_id.localeCompare(b.last_message_id) : 0);
 
   useEffect(() => {
     if (!selectedId || demo) { setMessages([]); return; }
@@ -210,27 +207,22 @@ export function AdminExternalChat({ inbox, selectedId, demo, canLink, onSelect, 
     onLinked(data);
   }
 
-  return <section className={`admin-chat external-chat-admin-view${selectedId ? ' has-selection' : ''}`} aria-label="Bandeja de chats externos">
-    <div className="admin-chat-heading"><div><h1>Chat externo</h1><p>Atendé las consultas que llegan desde la burbuja de gana777bet.com.</p></div><span>{pending} por responder</span></div>
+  return <section className={`admin-chat external-chat-admin-view attention-list-view${selectedId ? ' has-selection' : ''}`} aria-label="Bandeja de chats externos">
+    <div className="admin-chat-heading"><div><h2>Chat externo</h2><p>Atendé las consultas que llegan desde la burbuja de gana777bet.com.</p></div><span>{pending} por responder</span></div>
+    {selectedId && <div className="attention-thread-toolbar"><button type="button" className="attention-return" onClick={() => onSelect('')}><ArrowLeft size={17} />Volver a conversaciones</button></div>}
     <div className="admin-chat-layout">
-      <aside className="admin-chat-inbox" aria-label="Conversaciones externas">
+      <aside hidden={!!selectedId} className="admin-chat-inbox" aria-label="Conversaciones externas">
         <div className="admin-chat-inbox-header"><strong>Conversaciones</strong><small>{pagination?.all ?? inbox.length} en total</small></div>
         <label className="admin-chat-search"><Search size={18} aria-hidden="true" /><span className="sr-only">Buscar conversación</span><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Apodo o último mensaje" /></label>
         <div className="admin-chat-filters" role="group" aria-label="Filtrar conversaciones">
-          {(['pending', 'all', 'completed'] as const).map(value => <button key={value} type="button" className={filter === value ? 'active' : ''} onClick={() => setFilter(value)}>{value === 'pending' ? 'Pendientes' : value === 'all' ? 'Todas' : 'Completadas'}</button>)}
+          {(['pending', 'waiting', 'all', 'completed'] as const).map(value => <button key={value} type="button" className={filter === value ? 'active' : ''} aria-pressed={filter === value} onClick={() => setFilter(value)}>{value === 'pending' ? 'Pendientes' : value === 'waiting' ? 'Esperando al visitante' : value === 'all' ? 'Todas' : 'Completadas'}</button>)}
         </div>
-        <div className="admin-chat-list">
-          {visible.length ? visible.map(row => <button type="button" key={row.thread_id} className={`admin-chat-item${selectedId === row.thread_id ? ' active' : ''}`} aria-current={selectedId === row.thread_id ? 'true' : undefined} onClick={() => onSelect(row.thread_id)}>
-            <span className="admin-chat-avatar">{row.nickname.slice(0, 1).toUpperCase()}</span>
-            <span className="admin-chat-item-main"><span className="admin-chat-item-top"><strong>{['https://gana777.vercel.app', 'https://gana777bet.online'].includes(row.origin) ? `PRUEBA · ${row.nickname}` : row.nickname}</strong><time dateTime={row.last_message_at}>{shortDate(row.last_message_at)}</time></span><span className="admin-chat-preview">{row.completed_at ? 'Completado · ' : row.last_sender_type === 'staff' ? 'Soporte: ' : ''}{entryPreview(row.last_body)}</span></span>
-            {!row.completed_at && row.last_sender_type === 'visitor' && <span className="admin-chat-unanswered" aria-label="Por responder" />}
-          </button>) : <p className="admin-chat-list-empty">{search ? 'No encontramos apodos con esa búsqueda.' : filter === 'pending' ? 'No hay consultas por responder.' : filter === 'completed' ? 'No hay conversaciones completadas.' : 'Todavía no hay chats externos.'}</p>}
-        </div>
+        <AttentionConversationList external listRef={listRef} onSelect={select} rows={visible.map(row => ({ id: row.thread_id, name: ['https://gana777.vercel.app', 'https://gana777bet.online'].includes(row.origin) ? `PRUEBA · ${row.nickname}` : row.nickname, preview: row.last_body, origin: 'Burbuja', timestamp: row.last_message_at, pending: !row.completed_at && row.last_sender_type === 'visitor', completed: !!row.completed_at, fromSupport: row.last_sender_type === 'staff' }))} empty={search ? 'No encontramos conversaciones con esa búsqueda.' : filter === 'pending' ? 'No hay consultas por responder.' : filter === 'waiting' ? 'No hay conversaciones esperando al visitante.' : filter === 'completed' ? 'No hay conversaciones completadas.' : 'Todavía no hay chats externos.'} />
         <InboxPager pagination={pagination} />
       </aside>
-      <section className="admin-chat-thread" aria-label={selected ? `Conversación con ${selected.nickname}` : 'Seleccioná una conversación'}>
+      <section hidden={!selectedId} className="admin-chat-thread" aria-label={selected ? `Conversación con ${selected.nickname}` : 'Seleccioná una conversación'}>
         {selected ? <>
-          <header className="admin-chat-thread-header"><button type="button" className="admin-chat-back" aria-label="Volver a conversaciones" onClick={() => onSelect('')}><ArrowLeft size={19} /></button><span className="admin-chat-avatar">{selected.nickname.slice(0, 1).toUpperCase()}</span><div><strong>{['https://gana777.vercel.app', 'https://gana777bet.online'].includes(selected.origin) ? `PRUEBA · ${selected.nickname}` : selected.nickname}</strong><small>{selected.completed_at ? 'Conversación completada' : ['https://gana777.vercel.app', 'https://gana777bet.online'].includes(selected.origin) ? 'Chat desde la página de prueba' : 'Chat de la plataforma externa'}</small></div></header>
+          <header className="admin-chat-thread-header"><button type="button" className="admin-chat-back" aria-label="Volver a conversaciones" onClick={() => onSelect('')}><ArrowLeft size={19} /></button><span className="admin-chat-avatar">{selected.nickname.slice(0, 1).toUpperCase()}</span><div><strong ref={threadHeadingRef} tabIndex={-1}>{['https://gana777.vercel.app', 'https://gana777bet.online'].includes(selected.origin) ? `PRUEBA · ${selected.nickname}` : selected.nickname}</strong><small>{selected.completed_at ? 'Conversación completada' : ['https://gana777.vercel.app', 'https://gana777bet.online'].includes(selected.origin) ? 'Chat desde la página de prueba' : 'Chat de la plataforma externa'}</small></div></header>
           <div className="admin-chat-actions"><button type="button" className={selected.completed_at ? 'admin-chat-reopen' : 'admin-chat-complete'} disabled={demo || updating || sending || sendingEntry || linkBusy} onClick={() => void setCompleted(!selected.completed_at)}>{selected.completed_at ? <RotateCcw size={16} /> : <CircleCheck size={16} />}{updating ? 'Guardando…' : selected.completed_at ? 'Reabrir chat' : 'Marcar como completado'}</button></div>
           {canLink && <div className="external-chat-link"><div><Link2 size={18} /><strong>Vincular con un jugador</strong></div><p>Buscá el usuario que te indicó. Al vincularlo, este chat seguirá en la bandeja Chat junto con los mensajes de la app.</p><form onSubmit={event => void findPlayer(event)}><input aria-label="Usuario del jugador" value={linkUsername} onChange={event => { setLinkUsername(event.target.value); setLinkMatch(null); }} placeholder="Nombre de usuario exacto" autoCapitalize="none" spellCheck={false} maxLength={32} disabled={demo || linkBusy} /><button type="submit" disabled={demo || linkBusy || !linkUsername.trim()}>Buscar</button></form>{linkMatch && <div className="external-chat-link-match"><span><strong>@{linkMatch.username}</strong><small>{linkMatch.display_name || 'Jugador registrado'}</small></span><button type="button" disabled={demo || linkBusy} onClick={() => void linkPlayer()}>{linkBusy ? 'Vinculando…' : 'Vincular y abrir Chat'}</button></div>}</div>}
           <div className="admin-chat-messages" ref={log} role="log" aria-live="polite" aria-relevant="additions text">{hasMore && <button type="button" className="admin-chat-older" disabled={loadingOlder} onClick={() => void loadOlder()}>{loadingOlder ? 'Cargando…' : 'Ver mensajes anteriores'}</button>}{loading && <p className="admin-chat-list-empty">Cargando conversación…</p>}{messages.filter(message => message.thread_id === selectedId).map(message => <div className={`message${message.sender_type === 'staff' ? ' mine' : ''}`} key={message.id}>{message.body !== 'Imagen adjunta' && <p className={isEntryBody(message.body) ? 'is-entry' : undefined}><ChatMessageText body={message.body} interactive={false} /></p>}{message.attachment_path && <ChatImage path={message.attachment_path} source="external" />}<small>{message.sender_type === 'staff' ? 'Soporte · ' : ''}{date(message.created_at)}</small></div>)}</div>

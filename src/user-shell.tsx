@@ -48,12 +48,12 @@ export function LoginView({ admin, busy, configured, feedback, onLogin, onDemo, 
   }
   const { settings } = useContent();
   const surface = themeSurface(settings, path => supabase?.storage.from('app-assets').getPublicUrl(path).data.publicUrl ?? null);
-  return <main className={`login ${admin ? 'admin-login' : `user-login ${surface.className}`}`} style={admin ? undefined : surface.style}>
+  return <main className={`login ${admin ? 'admin-login' : `user-login login-refined ${surface.className}${requestingAccess ? ' is-requesting-access' : ''}`}`} style={admin ? undefined : surface.style}>
     {admin && <Brand panel />}
     {admin ? <p className="eyebrow">PANEL DE ADMINISTRACIÓN</p> : <div className={`login-character ${settings.login_image_path === 'brand/panda-login-transparent.png' || settings.login_image_path === 'brand/panda-login-bright.png' ? 'transparent-character' : settings.login_image_layout === 'reference' ? 'reference-character' : ''}`}><StorageImage path={settings.login_image_path} fallbackPath="brand/panda-login-transparent.png" alt="Panda GANA777 con gorra y campera morada" /></div>}
-    {!admin && requestingAccess ? <Suspense fallback={<ViewLoading />}><PlayerAccessRequest onBack={() => setRequestingAccess(false)} onCredentialsReady={(username, password) => { setLoginPrefill({ username, password }); setRequestingAccess(false); }} /></Suspense> : <><section className="card login-card">{!admin && <span className="brand login-domain-brand">gana777bet.com</span>}<h1>Bienvenido</h1>{admin && <p>Ingresá a tu cuenta</p>}
+    {!admin && requestingAccess ? <Suspense fallback={<ViewLoading />}><PlayerAccessRequest onBack={() => setRequestingAccess(false)} onCredentialsReady={(username, password) => { setLoginPrefill({ username, password }); setRequestingAccess(false); }} /></Suspense> : <><section className="card login-card">{admin ? <><h1>Bienvenido</h1><p>Ingresá a tu cuenta</p></> : <header className="login-welcome"><span className="brand login-domain-brand">gana777bet.com</span><h1>Bienvenido</h1><p>Ingresá a tu cuenta para continuar.</p></header>}
       <form onSubmit={submit}>
-        {admin && <label htmlFor="email">Usuario o correo electrónico</label>}
+        <label htmlFor="email">{admin ? 'Usuario o correo electrónico' : 'Usuario'}</label>
         <div className="icon-input"><span className="input-icon"><UserRound /></span><input id="email" name="email" type="text" defaultValue={!admin ? loginPrefill?.username : undefined} autoComplete="username" aria-label={admin ? undefined : 'Usuario'} placeholder={admin ? 'Ejemplo: carlos' : 'Usuario'} maxLength={254} autoCapitalize="none" spellCheck={false} required /></div>
         <label htmlFor="password">Contraseña</label>
         <div className="icon-input password"><span className="input-icon"><LockKeyhole /></span><input id="password" name="password" type={visible ? 'text' : 'password'} defaultValue={!admin ? loginPrefill?.password : undefined} autoComplete="current-password" placeholder={admin ? 'Tu contraseña' : 'Contraseña'} maxLength={1024} required /><button type="button" aria-label={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setVisible(!visible)}>{visible ? <EyeOff /> : <Eye />}</button></div>
@@ -61,7 +61,7 @@ export function LoginView({ admin, busy, configured, feedback, onLogin, onDemo, 
         {feedback}{retrySeconds > 0 && <p className="login-retry" role="status">Podés volver a intentar en {retrySeconds} segundos.</p>}
         <button className="primary" disabled={busy || retrySeconds > 0 || (!!siteKey && !captchaToken)}>{busy ? 'Ingresando…' : retrySeconds > 0 ? 'Esperá para reintentar' : 'Ingresar'}</button>
       </form>
-    </section>{!admin && <button type="button" className="player-access-open" onClick={() => setRequestingAccess(true)}><span className="player-access-icon"><UserPlus size={22} aria-hidden="true" /></span><span className="player-access-copy"><strong>Crear usuario</strong><small>¿Primera vez? Solicitá tu acceso</small></span><ChevronRight className="player-access-arrow" size={20} aria-hidden="true" /></button>}</>}
+    </section>{!admin && <><p className="login-new-account-label">¿Todavía no tenés cuenta?</p><button type="button" className="player-access-open" onClick={() => setRequestingAccess(true)}><span className="player-access-icon"><UserPlus size={22} aria-hidden="true" /></span><span className="player-access-copy"><strong>Crear usuario</strong><small>Solicitá tu acceso para empezar</small></span><ChevronRight className="player-access-arrow" size={20} aria-hidden="true" /></button></>}</>}
     {!admin && <PortalInstall />}
     {(!configured || import.meta.env.DEV) && <button className="text-button" onClick={onDemo}>Explorar vista previa</button>}
     {admin ? <footer><span className="secure-connection"><ShieldCheck size={17} /> Conexión segura · GANA777 Panel</span></footer> : <PlayerFooter />}

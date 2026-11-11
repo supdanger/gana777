@@ -1,6 +1,7 @@
+import { useAttentionList } from './attention-conversation-list';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useAdminRefreshVersion } from './admin-refresh';
-import { CheckCircle2, Eye, EyeOff, MessageCircle, RefreshCw, Send, UserRound, XCircle } from 'lucide-react';
+import { ArrowLeft, ChevronRight, CheckCircle2, Eye, EyeOff, MessageCircle, RefreshCw, Send, UserRound, XCircle } from 'lucide-react';
 import { date } from './lib';
 import { invokeAdminPlayerAccess } from './admin-player-access-api';
 import { InputError } from '../supabase/functions/_shared/validation';
@@ -20,7 +21,7 @@ export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy:
   const [selectedId, setSelectedId] = useState('');
   const [messages, setMessages] = useState<AccessMessage[]>([]);
   const [loading, setLoading] = useState(!demo);
-  const [filter, setFilter] = useState<'setup' | 'all'>('setup');
+  const [filter, setFilter] = useState<'setup' | 'all'>('all');
   const [search, setSearch] = useState('');
   const [threadError, setThreadError] = useState('');
   const [manualCreateOpen, setManualCreateOpen] = useState(false);
@@ -39,6 +40,15 @@ export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy:
   const selected = requests.find(item => item.id === selectedId) ?? null;
   const needsSetup = (item: AccessRequest) => item.status === 'pending' || (item.status === 'approved' && !item.has_personal_url);
   const visible = requests.filter(item => (filter === 'all' || needsSetup(item)) && (!search.trim() || `${item.username} ${item.referral_code ?? ''} ${item.latest_message?.body ?? ''}`.toLocaleLowerCase('es').includes(search.trim().replace(/^@/, '').toLocaleLowerCase('es'))));
+
+  const detailOpen = !!selectedId || manualCreateOpen;
+  const { listRef, select, threadHeadingRef } = useAttentionList(manualCreateOpen ? 'manual' : selectedId, setSelectedId);
+  function returnToList() {
+    setSelectedId(''); setManualCreateOpen(false);
+    setPassword(''); setCasinoUrl(''); setShowPassword(false);
+    setManualPassword(''); setManualShowPassword(false); setManualError('');
+  }
+  const statusLabel = (item: AccessRequest) => item.status === 'pending' ? 'Pendiente' : item.status === 'rejected' ? 'Cerrada' : item.has_personal_url ? 'Acceso creado' : 'Falta enlace personal';
 
   async function refresh() {
     if (demo) { setLoading(false); return; }
@@ -124,33 +134,41 @@ export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy:
     });
   }
 
-  return <section className="access-admin" aria-label="Solicitudes para crear usuarios">
-    <div className="access-admin-heading"><div><h1>Solicitudes</h1><p>Revisá solicitudes o creá un jugador y su acceso manualmente.</p></div><div className="access-admin-heading-actions"><button type="button" className="access-admin-manual-button" disabled={busy || demo} onClick={() => { setManualCreateOpen(true); setSelectedId(''); setManualError(''); setManualSuccess(''); setThreadError(''); }}><UserRound size={16} />Crear usuario</button><button type="button" disabled={loading || busy || demo} onClick={() => { setLoading(true); void refresh().catch(error => setThreadError(error instanceof Error ? error.message : 'No pudimos actualizar.')).finally(() => setLoading(false)); }}><RefreshCw size={16} />Actualizar</button></div></div>
+  return <section className={`access-admin access-list-view${detailOpen ? ' has-selection' : ''}`} aria-label="Solicitudes para crear usuarios">
+    <div className="access-admin-heading"><div><h2>Solicitudes de acceso</h2><p>Revisá solicitudes o creá un jugador y su acceso manualmente.</p></div><div className="access-admin-heading-actions"><button type="button" className="access-admin-manual-button" disabled={busy || demo} onClick={() => { setManualCreateOpen(true); setSelectedId(''); setManualError(''); setManualSuccess(''); setThreadError(''); }}><UserRound size={16} />Crear usuario</button><button type="button" disabled={loading || busy || demo} onClick={() => { setLoading(true); void refresh().catch(error => setThreadError(error instanceof Error ? error.message : 'No pudimos actualizar.')).finally(() => setLoading(false)); }}><RefreshCw size={16} />Actualizar</button></div></div>
     {demo && <p className="access-admin-note">La vista previa no carga solicitudes reales.</p>}
     {manualSuccess && <p className="access-admin-success" role="status">{manualSuccess}</p>}
     {threadError && <p className="access-admin-error" role="alert">{threadError}</p>}
+    {detailOpen && <div className="attention-thread-toolbar"><button type="button" className="attention-return" disabled={busy} onClick={returnToList}><ArrowLeft size={17} />Volver a solicitudes</button></div>}
     <div className="access-admin-layout">
-      <aside className="access-admin-inbox">
+      <aside hidden={detailOpen} className="access-admin-inbox">
         <strong>Solicitudes de acceso</strong><small>{requests.filter(needsSetup).length} por configurar · {requests.length} recientes</small>
         <label><span className="sr-only">Buscar solicitud</span><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar usuario o recomendado" /></label>
-        <div className="access-admin-filters"><button type="button" className={filter === 'setup' ? 'active' : ''} onClick={() => setFilter('setup')}>Por configurar</button><button type="button" className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>Todas</button></div>
-        <div className="access-admin-list">
-          {loading ? <p>Cargando solicitudes…</p> : visible.length ? visible.map(item => <button type="button" key={item.id} className={`access-admin-item${selectedId === item.id ? ' active' : ''}`} onClick={() => { setSelectedId(item.id); setManualCreateOpen(false); setThreadError(''); }}><span className="access-admin-avatar"><UserRound size={18} /></span><span><strong>@{item.username}</strong><small>{requestPreview(item)}</small></span><time>{date(item.created_at)}</time><i className={`access-status-dot ${item.status}`} /></button>) : <p>{search ? 'No encontramos coincidencias.' : filter === 'setup' ? 'No hay accesos por configurar.' : 'Todavía no hay solicitudes.'}</p>}
-        </div>
+        <div className="access-admin-filters" role="group" aria-label="Filtrar solicitudes"><button type="button" className={filter === 'setup' ? 'active' : ''} aria-pressed={filter === 'setup'} onClick={() => setFilter('setup')}>Por configurar</button><button type="button" className={filter === 'all' ? 'active' : ''} aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>Todas</button></div>
+        <div className="attention-list-body"><div className="attention-list-columns" aria-hidden="true"><span>Usuario</span><span>Resumen</span><span>Recomendado</span><span>Estado</span><span>Fecha</span><span /></div>
+        <div className="access-admin-list" ref={listRef}>
+          {loading ? <p role="status">Cargando solicitudes…</p> : visible.length ? visible.map(item => <button type="button" key={item.id} className="access-admin-item attention-conversation-row" data-conversation-id={item.id} aria-label={`Abrir solicitud de ${item.username}`} onClick={() => { select(item.id); setManualCreateOpen(false); setThreadError(''); }}>
+            <span className="attention-list-person"><span className="access-admin-avatar"><UserRound size={18} /></span><span><strong>@{item.username}</strong><small>Solicitud de acceso</small></span></span>
+            <span className="admin-chat-preview" title={requestPreview(item)}>{requestPreview(item)}</span>
+            <span className="attention-list-origin">{item.referral_code ? `@${item.referral_code}` : 'Sin código'}</span>
+            <span className={`attention-thread-status ${needsSetup(item) ? 'is-pending' : item.status === 'approved' ? 'is-completed' : 'is-waiting'}`}>{statusLabel(item)}</span>
+            <time dateTime={item.created_at}>{date(item.created_at)}</time><ChevronRight size={16} aria-hidden="true" />
+          </button>) : <p>{search ? 'No encontramos coincidencias.' : filter === 'setup' ? 'No hay accesos por configurar.' : 'Todavía no hay solicitudes.'}</p>}
+        </div></div>
       </aside>
-      <section className="access-admin-thread" aria-label={selected ? `Solicitud de ${selected.username}` : 'Elegí una solicitud'}>
+      <section hidden={!detailOpen} className="access-admin-thread" aria-label={selected ? `Solicitud de ${selected.username}` : 'Elegí una solicitud'}>
         {manualCreateOpen ? <>
-          <header><span className="access-admin-avatar"><UserRound size={20} /></span><div><strong>Crear usuario manualmente</strong><small>Creá el acceso sin esperar una solicitud.</small></div></header>
+          <header><span className="access-admin-avatar"><UserRound size={20} /></span><div><strong ref={threadHeadingRef} tabIndex={-1}>Crear usuario manualmente</strong><small>Creá el acceso sin esperar una solicitud.</small></div></header>
           <form className="access-admin-manual-form" onSubmit={event => void createManualPlayer(event)}>
             <p>Definí el usuario, la contraseña y el enlace personal que abrirá su casino.</p>
             <label>Nombre de usuario<input value={manualUsername} onChange={event => setManualUsername(event.target.value.toLowerCase())} minLength={3} maxLength={32} pattern="[a-zA-Z0-9._-]+" autoCapitalize="none" autoComplete="username" placeholder="Ej.: juanito777" required /><small>De 3 a 32 caracteres, sin espacios.</small></label>
             <label>Contraseña definitiva<span className="access-admin-password"><input type={manualShowPassword ? 'text' : 'password'} value={manualPassword} onChange={event => setManualPassword(event.target.value)} minLength={8} maxLength={72} autoComplete="new-password" placeholder="Mínimo 8 caracteres" required /><button type="button" onClick={() => setManualShowPassword(value => !value)} aria-label={manualShowPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}>{manualShowPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span></label>
             <label>URL personal del casino<input type="url" value={manualCasinoUrl} onChange={event => setManualCasinoUrl(event.target.value)} placeholder="https://casino.ejemplo.com/acceso/…" maxLength={2048} required /><small>Este enlace quedará asignado solamente a este jugador.</small></label>
             {manualError && <p className="access-admin-error" role="alert">{manualError}</p>}
-            <div className="access-admin-manual-actions"><button type="submit" disabled={busy || demo || !manualUsername || !manualPassword || !manualCasinoUrl}><CheckCircle2 size={16} />Crear usuario</button><button type="button" disabled={busy} onClick={() => { setManualCreateOpen(false); setManualError(''); }}>Cancelar</button></div>
+            <div className="access-admin-manual-actions"><button type="submit" disabled={busy || demo || !manualUsername || !manualPassword || !manualCasinoUrl}><CheckCircle2 size={16} />Crear usuario</button><button type="button" disabled={busy} onClick={returnToList}>Cancelar</button></div>
           </form>
         </> : selected ? <>
-          <header><span className="access-admin-avatar"><UserRound size={20} /></span><div><strong>@{selected.username}</strong><small>{selected.referral_code ? `Código recomendado: @${selected.referral_code}` : 'Sin código de recomendado'} · {selected.status === 'pending' ? 'Pendiente' : selected.status === 'approved' ? 'Acceso creado' : 'Cerrada'}</small></div></header>
+          <header><span className="access-admin-avatar"><UserRound size={20} /></span><div><strong ref={threadHeadingRef} tabIndex={-1}>@{selected.username}</strong><small>{selected.referral_code ? `Código recomendado: @${selected.referral_code}` : 'Sin código de recomendado'} · {selected.status === 'pending' ? 'Pendiente' : selected.status === 'approved' ? 'Acceso creado' : 'Cerrada'}</small></div></header>
           {!!selected.same_ip_usernames?.length && <p className="access-admin-network-note" role="status">Aviso interno: comparte IP con @{selected.same_ip_usernames.join(', @')}. Esto no impide crear el usuario.</p>}
           <div className="access-admin-messages" ref={log} role="log" aria-live="polite">{messages.map(message => <article key={message.id} className={`access-admin-message${message.sender === 'admin' ? ' from-admin' : ''}`}><p>{message.body}</p><time>{date(message.created_at)}</time></article>)}</div>
           {(selected.status === 'pending' || selected.status === 'approved') && <>

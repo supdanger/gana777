@@ -88,6 +88,24 @@ test('la búsqueda de chats pagina ids y respeta la lista de conversaciones auto
   assert.ok(db.calls.every(call => call.filters[0][2].every(id => ids.includes(id))));
 });
 
+test('Atención separa espera y resueltas y prioriza pendientes antes de paginar', async () => {
+  const { inboxIds, readInboxPage } = moduleWith('inbox-data.ts', { './lib': { supabase: client(call => ({ data: call.filters[0][2].map(user_id => ({ user_id })) })) }, './query-utils': { searchPattern, searchFilter } });
+  const pending = Array.from({ length: 65 }, (_, i) => ({ user_id: `u${i}`, last_sender_id: `u${i}`, completed_at: null }));
+  const rows = [{ user_id: 'waiting', last_sender_id: 'staff', completed_at: null }, ...pending, { user_id: 'closed', last_sender_id: 'closed', completed_at: '2026-11-11' }];
+  assert.deepEqual([...inboxIds(rows, 'waiting')], ['waiting']);
+  assert.deepEqual([...inboxIds(rows, 'completed')], ['closed']);
+  assert.equal(inboxIds(rows, 'all').length, 67);
+  const ids = inboxIds(rows, 'pending');
+  const page = await readInboxPage('chat_inbox', ids, '', 0, new AbortController().signal);
+  assert.equal(page.total, 65);
+  assert.equal(page.rows.length, 50);
+  assert.equal(page.rows[0].user_id, 'u64');
+  assert.equal(page.rows[49].user_id, 'u15');
+  const external = [{ thread_id: 'visitor', last_sender_type: 'visitor', completed_at: null }, { thread_id: 'staff', last_sender_type: 'staff', completed_at: null }, { thread_id: 'closed', last_sender_type: 'staff', completed_at: '2026-11-11' }];
+  assert.deepEqual([...inboxIds(external, 'pending')], ['visitor']);
+  assert.deepEqual([...inboxIds(external, 'waiting')], ['staff']);
+});
+
 test('la limpieza no elimina una imagen cuyo guardado se confirmó aunque se perdiera la respuesta', async () => {
   const removed = [];
   const db = client(() => ({ data: { portal_theme_designs: { custom: { logoPath: 'new-logo.webp' } }, portal_banners: [{ path: 'banner.webp' }] } }));

@@ -9,7 +9,7 @@ import { depositQueueEnabled, readDepositQueue, takeDeposit, releaseDeposit, rev
 import { bonusCounters } from './bonus-counters';
 const BonusCounterAdmin = lazy(() => import('./bonus-counter-admin').then(module => ({ default: module.BonusCounterAdmin })));
 import { loginFailure, readLoginRetryAt, saveLoginRetryAt } from './login-security';
-import { assertFormFields, InputError, parseAmount, parseAlias, parseCbu, parseHolder, parseMessage, parseUuid, validateReceipt } from '../supabase/functions/_shared/validation';
+import { assertFormFields, InputError, parseAmount, parseWithdrawalAmount, parseAlias, parseCbu, parseHolder, parseMessage, parseUuid, validateReceipt } from '../supabase/functions/_shared/validation';
 import { publicError } from './security';
 import { ContentProvider, useContent } from './content';
 import { DepositRateLimitError, submitDeposit, receiptUrl } from './receipt';
@@ -85,6 +85,7 @@ import { inboxIds, readInboxPage, type ChatSummary, type ExternalSummary, type I
 import './styles.css';
 import './mobile.css';
 import './reference.css';
+import './player-login.css';
 
 if (adminApp) { document.title = 'GANA777 Panel'; document.documentElement.classList.add('admin-document'); document.body.classList.add('admin-document'); void import('./admin-login.css'); }
 if (!adminApp && import.meta.env.PROD && 'serviceWorker' in navigator) {
@@ -163,8 +164,8 @@ function App() {
   const [chatReload, setChatReload] = useState(0);
   const [chatSummary, setChatSummary] = useState<ChatSummary[]>([]);
   const [externalSummary, setExternalSummary] = useState<ExternalSummary[]>([]);
-  const [chatQuery, setChatQuery] = useState({ search: '', filter: 'pending' as InboxFilter, page: 0 });
-  const [externalQuery, setExternalQuery] = useState({ search: '', filter: 'pending' as InboxFilter, page: 0 });
+  const [chatQuery, setChatQuery] = useState({ search: '', filter: 'all' as InboxFilter, page: 0 });
+  const [externalQuery, setExternalQuery] = useState({ search: '', filter: 'all' as InboxFilter, page: 0 });
   const [chatPageState, setChatPageState] = useState({ total: 0, loading: false });
   const [externalPageState, setExternalPageState] = useState({ total: 0, loading: false });
   const [externalChatInbox, setExternalChatInbox] = useState<ExternalChatInboxRow[]>([]);
@@ -472,8 +473,8 @@ function App() {
         setExternalChatInbox([]);
         setChatSummary([]);
         setExternalSummary([]);
-        setChatQuery({ search: '', filter: 'pending', page: 0 });
-        setExternalQuery({ search: '', filter: 'pending', page: 0 });
+        setChatQuery({ search: '', filter: 'all', page: 0 });
+        setExternalQuery({ search: '', filter: 'all', page: 0 });
         setExternalThread('');
         setAccessRequestCount(0);
         setBank(null);
@@ -1030,7 +1031,7 @@ function App() {
     event.preventDefault(); const element = event.currentTarget; const form = new FormData(element);
     await action(async () => {
       if (!supabase || demo) throw new InputError('La vista previa no envía solicitudes.');
-      form.set('amount', canonicalMoney(parseAmount(form.get('amount'))));
+      form.set('amount', canonicalMoney(page === 'withdrawal' ? parseWithdrawalAmount(form.get('amount')) : parseAmount(form.get('amount'))));
       let row: RequestRow;
       if (page === 'deposit') {
         if (requests.some(request => request.kind === 'deposit' && request.status === 'pending')) throw new InputError('Ya tenés una carga pendiente. Esperá a que sea aprobada o rechazada.');
@@ -1518,7 +1519,7 @@ function App() {
       {adminApp && page === 'accounts' && <AccountAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'shifts' && <ShiftAdmin demo={demo} busy={busy} action={action} station={sacStation} onStation={chooseSac} sharedDeposits={sharedDeposits} />}
       {adminApp && page === 'cashiers' && staffContext.superAdmin && <CashierAdmin demo={demo} busy={busy} action={action} />}
-      {adminApp && page === 'chat' && <AdminChat pagination={demo ? undefined : { ...chatPageState, search: chatQuery.search, filter: chatQuery.filter, page: chatQuery.page, all: chatSummary.length, pending: pendingCounts.chat, completed: chatSummary.filter(row => !!row.completed_at).length, onQuery: (search, filter) => { setChatQuery({ search, filter, page: 0 }); }, onPage: next => { setThread(''); setChatQuery(old => ({ ...old, page: next })); } }} inbox={chatInbox} selectedId={thread} demo={demo} canManageExternalLinks={staffContext.superAdmin || staffContext.permissions.external_chat} onSelect={setThread} onChanged={() => setChatReload(value => value + 1)} />}
+      {adminApp && page === 'chat' && <AdminChat pagination={demo ? undefined : { ...chatPageState, search: chatQuery.search, filter: chatQuery.filter, page: chatQuery.page, all: chatSummary.length, pending: pendingCounts.chat, completed: chatSummary.filter(row => !!row.completed_at).length, onQuery: (search, filter) => { setChatQuery({ search, filter, page: 0 }); }, onPage: next => { setThread(''); setChatQuery(old => ({ ...old, page: next })); } }} inbox={chatInbox} selectedId={thread} demo={demo} canDeposit={demo || canOpenAdminPage('deposit', staffContext.permissions, staffContext.superAdmin)} canWithdrawal={demo || canOpenAdminPage('withdrawal', staffContext.permissions, staffContext.superAdmin)} canManageExternalLinks={staffContext.superAdmin || staffContext.permissions.external_chat} onSelect={setThread} onChanged={() => setChatReload(value => value + 1)} />}
       {adminApp && page === 'external-chat' && <AdminExternalChat pagination={demo ? undefined : { ...externalPageState, search: externalQuery.search, filter: externalQuery.filter, page: externalQuery.page, all: externalSummary.length, pending: pendingCounts.externalChat, completed: externalSummary.filter(row => !!row.completed_at).length, onQuery: (search, filter) => { setExternalQuery({ search, filter, page: 0 }); }, onPage: next => { setExternalThread(''); setExternalQuery(old => ({ ...old, page: next })); } }} inbox={externalChatInbox} selectedId={externalThread} demo={demo} canLink={staffContext.superAdmin || staffContext.permissions.chat} onSelect={setExternalThread} onChanged={() => setExternalChatReload(value => value + 1)} onLinked={linkedUserId => { setExternalThread(''); setThread(linkedUserId); setChatReload(value => value + 1); setExternalChatReload(value => value + 1); navigate('chat'); }} />}
       {adminApp && page === 'external-chat-admin' && (demo || staffContext.superAdmin) && <AdminExternalChatSettings demo={demo} />}
     </>}

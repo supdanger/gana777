@@ -1,0 +1,103 @@
+/* Player login: dark surfaces, gold details and portal-purple actions. The mascot stays original. */
+body:has(.user-login.login-refined) { background: #0c0b0c; }
+.user-login.login-refined {
+  --login-gold: #e4ca95;
+  --login-primary: linear-gradient(100deg, #6d28d9 0%, #5520b0 100%);
+  --login-primary-hover: linear-gradient(100deg, #7c3aed 0%, #6d28d9 100%);
+  --login-text: #f6f1e8;
+  --login-muted: #b1a99b;
+  --login-field: #24211d;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  width: 100%;
+  max-width: 480px;
+  min-height: 100svh;
+  margin: 0 auto;
+  padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  overflow: visible;
+  background: radial-gradient(ellipse at 50% 15%, #a87d2e12, transparent 50%), #0c0b0c;
+  color: var(--login-text);
+}
+.user-login.login-refined::before,
+.user-login.login-refined::after { display: none; animation: none; filter: none; will-change: auto; }
+.user-login.login-refined .login-character { height: clamp(100px, 17svh, 152px); width: 100%; margin: 0 0 -4px; flex-shrink: 0; overflow: hidden; }
+.user-login.login-refined .login-character img { object-position: center bottom; }
+.user-login.login-refined .login-card { margin: 0; padding: 24px; border: 1px solid #e4ca9519; border-radius: 20px; background: #151310; box-shadow: 0 16px 48px #00000030; text-align: left; }
+.user-login.login-refined .login-welcome { display: block; margin: 0 0 22px; text-align: center; }
+.user-login.login-refined .login-card .login-domain-brand { display: block; width: fit-content; max-width: 100%; margin: 0 auto 10px; background: linear-gradient(110deg, #f3a0ff 0%, #d946ff 35%, #fff0ff 48%, #d946ff 61%, #8e24c9 100%); background-size: 250% 100%; background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; color: #d946ff; filter: drop-shadow(0 0 7px #c43dff55); animation: modern-brand-shine 7s ease-in-out infinite; font-size: clamp(20px, 5.5vw, 24px); font-weight: 750; font-style: normal; letter-spacing: -.025em; line-height: 1.2; text-shadow: none; }
+.user-login.login-refined .login-card h1 { display: block; width: auto; margin: 0 0 8px; background: none; -webkit-text-fill-color: var(--login-text); color: var(--login-text); font-size: clamp(26px, 7vw, 30px); line-height: 1.2; font-weight: 650; letter-spacing: -.035em; }
+.user-login.login-refined .login-welcome p { margin: 0; color: var(--login-muted); font-size: 13px; line-height: 1.5; }
+.user-login.login-refined .login-card form > label { display: block; margin: 16px 0 7px; color: #d8d0c1; font-size: 13px; font-weight: 550; line-height: 1.3; text-transform: none; }
+.user-login.login-refined .login-card form > label:first-child { margin-top: 0; }
+.user-login.login-refined .icon-input input { width: 100%; min-height: 50px; padding: 12px 46px 12px 44px; border: 1px solid transparent; border-radius: 10px; background: var(--login-field); color: var(--login-text); caret-color: var(--login-gold); box-shadow: none; font-size: 16px; }
+.user-login.login-refined .icon-input input::placeholder { color: #a39b8d; opacity: 1; }
+.user-login.login-refined .icon-input:focus-within input { border-color: #b99b60; outline: none; box-shadow: 0 0 0 2px #e4ca9514; }
+.user-login.login-refined .icon-input input:-webkit-autofill { -webkit-text-fill-color: var(--login-text); caret-color: var(--login-gold); -webkit-box-shadow: 0 0 0 1000px var(--login-field) inset; }
+.user-login.login-refined .input-icon,
+.user-login.login-refined .icon-input:focus-within .input-icon { top: 15px; left: 14px; width: 20px; height: 20px; border: 0; border-radius: 0; background: transparent; color: #b9a374; box-shadow: none; }
+.user-login.login-refined .input-icon svg { width: 19px; height: 19px; }
+.user-login.login-refined .password button { top: 3px; right: 3px; width: 44px; height: 44px; padding: 12px; border: 0; border-radius: 8px; background: transparent; color: #bcb19b; }
+.user-login.login-refined .password button:hover { background: #ffffff06; color: var(--login-gold); }
+.user-login.login-refined .login-card .primary { display: inline-flex; justify-content: center; align-items: center; width: 100%; min-height: 50px; margin: 20px 0 0; padding: 12px 16px; border: 0; border-radius: 10px; background: var(--login-primary); color: #fff; font-size: 16px; font-weight: 750; letter-spacing: .01em; box-shadow: none; }
+.user-login.login-refined .login-card .primary:hover:not(:disabled) { background: var(--login-primary-hover); transform: none; }
+.user-login.login-refined .primary:disabled { opacity: .55; cursor: not-allowed; }
+.user-login.login-refined :is(button, a):focus-visible { outline: 2px solid var(--login-gold); outline-offset: 3px; }
+.user-login.login-refined .login-new-account-label { margin: 20px 0 8px; color: #cec0df; font-size: 12px; font-weight: 550; text-align: center; }
+.user-login.login-refined .player-access-open { width: 100%; min-height: 76px; margin: 0; padding: 14px 16px; gap: 12px; border: 1px solid #9c56d755; border-radius: 12px; background: linear-gradient(110deg, #49206f 0%, #381557 34%, #512078 51%, #35134f 72%, #26103c 100%); background-size: 250% 100%; background-position: 100% 50%; animation: modern-brand-shine 7s ease-in-out infinite; color: var(--login-text); box-shadow: none; text-align: left; }
+.user-login.login-refined .player-access-open:hover { border-color: #bd83df; transform: none; filter: brightness(1.12); }
+.user-login.login-refined .player-access-icon { width: 40px; height: 40px; border: 0; border-radius: 10px; background: #a862e529; color: #e6c2ff; box-shadow: none; }
+.user-login.login-refined .player-access-copy strong { display: inline-block; color: #f0c45d; background: linear-gradient(110deg, #d5a63f 0%, #f2cb68 34%, #ffe49a 48%, #f2cb68 62%, #bf8525 100%); background-size: 250% 100%; background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 7px #eab94c66); animation: admin-brand-shine 4.5s ease-in-out infinite; font-size: 16px; font-weight: 700; }
+.user-login.login-refined .player-access-copy small { margin-top: 3px; color: #cdbbdb; font-size: 12px; }
+.user-login.login-refined .player-access-arrow { color: #e6c2ff; }
+@media (prefers-reduced-motion: reduce) {
+  .user-login.login-refined .player-access-open,
+  .user-login.login-refined .player-access-copy strong { animation: none; }
+}
+.user-login.login-refined .portal-install { margin: 14px 0 0; }
+.user-login.login-refined .portal-install-button { min-height: 36px; margin: 0; padding: 7px 12px; border: 0; border-radius: 8px; background: transparent; color: #c2b59b; font-size: 12px; font-weight: 500; box-shadow: none; }
+.user-login.login-refined .portal-install-button:hover { background: #e4ca9508; color: var(--login-gold); }
+.user-login.login-refined > .text-button { min-height: 32px; margin-top: 4px; padding: 7px; color: #a89e8b; font-size: 11px; }
+.user-login.login-refined footer { gap: 4px; margin: 14px 0 0; color: #968c7b; font-size: 11px; }
+.user-login.login-refined footer .adult-only-notice { color: #c1b6a2; font-size: 11px; font-weight: 500; }
+.user-login.login-refined .secure-connection svg { color: #ad986d; }
+.user-login.login-refined .alert { margin: 12px 0 0; border-color: #79613655; background: #2b2317; color: #ead5ac; font-size: 13px; }
+.user-login.login-refined .alert.error { border-color: #92536055; background: #301e23; color: #f1c1cd; }
+.user-login.login-refined .login-retry { color: var(--login-gold); font-size: 12px; }
+.user-login.login-refined .portal-install-dialog { border-color: #6c5734; background: #18140f; color: var(--login-text); }
+.user-login.login-refined .portal-install-dialog :is(h2, strong) { color: var(--login-text); }
+.user-login.login-refined .portal-install-dialog :is(p, small) { color: #c4bba9; }
+.user-login.login-refined .portal-install-close { border-color: transparent; background: var(--login-field); color: var(--login-gold); }
+.user-login.login-refined.is-requesting-access { justify-content: flex-start; }
+.user-login.login-refined.is-requesting-access .login-character { height: 88px; }
+.user-login.login-refined .player-access-card { margin: 0; width: 100%; padding: 22px; border-color: #e4ca9519; background: #151310; box-shadow: 0 16px 48px #00000030; }
+.user-login.login-refined .player-access-heading-icon { border: 0; background: #e4ca950c; color: var(--login-gold); box-shadow: none; }
+.user-login.login-refined .player-access-eyebrow { color: var(--login-gold); }
+.user-login.login-refined .player-access-heading :is(h2, p) { color: var(--login-text); }
+.user-login.login-refined .player-access-back { border-color: transparent; background: var(--login-field); color: var(--login-gold); }
+.user-login.login-refined .player-access-name > svg { color: #b9a374; }
+.user-login.login-refined .player-access-name input,
+.user-login.login-refined .player-access-form > label > input { border-color: transparent; background: var(--login-field); color: var(--login-text); caret-color: var(--login-gold); }
+.user-login.login-refined .player-access-name input::placeholder,
+.user-login.login-refined .player-access-form > label > input::placeholder { color: #a39b8d; }
+.user-login.login-refined .player-access-name input:focus,
+.user-login.login-refined .player-access-form > label > input:focus { border-color: #b99b60; box-shadow: 0 0 0 2px #e4ca9514; }
+.user-login.login-refined .player-access-form .primary,
+.user-login.login-refined .player-access-login button { border-color: transparent; background: var(--login-primary); color: #fff; box-shadow: none; }
+@media (max-height: 740px) {
+  .user-login.login-refined { justify-content: flex-start; padding-top: max(14px, env(safe-area-inset-top)); }
+  .user-login.login-refined .login-character { height: 90px; }
+  .user-login.login-refined .login-card { padding: 18px 20px; }
+  .user-login.login-refined .login-welcome { margin-bottom: 16px; }
+  .user-login.login-refined .login-card h1 { font-size: 26px; }
+}
+@media (max-width: 360px) {
+  .user-login.login-refined { padding-right: max(14px, env(safe-area-inset-right)); padding-left: max(14px, env(safe-area-inset-left)); }
+  .user-login.login-refined .login-card { padding: 18px; }
+  .user-login.login-refined .login-card .login-domain-brand { font-size: 21px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .user-login.login-refined .login-card .login-domain-brand { animation: none; }
+}

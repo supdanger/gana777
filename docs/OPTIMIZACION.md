@@ -217,7 +217,7 @@ de navegador también cubre el flujo nuevo y la compatibilidad con el esquema vi
 Quedan pendientes la prueba con el esquema completo, dos conexiones PostgreSQL
 simultáneas y la entrega real de eventos Realtime en un proyecto de pruebas.
 
-El panel usa una base de grafito con acentos de apariencia, estados semánticos y
+El panel usa un único tema oscuro con acentos violetas, estados semánticos y
 estilos separados del portal de jugadores. La navegación se agrupa por tarea,
 permite buscar secciones localmente y conserva los permisos existentes. Se retiraron
 los tutoriales del panel; los controles que configuran tutoriales para jugadores

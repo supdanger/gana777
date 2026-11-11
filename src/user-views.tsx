@@ -1,3 +1,4 @@
+import { MINIMUM_WITHDRAWAL_AMOUNT } from '../supabase/functions/_shared/validation';
 import { bonusScheduleOpen, bonusScheduleText, hasBonusSchedule } from '../supabase/functions/_shared/bonus-schedule';
 import { useBonusScheduleClock } from './bonus-schedule-clock';
 import { VisibleVideo } from './visible-video';
@@ -335,15 +336,17 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
   const withdrawalArt = portalBannersFor(settings.portal_banners, settings.portal_theme, 'withdrawal')[0];
   const withdrawalAmount = kind === 'withdrawal' ? readMoney(rawAmount) : null;
   const withdrawalPartCount = withdrawalAmount === null ? 0 : Math.ceil(withdrawalAmount / 100000);
+  const withdrawalAmountValid = kind !== 'withdrawal' || withdrawalAmount !== null && withdrawalAmount >= MINIMUM_WITHDRAWAL_AMOUNT;
+  const withdrawalBelowMinimum = kind === 'withdrawal' && !!rawAmount.trim() && !withdrawalAmountValid;
   const amountBelowMinimum = kind === 'deposit' && typedAmount !== null && typedAmount < 1000;
-  const amount = <label className="amount-label">Monto a {kind === 'deposit' ? 'cargar' : 'retirar'}<span className={`amount-input${kind === 'deposit' && amountAttempted && !depositAmountValid ? ' is-invalid' : ''}`}>{(kind !== 'deposit' || rawAmount) && <span aria-hidden="true">$</span>}<input className="amount" name="amount" inputMode="decimal" type="text" pattern={moneyInputPattern} maxLength={moneyInputMaxLength} placeholder={kind === 'deposit' ? 'Ej.: 1.000' : '10.000'} aria-label={`Monto a ${kind === 'deposit' ? 'cargar' : 'retirar'} en pesos argentinos`} aria-describedby={kind === 'deposit' ? 'deposit-amount-help' : undefined} required value={rawAmount} onInvalid={event => {
+  const amount = <label className="amount-label">Monto a {kind === 'deposit' ? 'cargar' : 'retirar'}<span className={`amount-input${kind === 'deposit' && amountAttempted && !depositAmountValid ? ' is-invalid' : ''}`}>{(kind !== 'deposit' || rawAmount) && <span aria-hidden="true">$</span>}<input className="amount" name="amount" inputMode="decimal" type="text" pattern={moneyInputPattern} maxLength={moneyInputMaxLength} placeholder={kind === 'deposit' ? 'Ej.: 1.000' : '5.000'} aria-label={`Monto a ${kind === 'deposit' ? 'cargar' : 'retirar'} en pesos argentinos`} aria-describedby={kind === 'deposit' ? 'deposit-amount-help' : 'withdrawal-amount-help'} aria-invalid={withdrawalBelowMinimum || undefined} required value={rawAmount} onInvalid={event => {
     if (kind !== 'deposit') return;
     setAmountAttempted(true);
     const input = event.currentTarget;
     input.setCustomValidity(input.validity.valueMissing
       ? 'Escribí cuánto querés cargar. Ejemplo: 1.000. El mínimo es $1.000.'
       : 'Ingresá un monto válido en pesos, por ejemplo 1.000.');
-  }} onChange={event => { event.currentTarget.setCustomValidity(''); const nextAmount = readMoney(event.currentTarget.value); if (kind === 'deposit' && nextAmount !== null && nextAmount >= 1000) setAmountAttempted(false); setRawAmount(event.target.value); }} />{bonusCreditLabel && <span className="amount-bonus">{bonusCreditLabel}</span>}</span>{kind === 'deposit' && <small id="deposit-amount-help" className={amountBelowMinimum ? 'amount-minimum-error' : 'amount-minimum-note'} role={amountBelowMinimum ? 'alert' : undefined}>{amountBelowMinimum ? 'El mínimo es $1.000. Ingresá 1.000 o más.' : 'Ingresá cuánto querés cargar. Ejemplo: 1.000. Mínimo: $1.000.'}</small>}{kind === 'withdrawal' && withdrawalPartCount > 1 && <small className="withdrawal-split-note">{withdrawalPartCount > 100 ? 'El máximo por solicitud es de $10.000.000.' : `Se pagará en ${withdrawalPartCount} transferencias de hasta ${money(100000)}. Cada pago tendrá su comprobante en el historial.`}</small>}</label>;
+  }} onChange={event => { event.currentTarget.setCustomValidity(''); const nextAmount = readMoney(event.currentTarget.value); if (kind === 'deposit' && nextAmount !== null && nextAmount >= 1000) setAmountAttempted(false); setRawAmount(event.target.value); }} />{bonusCreditLabel && <span className="amount-bonus">{bonusCreditLabel}</span>}</span>{kind === 'deposit' && <small id="deposit-amount-help" className={amountBelowMinimum ? 'amount-minimum-error' : 'amount-minimum-note'} role={amountBelowMinimum ? 'alert' : undefined}>{amountBelowMinimum ? 'El mínimo es $1.000. Ingresá 1.000 o más.' : 'Ingresá cuánto querés cargar. Ejemplo: 1.000. Mínimo: $1.000.'}</small>}{kind === 'withdrawal' && <small id="withdrawal-amount-help" className={withdrawalBelowMinimum ? 'amount-minimum-error' : 'amount-minimum-note'} role={withdrawalBelowMinimum ? 'alert' : undefined}>{withdrawalBelowMinimum ? 'El retiro mínimo es de $5.000. Ingresá $5.000 o más.' : 'Retiro mínimo: $5.000.'}</small>}{kind === 'withdrawal' && withdrawalPartCount > 1 && <small className="withdrawal-split-note">{withdrawalPartCount > 100 ? 'El máximo por solicitud es de $10.000.000.' : `Se pagará en ${withdrawalPartCount} transferencias de hasta ${money(100000)}. Cada pago tendrá su comprobante en el historial.`}</small>}</label>;
   if (modernDeposit) {
     const choiceValid = !selectedOffer || bonusValid;
     const sending = busy || receiptSending;
@@ -421,6 +424,12 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     </form>;
   }
   return <form className="request-form" onSubmit={event => {
+    if (kind === 'withdrawal' && !withdrawalAmountValid) {
+      event.preventDefault();
+      const input = event.currentTarget.elements.namedItem('amount');
+      if (input instanceof HTMLInputElement) { input.setCustomValidity('El retiro mínimo es de $5.000.'); input.reportValidity(); }
+      return;
+    }
     if (kind === 'deposit' && selectedOffer && !bonusScheduleOpen(selectedOffer)) { event.preventDefault(); setReceiptError('El bono está fuera de horario. Elegí otro bono o continuá sin bono.'); return; }
     if (kind === 'deposit' && !depositAmountValid) {
       event.preventDefault();
@@ -472,7 +481,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     </>}
     {feedback && <div className="request-feedback">{feedback}</div>}
     {depositRetrySeconds > 0 && <div className="deposit-retry-countdown" role="timer" aria-live="polite"><span>Podés volver a enviar en</span><strong>{depositRetryCountdown}</strong></div>}
-    <button className="primary" disabled={busy || demo || withdrawalBlocked || withdrawalPartCount > 100 || pendingDeposit || compressing || depositRetrySeconds > 0 || (kind === 'deposit' && (!file || !bank || (!!selectedOffer && (!loadNumberReady || !scheduleEligible))))} aria-describedby={pendingDeposit ? 'deposit-pending-message' : undefined}>{compressing ? 'Optimizando…' : busy ? kind === 'deposit' ? 'Enviando solicitud…' : 'Enviando…' : depositRetrySeconds > 0 ? `Esperá ${depositRetryCountdown}` : kind === 'deposit' ? 'Solicitar carga' : 'Solicitar retiro'}</button>
+    <button className="primary" disabled={busy || demo || withdrawalBlocked || !withdrawalAmountValid || withdrawalPartCount > 100 || pendingDeposit || compressing || depositRetrySeconds > 0 || (kind === 'deposit' && (!file || !bank || (!!selectedOffer && (!loadNumberReady || !scheduleEligible))))} aria-describedby={pendingDeposit ? 'deposit-pending-message' : undefined}>{compressing ? 'Optimizando…' : busy ? kind === 'deposit' ? 'Enviando solicitud…' : 'Enviando…' : depositRetrySeconds > 0 ? `Esperá ${depositRetryCountdown}` : kind === 'deposit' ? 'Solicitar carga' : 'Solicitar retiro'}</button>
     {pendingDeposit && <p id="deposit-pending-message" className="deposit-pending-message" role="status">Tu carga ya está en proceso. Podrás solicitar otra cuando sea aprobada.</p>}
   </form>;
 }

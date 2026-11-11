@@ -1,15 +1,14 @@
-import { readDevicePreference, writeDevicePreference } from './device-preferences';
+import { AttentionCenter, attentionPages } from './attention-center';
 import './admin.css';
 import './admin-system.css';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ArrowDownToLine, ArrowUpFromLine, Clock3, Disc, Gift, History, Landmark, Link2,
-  LayoutDashboard, LogOut, Menu, MessagesSquare, MessageCircle, PhoneCall, UserCog,
-  Users, X, PanelsTopLeft, UserRound, Layers3, BellRing, Palette, RefreshCw, Settings2,
+  LayoutDashboard, LogOut, Menu, MessagesSquare, PhoneCall, UserCog,
+  Users, X, PanelsTopLeft, Layers3, BellRing, Palette, RefreshCw, Settings2,
   Search, ChevronDown,
 } from 'lucide-react';
 import { titles, type Page } from './user-shell';
-import { normalizePanelTheme, panelThemes } from './admin-appearance';
 import { canOpenAdminPage, type StaffPermissions } from './staff';
 
 function PanelWordmark() {
@@ -20,7 +19,7 @@ function PanelHomeBrand({ onHome }: { onHome: () => void }) {
 }
 
 type PendingCounts = { deposit: number; withdrawal: number; chat: number; externalChat: number; access: number };
-type NavItem = { page: Page; Icon: typeof LayoutDashboard; count?: keyof PendingCounts; label?: string };
+type NavItem = { page: Page; Icon: typeof LayoutDashboard; count?: keyof PendingCounts | 'attention'; label?: string };
 const groups: Array<{ label: string; items: NavItem[] }> = [
   { label: 'Resumen', items: [{ page: 'home', Icon: LayoutDashboard }] },
   { label: 'Operaciones', items: [
@@ -29,11 +28,7 @@ const groups: Array<{ label: string; items: NavItem[] }> = [
     { page: 'history', Icon: History },
     { page: 'shifts', Icon: Clock3 },
   ] },
-  { label: 'Atención', items: [
-    { page: 'chat', Icon: MessagesSquare, count: 'chat' },
-    { page: 'external-chat', Icon: MessageCircle, count: 'externalChat' },
-    { page: 'access-requests', Icon: UserRound, count: 'access' },
-  ] },
+  { label: 'Atención', items: [{ page: 'chat', Icon: MessagesSquare, label: 'Centro de atención', count: 'attention' }] },
   { label: 'Jugadores', items: [
     { page: 'users', Icon: Users },
     { page: 'platform', Icon: Layers3 },
@@ -58,6 +53,7 @@ const groups: Array<{ label: string; items: NavItem[] }> = [
   ] },
 ];
 function sectionLabel(page: Page): string {
+  if (attentionPages.includes(page)) return 'Atención';
   return groups.find(group => group.items.some(item => item.page === page))?.label ?? 'Panel';
 }
 
@@ -70,7 +66,6 @@ export function AdminShell({ page, counts, permissions, superAdmin, staffName, a
   const [compact, setCompact] = useState(() => window.matchMedia('(max-width: 1024px)').matches);
   const [search, setSearch] = useState('');
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
-  const [panelTheme, setPanelTheme] = useState(() => normalizePanelTheme(readDevicePreference('gana777:panel-theme')));
   const sidebar = useRef<HTMLElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
@@ -78,7 +73,6 @@ export function AdminShell({ page, counts, permissions, superAdmin, staffName, a
     setMenuOpen(false);
     setCollapsed(old => { const next = new Set(old); next.delete(sectionLabel(page)); return next; });
   }, [page]);
-  useEffect(() => { writeDevicePreference('gana777:panel-theme', panelTheme); }, [panelTheme]);
   useEffect(() => {
     const media = window.matchMedia('(max-width: 1024px)');
     const resize = () => { setCompact(media.matches); if (!media.matches) setMenuOpen(false); };
@@ -107,12 +101,15 @@ export function AdminShell({ page, counts, permissions, superAdmin, staffName, a
     navigate(next); setMenuOpen(false); setSearch('');
     if (compact) requestAnimationFrame(() => document.getElementById('admin-main-content')?.focus({ preventScroll: true }));
   }
+  const displayCounts = { ...counts, attention: (canOpenAdminPage('chat', permissions, superAdmin) ? counts.chat : 0) + (canOpenAdminPage('external-chat', permissions, superAdmin) ? counts.externalChat : 0) + (canOpenAdminPage('access-requests', permissions, superAdmin) ? counts.access : 0) };
   const query = search.trim().toLocaleLowerCase('es');
-  const visibleGroups = groups.map(group => ({ ...group, items: group.items.filter(item =>
-    canOpenAdminPage(item.page, permissions, superAdmin) && (!query || `${item.label ?? titles[item.page]} ${group.label}`.toLocaleLowerCase('es').includes(query)),
+  const attention = attentionPages.includes(page);
+  const attentionEntry = attentionPages.find(item => canOpenAdminPage(item, permissions, superAdmin));
+  const visibleGroups = groups.map(group => ({ ...group, items: group.items.map(item => group.label === 'Atención' && attentionEntry ? { ...item, page: attentionEntry } : item).filter(item =>
+    canOpenAdminPage(item.page, permissions, superAdmin) && (!query || `${item.label ?? titles[item.page]} ${group.label} ${group.label === 'Atención' ? 'chat jugadores externo solicitudes accesos' : ''}`.toLocaleLowerCase('es').includes(query)),
   ) })).filter(group => group.items.length > 0);
 
-  return <div className={`admin-shell admin-theme-${panelTheme}`}>
+  return <div className={`admin-shell${attention ? ' attention-shell' : ''}`}>
     <a className="admin-skip-link" href="#admin-main-content">Ir al contenido</a>
     <button className={`admin-menu-backdrop ${menuOpen ? 'visible' : ''}`} aria-label="Cerrar menú" aria-hidden={!menuOpen} tabIndex={menuOpen ? 0 : -1} onClick={closeMenu} />
     <aside ref={sidebar} id="admin-sidebar" className={`admin-sidebar ${menuOpen ? 'open' : ''}`} aria-label="Menú del panel" inert={compact && !menuOpen}>
@@ -122,30 +119,29 @@ export function AdminShell({ page, counts, permissions, superAdmin, staffName, a
         {visibleGroups.map((group, index) => {
           const expanded = !!query || !collapsed.has(group.label);
           const groupId = `admin-nav-${index}`;
-          const total = group.items.reduce((sum, item) => sum + (item.count ? counts[item.count] : 0), 0);
+          const total = group.items.reduce((sum, item) => sum + (item.count ? displayCounts[item.count] : 0), 0);
           return <section className="admin-nav-group" key={group.label}>
             <h2><button type="button" className="admin-nav-group-toggle" aria-expanded={expanded} aria-controls={groupId} onClick={() => setCollapsed(old => { const next = new Set(old); if (next.has(group.label)) next.delete(group.label); else next.add(group.label); return next; })}><span>{group.label}</span>{!expanded && total > 0 && <small>{total}</small>}<ChevronDown size={12} className={expanded ? 'is-expanded' : ''} aria-hidden="true" /></button></h2>
-            <div id={groupId} hidden={!expanded}>{group.items.map(({ page: itemPage, Icon, count, label }) => <button type="button" key={itemPage} className={page === itemPage ? 'active' : ''} aria-current={page === itemPage ? 'page' : undefined} onClick={() => go(itemPage)}>
+            <div id={groupId} hidden={!expanded}>{group.items.map(({ page: itemPage, Icon, count, label }) => <button type="button" key={itemPage} className={(page === itemPage || (group.label === 'Atención' && attention)) ? 'active' : ''} aria-current={(page === itemPage || (group.label === 'Atención' && attention)) ? 'page' : undefined} onClick={() => go(itemPage)}>
               <Icon aria-hidden="true" /><span>{label ?? titles[itemPage]}</span>
-              {count && counts[count] > 0 && <strong className="admin-nav-count has-pending" aria-label={`${counts[count]} pendientes`}>{counts[count]}</strong>}
+              {count && displayCounts[count] > 0 && <strong className="admin-nav-count has-pending" aria-label={`${displayCounts[count]} pendientes`}>{displayCounts[count]}</strong>}
             </button>)}</div>
           </section>;
         })}
         {!visibleGroups.length && <p className="admin-menu-empty">No hay secciones con ese nombre.</p>}
       </nav>
       <div className="admin-sidebar-footer">
-        <label className="admin-theme-picker"><Palette size={15} aria-hidden="true" /><span>Apariencia</span><select value={panelTheme} onChange={event => setPanelTheme(normalizePanelTheme(event.target.value))} aria-label="Tema del panel">{panelThemes.map(theme => <option key={theme.key} value={theme.key}>{theme.label}</option>)}</select></label>
         <button className="admin-logout" disabled={busy} onClick={logout}><LogOut aria-hidden="true" /><span>Salir</span></button>
       </div>
     </aside>
     <section className="admin-workspace">
       <header className="admin-topbar">
         <button ref={menuButton} className="admin-menu-toggle" aria-label="Abrir menú" aria-expanded={menuOpen} aria-controls="admin-sidebar" onClick={() => setMenuOpen(true)}><Menu /></button>
-        <div className="admin-breadcrumb"><PanelHomeBrand onHome={() => go('home')} /><strong>{page === 'external-chat-admin' ? 'Opciones de chat' : titles[page]}</strong></div>
+        <div className="admin-breadcrumb"><PanelHomeBrand onHome={() => go('home')} />{attention ? <h1 className="admin-attention-title">Centro de atención</h1> : <strong>{page === 'external-chat-admin' ? 'Opciones de chat' : titles[page]}</strong>}</div>
         <button type="button" className="admin-refresh" disabled={busy} onClick={onRefresh} title="Actualizar los datos del panel"><RefreshCw size={15} aria-hidden="true" /><span>Actualizar</span></button>
         <div className="admin-staff-identity"><span className="admin-staff-avatar">{avatarUrl ? <img src={avatarUrl} alt="" /> : staffName.slice(0, 1).toUpperCase()}</span><span><strong>{staffName}</strong><small>{superAdmin ? 'Superadministrador' : 'Cajero'}</small></span></div>
       </header>
-      <main id="admin-main-content" tabIndex={-1} className={`app admin admin-content page-${page}`}>{children}</main>
+      <main id="admin-main-content" tabIndex={-1} className={`app admin admin-content page-${page}`}>{attention ? <AttentionCenter page={page} counts={counts} permissions={permissions} superAdmin={superAdmin} navigate={go}>{children}</AttentionCenter> : children}</main>
     </section>
   </div>;
 }

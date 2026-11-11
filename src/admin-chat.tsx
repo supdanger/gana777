@@ -1,3 +1,6 @@
+import { appendQuickReply, chatQuickReplies } from './chat-quick-replies';
+import { AttentionPlayerDialog } from './attention-player-dialog';
+import { AttentionConversationList, useAttentionList } from './attention-conversation-list';
 import type { InboxPagination } from './inbox-data';
 import { InboxPager } from './inbox-pager';
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
@@ -16,25 +19,25 @@ export type ChatInboxRow = {
   last_message_id: string; last_sender_id: string; last_body: string; last_created_at: string;
   completed_at: string | null; completed_by: string | null; last_source?: 'app' | 'external';
 };
-type Filter = 'pending' | 'all' | 'completed';
+type Filter = 'pending' | 'waiting' | 'all' | 'completed';
 const PAGE_SIZE = 50;
 
-function shortDate(value: string) {
-  const when = new Date(value);
-  const today = new Date();
-  return when.toDateString() === today.toDateString()
-    ? new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit' }).format(when)
-    : new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: 'short' }).format(when);
-}
 
-export function AdminChat({ inbox, selectedId, demo, canManageExternalLinks, onSelect, onChanged, pagination }: {
-  pagination?: InboxPagination;
+export function AdminChat({ inbox, selectedId, demo, canManageExternalLinks, onSelect, onChanged, pagination, canDeposit = false, canWithdrawal = false }: {
+  pagination?: InboxPagination; canDeposit?: boolean; canWithdrawal?: boolean;
   inbox: ChatInboxRow[]; selectedId: string; demo: boolean; canManageExternalLinks: boolean;
   onSelect: (id: string) => void; onChanged: () => void;
 }) {
+  const [showPlayerData, setShowPlayerData] = useState(false);
+  useEffect(() => setShowPlayerData(false), [selectedId]);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const composer = useRef<HTMLTextAreaElement>(null);
+  const sendLock = useRef(false);
+  const draft = drafts[selectedId] ?? '';
+  const { listRef, select, threadHeadingRef } = useAttentionList(selectedId, onSelect);
   const [messages, setMessages] = useState<Message[]>([]);
   const [search, setSearch] = useState(pagination?.search ?? '');
-  const [filter, setFilter] = useState<Filter>(pagination?.filter ?? 'pending');
+  const [filter, setFilter] = useState<Filter>(pagination?.filter ?? 'all');
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -157,8 +160,10 @@ export function AdminChat({ inbox, selectedId, demo, canManageExternalLinks, onS
 
   async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!supabase || demo || sending || sendingEntry || !selectedId || selected?.completed_at) return;
+    if (!supabase || demo || sendLock.current || sending || sendingEntry || !selectedId || selected?.completed_at || updatingStatus) return;
     const form = event.currentTarget;
+    const sentDraft = draft;
+    sendLock.current = true;
     setSending(true); setError(''); setNotice('');
     try {
       const raw = String(new FormData(form).get('message') ?? '').trim();
@@ -181,12 +186,27 @@ export function AdminChat({ inbox, selectedId, demo, canManageExternalLinks, onS
       if (activeThreadId.current === selectedId) {
         setMessages(old => old.some(item => item.id === data.id) ? old : [...old, data as Message]);
         form.reset(); setImage(null);
+        if (imageInput.current) imageInput.current.value = '';
       }
+      setDrafts(old => {
+        if ((old[selectedId] ?? '') !== sentDraft) return old;
+        const next = { ...old }; delete next[selectedId]; return next;
+      });
       onChanged();
       const { error: pushError } = await supabase.functions.invoke('send-user-push', { body: { message_id: data.id } });
       if (pushError && activeThreadId.current === selectedId) setNotice('Respuesta enviada. El usuario la verá en el chat y en sus avisos; el push no pudo salir.');
     } catch (cause) { if (activeThreadId.current === selectedId) setError(publicError(cause)); }
-    finally { setSending(false); }
+    finally { sendLock.current = false; setSending(false); }
+  }
+
+  function insertQuickReply(id: string) {
+    const reply = chatQuickReplies.find(item => item.id === id);
+    if (!reply) return;
+    const next = appendQuickReply(draft, reply.body);
+    if (next === null) { setError('La respuesta supera los 2000 caracteres. Acortá el borrador antes de insertarla.'); return; }
+    setError('');
+    setDrafts(old => ({ ...old, [selectedId]: next }));
+    composer.current?.focus();
   }
 
   async function sendEntry() {
@@ -259,42 +279,41 @@ export function AdminChat({ inbox, selectedId, demo, canManageExternalLinks, onS
   const visible = pagination ? inbox : inbox.filter(row => {
     if (filter === 'pending' && !needsChatReply(row)) return false;
     if (filter === 'completed' && !row.completed_at) return false;
+    if (filter === 'waiting' && (row.completed_at || needsChatReply(row))) return false;
     if (!query) return true;
     return [row.username, row.display_name, entryPreview(row.last_body), row.user_id]
       .some(value => value?.toLocaleLowerCase('es').includes(query));
-  });
+  }).sort((a, b) => filter === 'pending' ? a.last_created_at.localeCompare(b.last_created_at) || a.last_message_id.localeCompare(b.last_message_id) : 0);
 
-  return <section className={`admin-chat regular-chat-admin-view${selectedId ? ' has-selection' : ''}`} aria-label="Bandeja de conversaciones">
-    <div className="admin-chat-heading"><div><h1>Chat</h1><p>Respondé las consultas de los jugadores desde una sola bandeja.</p></div><span>{pending} por responder</span></div>
+  return <section className={`admin-chat regular-chat-admin-view attention-list-view${selectedId ? ' has-selection' : ''}`} aria-label="Bandeja de conversaciones">
+    <div className="admin-chat-heading"><div><h2>Chats de jugadores</h2><p>Respondé las consultas de los jugadores desde una sola bandeja.</p></div><span>{pending} por responder</span></div>
+    {selectedId && <div className="attention-thread-toolbar"><button type="button" className="attention-return" onClick={() => onSelect('')}><ArrowLeft size={17} />Volver a conversaciones</button>{selected && <button type="button" onClick={() => setShowPlayerData(true)}>Ver datos del jugador</button>}</div>}
     <div className="admin-chat-layout">
-      <aside className="admin-chat-inbox" aria-label="Conversaciones">
+      <aside hidden={!!selectedId} className="admin-chat-inbox" aria-label="Conversaciones">
         <div className="admin-chat-inbox-header"><strong>Conversaciones</strong><small>{pagination?.all ?? inbox.length} en total</small></div>
         <label className="admin-chat-search"><Search size={18} aria-hidden="true" /><span className="sr-only">Buscar conversación</span><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Usuario o último mensaje" /></label>
         <div className="admin-chat-filters" role="group" aria-label="Filtrar conversaciones">
           <button type="button" className={filter === 'pending' ? 'active' : ''} aria-pressed={filter === 'pending'} onClick={() => setFilter('pending')}>Por responder <span>{pending}</span></button>
+          <button type="button" className={filter === 'waiting' ? 'active' : ''} aria-pressed={filter === 'waiting'} onClick={() => setFilter('waiting')}>Esperando al jugador</button>
           <button type="button" className={filter === 'all' ? 'active' : ''} aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>Todas</button>
           <button type="button" className={filter === 'completed' ? 'active' : ''} aria-pressed={filter === 'completed'} onClick={() => setFilter('completed')}>Completadas <span>{completed}</span></button>
         </div>
-        <div className="admin-chat-list">
-          {visible.length ? visible.map(row => <button type="button" key={row.user_id} className={`admin-chat-item${selectedId === row.user_id ? ' active' : ''}`} aria-current={selectedId === row.user_id ? 'true' : undefined} onClick={() => onSelect(row.user_id)}>
-            <span className="admin-chat-avatar">{title(row).slice(0, 1).toUpperCase()}</span>
-            <span className="admin-chat-item-main"><span className="admin-chat-item-top"><strong>{title(row)}</strong><time dateTime={row.last_created_at}>{shortDate(row.last_created_at)}</time></span><span className="admin-chat-preview">{row.completed_at ? 'Completado · ' : ''}{row.last_source === 'external' ? 'Burbuja · ' : ''}{row.last_sender_id !== row.user_id ? 'Soporte: ' : ''}{entryPreview(row.last_body)}</span></span>
-            {needsChatReply(row) && <span className="admin-chat-unanswered" aria-label="Por responder" />}
-          </button>) : <p className="admin-chat-list-empty">{query ? 'No encontramos conversaciones con esa búsqueda.' : filter === 'pending' ? 'No hay consultas por responder.' : filter === 'completed' ? 'No hay conversaciones completadas.' : 'Todavía no hay conversaciones.'}</p>}
-        </div>
+        <AttentionConversationList listRef={listRef} onSelect={select} rows={visible.map(row => ({ id: row.user_id, name: title(row), preview: row.last_body, origin: row.last_source === 'external' ? 'Burbuja' : 'Portal', timestamp: row.last_created_at, pending: needsChatReply(row), completed: !!row.completed_at, fromSupport: row.last_sender_id !== row.user_id }))} empty={query ? 'No encontramos conversaciones con esa búsqueda.' : filter === 'pending' ? 'No hay consultas por responder.' : filter === 'waiting' ? 'No hay conversaciones esperando al jugador.' : filter === 'completed' ? 'No hay conversaciones completadas.' : 'Todavía no hay conversaciones.'} />
         <InboxPager pagination={pagination} />
       </aside>
-      <section className="admin-chat-thread" aria-label={selected ? `Conversación con ${title(selected)}` : 'Seleccioná una conversación'}>
+      <section hidden={!selectedId} className="admin-chat-thread" aria-label={selected ? `Conversación con ${title(selected)}` : 'Seleccioná una conversación'}>
         {selected ? <>
-          <header className="admin-chat-thread-header"><button type="button" className="admin-chat-back" aria-label="Volver a conversaciones" onClick={() => onSelect('')}><ArrowLeft size={19} /></button><span className="admin-chat-avatar">{title(selected).slice(0, 1).toUpperCase()}</span><div><strong>{title(selected)}</strong>{selectedSubtitle && <small>{selectedSubtitle}</small>}</div>{selected.username && <button type="button" className="admin-chat-copy" onClick={() => void copyUsername()} aria-label="Copiar nombre de usuario">{copied ? <Check size={16} /> : <Copy size={16} />}<span>{copied ? 'Copiado' : 'Copiar usuario'}</span></button>}</header>
+          <header className="admin-chat-thread-header"><button type="button" className="admin-chat-back" aria-label="Volver a conversaciones" onClick={() => onSelect('')}><ArrowLeft size={19} /></button><span className="admin-chat-avatar">{title(selected).slice(0, 1).toUpperCase()}</span><div><strong ref={threadHeadingRef} tabIndex={-1}>{title(selected)}</strong>{selectedSubtitle && <small>{selectedSubtitle}</small>}</div>{selected.username && <button type="button" className="admin-chat-copy" onClick={() => void copyUsername()} aria-label="Copiar nombre de usuario">{copied ? <Check size={16} /> : <Copy size={16} />}<span>{copied ? 'Copiado' : 'Copiar usuario'}</span></button>}</header>
           <div className="admin-chat-actions"><button type="button" className={selected.completed_at ? 'admin-chat-reopen' : 'admin-chat-complete'} disabled={demo || updatingStatus || sending || sendingEntry} onClick={() => void updateStatus(!selected.completed_at)}>{selected.completed_at ? <RotateCcw size={16} /> : <CircleCheck size={16} />}{updatingStatus ? 'Guardando…' : selected.completed_at ? 'Reabrir chat' : 'Marcar como completado'}</button></div>
           {!!externalLinks.length && <div className="admin-chat-linked"><div><Link2 size={16} /><strong>Burbuja vinculada</strong></div>{externalLinks.map(link => <span key={link.id}><small>{link.nickname}</small>{canManageExternalLinks && <button type="button" disabled={demo || unlinking} onClick={() => void unlinkExternal(link.id, link.nickname)}><Unlink2 size={14} /> Desvincular</button>}</span>)}</div>}
           <div className="admin-chat-messages" ref={messageLog} role="log" aria-live="polite" aria-relevant="additions text" onScroll={event => { const element = event.currentTarget; stickToBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80; }}>{hasMore && <button type="button" className="admin-chat-older" disabled={loadingOlder} onClick={() => void loadOlder()}>{loadingOlder ? 'Cargando…' : 'Ver mensajes anteriores'}</button>}{loading && <p className="admin-chat-list-empty">Cargando conversación…</p>}{messages.filter(message => message.user_id === selectedId).map(message => <div className={`message ${message.sender_id !== message.user_id ? 'mine' : ''}`} key={message.id}><p className={isEntryBody(message.body) ? 'is-entry' : undefined}>{message.body === 'Imagen adjunta' && message.attachment_path ? '' : <ChatMessageText body={message.body} interactive={false} />}{message.attachment_path && <ChatImage path={message.attachment_path} source={message.source} />}</p><small>{message.source === 'external' ? 'Burbuja · ' : ''}{message.sender_id !== message.user_id ? 'Soporte · ' : ''}{date(message.created_at)}</small></div>)}</div>
           {(error || notice) && <p className={`admin-chat-feedback${error ? ' is-error' : ''}`} role={error ? 'alert' : 'status'}>{error || notice}</p>}
           {!selected.completed_at && <EntryLinkBar id="admin-chat-entry-user" username={entryUser} onUsername={setEntryUser} disabled={demo || sending || sendingEntry || updatingStatus} onSend={() => void sendEntry()} />}
-          {!selected.completed_at && <form className="admin-chat-composer" onSubmit={event => void send(event)}><label htmlFor="admin-chat-message" className="sr-only">Responder a {title(selected)}</label>{imagePreview && <div className="chat-image-preview"><img src={imagePreview} alt="Imagen seleccionada" /><span>{image?.name}</span><button type="button" aria-label="Quitar imagen" onClick={() => { setImage(null); if (imageInput.current) imageInput.current.value = ''; }}><X size={16} /></button></div>}<textarea id="admin-chat-message" name="message" placeholder="Escribí tu respuesta…" maxLength={2000} rows={2} required={!image} disabled={sending || sendingEntry || demo || updatingStatus} onKeyDown={onComposerKeyDown} /><input ref={imageInput} className="chat-file-input" type="file" accept="image/*" disabled={sending || sendingEntry || demo || updatingStatus} onChange={event => setImage(event.target.files?.[0] ?? null)} /><button type="button" className="admin-chat-image-button" aria-label="Adjuntar imagen de la galería" disabled={sending || sendingEntry || demo || updatingStatus} onClick={() => imageInput.current?.click()}><Images size={18} /></button><button type="submit" disabled={sending || sendingEntry || demo || updatingStatus} aria-label="Enviar respuesta"><Send size={18} /> Enviar</button><small>Enter para enviar · Shift + Enter para nueva línea</small></form>}
+          {!selected.completed_at && <form className="admin-chat-composer" onSubmit={event => void send(event)}><label htmlFor="admin-chat-message" className="sr-only">Responder a {title(selected)}</label><div className="chat-quick-replies"><label htmlFor="player-chat-quick-reply">Respuestas rápidas</label><select id="player-chat-quick-reply" value="" disabled={sending || sendingEntry || updatingStatus || demo} onChange={event => insertQuickReply(event.target.value)}><option value="">Elegir una respuesta…</option>{chatQuickReplies.map(reply => <option key={reply.id} value={reply.id}>{reply.label}</option>)}</select><small>Se agrega al borrador. Podés editarla antes de enviar.</small></div>{imagePreview && <div className="chat-image-preview"><img src={imagePreview} alt="Imagen seleccionada" /><span>{image?.name}</span><button type="button" aria-label="Quitar imagen" onClick={() => { setImage(null); if (imageInput.current) imageInput.current.value = ''; }}><X size={16} /></button></div>}<textarea ref={composer} value={draft} onChange={event => setDrafts(old => ({ ...old, [selectedId]: event.target.value }))} id="admin-chat-message" name="message" placeholder="Escribí tu respuesta…" maxLength={2000} rows={2} required={!image} disabled={sending || sendingEntry || demo || updatingStatus} onKeyDown={onComposerKeyDown} /><input ref={imageInput} className="chat-file-input" type="file" accept="image/*" disabled={sending || sendingEntry || demo || updatingStatus} onChange={event => setImage(event.target.files?.[0] ?? null)} /><button type="button" className="admin-chat-image-button" aria-label="Adjuntar imagen de la galería" disabled={sending || sendingEntry || demo || updatingStatus} onClick={() => imageInput.current?.click()}><Images size={18} /></button><button type="submit" disabled={sending || sendingEntry || demo || updatingStatus} aria-label="Enviar respuesta"><Send size={18} /> Enviar</button><small>{draft.length}/2000 · Enter para enviar · Shift + Enter para nueva línea</small></form>}
         </> : <div className="admin-chat-placeholder"><MessageCircle size={38} /><h2>Elegí una conversación</h2><p>Vas a ver el historial y responder desde acá.</p></div>}
       </section>
+
     </div>
+    {selected && showPlayerData && <AttentionPlayerDialog key={`${selected.user_id}:${canDeposit}:${canWithdrawal}`} userId={selected.user_id} username={title(selected)} demo={demo} canDeposit={canDeposit} canWithdrawal={canWithdrawal} onClose={() => setShowPlayerData(false)} />}
   </section>;
 }

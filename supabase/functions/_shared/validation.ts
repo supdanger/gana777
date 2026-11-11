@@ -60,6 +60,12 @@ export function parseAmount(raw: unknown): number {
   if (amount === null) throw new InputError('Ingresá un monto válido, con hasta dos decimales.');
   return amount;
 }
+export const MINIMUM_WITHDRAWAL_AMOUNT = 5000;
+export function parseWithdrawalAmount(raw: unknown): number {
+  const amount = parseAmount(raw);
+  if (amount < MINIMUM_WITHDRAWAL_AMOUNT) throw new InputError('El retiro mínimo es de $5.000.');
+  return amount;
+}
 export function parseUuid(raw: unknown): string {
   if (typeof raw !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) throw new InputError('La solicitud no es válida.');
   return raw;

@@ -1,7 +1,7 @@
 import { supabase } from './lib';
 import { searchPattern, searchFilter } from './query-utils';
 
-export type InboxFilter = 'pending' | 'all' | 'completed';
+export type InboxFilter = 'pending' | 'waiting' | 'all' | 'completed';
 export type InboxPagination = {
   search: string; filter: InboxFilter; page: number; total: number; all: number; pending: number; completed: number; loading: boolean;
   onQuery: (search: string, filter: InboxFilter) => void;
@@ -12,8 +12,16 @@ export type ExternalSummary = { thread_id: string; last_sender_type: string; com
 export const INBOX_PAGE_SIZE = 50;
 
 export function inboxIds(rows: (ChatSummary | ExternalSummary)[], filter: InboxFilter): string[] {
-  return rows.filter(row => filter === 'completed' ? !!row.completed_at : filter === 'all' || (!row.completed_at && ('user_id' in row ? row.last_sender_id === row.user_id : row.last_sender_type === 'visitor')))
-    .map(row => 'user_id' in row ? row.user_id : row.thread_id);
+  const matches = rows.filter(row => {
+    if (filter === 'all') return true;
+    if (filter === 'completed') return !!row.completed_at;
+    if (row.completed_at) return false;
+    const unanswered = 'user_id' in row ? row.last_sender_id === row.user_id : row.last_sender_type === 'visitor';
+    return filter === 'pending' ? unanswered : !unanswered;
+  });
+  // Summaries arrive newest first. Reverse before pagination to prioritize older pending messages.
+  if (filter === 'pending') matches.reverse();
+  return matches.map(row => 'user_id' in row ? row.user_id : row.thread_id);
 }
 
 // The current database exposes pending as a comparison of two columns. Until

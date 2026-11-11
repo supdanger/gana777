@@ -30,9 +30,9 @@ const external = Array.from({ length: 80 }, (_, i) => ({ thread_id: uid(700 + i)
 const records = [];
 const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH || globSync(`${homedir()}/.cache/ms-playwright/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell`)[0] });
 mkdirSync('/tmp/gana777-browser-checks', { recursive: true });
-async function openApp(admin, mobile = false, queue = null, bonusPlan = null) {
+async function openApp(admin, mobile = false, queue = null, bonusPlan = null, chatPlan = null, loginPlan = null) {
   const context = await browser.newContext({ viewport: mobile ? { width: 390, height: 844 } : { width: 1440, height: 1000 }, serviceWorkers: 'block', reducedMotion: 'reduce' });
-  await context.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), { key: storageKey, value: session(admin, bonusPlan?.now ? Date.parse(bonusPlan.now) : Date.now()) });
+  if (!loginPlan) await context.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), { key: storageKey, value: session(admin, bonusPlan?.now ? Date.parse(bonusPlan.now) : Date.now()) });
   await context.routeWebSocket('**/*', socket => socket.close());
   const calls = [];
   const errors = [];
@@ -46,7 +46,12 @@ async function openApp(admin, mobile = false, queue = null, bonusPlan = null) {
     let total = 0;
     let single = false;
     const resource = url.pathname.split('/').at(-1);
-    if (url.pathname.includes('/auth/v1/')) body = resource === 'user' ? account(admin) : session(admin);
+    if (url.pathname.includes('/auth/v1/') && resource === 'token' && loginPlan) {
+      loginPlan.attempts++;
+      if (loginPlan.rejectNext) { loginPlan.rejectNext = false; return route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ error: 'invalid_grant', error_description: 'Invalid login credentials' }) }); }
+      body = session(admin);
+    }
+    else if (url.pathname.includes('/auth/v1/')) body = resource === 'user' ? account(admin) : session(admin);
     else if (url.pathname.includes('/functions/') && resource === 'submit-deposit' && bonusPlan?.receipt) {
       const receipt = bonusPlan.receipt;
       receipt.submissions++;
@@ -61,6 +66,13 @@ async function openApp(admin, mobile = false, queue = null, bonusPlan = null) {
       if (bonusPlan?.entryExpired) return route.fulfill({ status: 410, contentType: 'application/json', body: JSON.stringify({ error: 'expired' }) });
       if (bonusPlan?.entryFailNext) { bonusPlan.entryFailNext = false; return route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }); }
       body = session(false);
+    }
+    else if (url.pathname.includes('/functions/') && resource === 'player-access' && chatPlan) {
+      const args = req.postDataJSON();
+      if (args.action === 'admin-list') body = { ok: true, requests: Array.from({ length: 4 }, (_, i) => ({ id: uid(30000 + i), username: `solicitante${i}`, referral_code: i ? null : 'equipo', status: ['pending', 'approved', 'approved', 'rejected'][i], player_user_id: i === 1 || i === 2 ? uid(31000 + i) : null, has_personal_url: i === 2, created_at: stamp(i), updated_at: stamp(i), latest_message: { sender: 'player', body: `Consulta de acceso ${i}`, created_at: stamp(i) } })) };
+      else if (args.action === 'admin-messages') body = { ok: true, messages: [{ id: 1, sender: 'player', body: `Mensaje de la solicitud ${args.request_id}`, created_at: stamp(0) }], casino_url: '' };
+      else if (args.action === 'admin-count') body = { ok: true, pending_count: 2 };
+      else return route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ error: 'Esta prueba no permite modificar accesos.' }) });
     }
     else if (url.pathname.includes('/functions/')) body = { ok: true, pending_count: 0, requests: [] };
     else if (url.pathname.includes('/storage/')) return route.abort();
@@ -94,6 +106,10 @@ async function openApp(admin, mobile = false, queue = null, bonusPlan = null) {
         }
       }
       else if (resource === 'get_deposit_queue_mode') return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ code: 'PGRST202', message: 'Function not available in legacy fixture' }) });
+      else if (resource === 'create_withdrawal' && bonusPlan?.withdrawalTest) {
+        const args = req.postDataJSON(); bonusPlan.submissions = (bonusPlan.submissions || 0) + 1; bonusPlan.savedWithdrawal = args;
+        body = { ...requestRows[0], id: uid(32000), user_id: uid(1), kind: 'withdrawal', amount: Number(args.p_amount), status: 'pending', holder: args.p_holder, cbu: args.p_cbu, alias: args.p_alias, created_at: new Date().toISOString(), approved_at: null }; single = true;
+      }
       else if (resource === 'is_admin') body = admin;
       else if (resource === 'get_admin_context') { body = { is_super_admin: true, username: 'admin', display_name: 'Operador prueba', avatar_path: null, permissions: {} }; single = true; }
       else if (resource === 'get_my_session_revoked_at') body = null;
@@ -104,6 +120,13 @@ async function openApp(admin, mobile = false, queue = null, bonusPlan = null) {
       else if (resource === 'get_bonus_counter_dashboard') body = { active: { id: 1, started_at: stamp(0), summary: { counters: [{ key: 'fixed-1000', title: 'Bono + $1.000', loads: 41, bonusTotal: 41000 }, { key: 'fixed-2500', title: 'Bono + $2.500', loads: 17, bonusTotal: 42500 }, { key: 'none', title: 'Sin bono', loads: 11, bonusTotal: 0 }, { key: 'percent-100', title: 'Bono 100%', loads: 6, bonusTotal: 30000 }], totalLoads: 75, withoutBonus: 11, totalBonusGranted: 113500, freeSpinsGranted: 0 } }, history: [] };
       else if (resource === 'assign_bank_account') { body = { assignment_id: uid(999), id: uid(998), bank: 'Banco prueba', holder: 'Prueba Banco', cbu: '0123456789012345678901', alias: 'prueba.banco' }; single = true; }
     } else {
+      if (resource === 'messages' && req.method() === 'POST' && chatPlan) {
+        const payload = req.postDataJSON();
+        chatPlan.sends.push(payload);
+        if (chatPlan.barrier) await chatPlan.barrier;
+        if (chatPlan.failNextSend) { chatPlan.failNextSend = false; return route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ message: 'No pudimos enviar la respuesta.' }) }); }
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...payload, id: uid(29000 + chatPlan.sends.length), created_at: new Date().toISOString() }) });
+      }
       if (resource === 'promotions') {
         if ((!bonusPlan || bonusPlan.scheduleSupported === false) && url.searchParams.get('select')?.includes('bonus_start_time')) return route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: '42703', message: 'column promotions.bonus_start_time does not exist' }) });
         if (bonusPlan) {
@@ -120,6 +143,8 @@ async function openApp(admin, mobile = false, queue = null, bonusPlan = null) {
         const search = url.searchParams.get('or');
         if (search) body = body.filter(row => [row.username, row.display_name, row.external_user_id, row.phone].some(value => search.includes(`*${value}*`)));
       } else if (resource === 'whatsapp_principals') body = [{ slot: 1, phone: '595981111111', active: true }];
+      else if (resource === 'request_summaries' && bonusPlan?.withdrawalTest) body = [];
+      else if (resource === 'request_summaries' && chatPlan && url.searchParams.has('user_id')) body = [...chatPlan.rows];
       else if (resource === 'request_summaries') body = bonusPlan && !admin ? [...requestRows.filter(row => row.kind !== 'deposit' || row.status !== 'pending'), ...(bonusPlan.receipt?.saved ? [bonusPlan.receipt.saved] : [])] : [...requestRows];
       else if (resource === 'chat_inbox') body = [...chats];
       else if (resource === 'external_chat_inbox') body = [...external];
@@ -150,16 +175,59 @@ async function openApp(admin, mobile = false, queue = null, bonusPlan = null) {
     if (single) headers['content-type'] = 'application/vnd.pgrst.object+json';
     return route.fulfill({ status: 200, headers, body: req.method() === 'HEAD' ? '' : JSON.stringify(body) });
   });
+  if (admin) await context.addInitScript(() => localStorage.setItem('gana777:panel-theme', 'esmeralda'));
   const page = await context.newPage();
   if (bonusPlan?.now) await page.clock.install({ time: new Date(bonusPlan.now) });
   page.on('pageerror', error => errors.push(error.message));
   const appUrl = admin ? (process.env.ADMIN_PREVIEW_URL || 'http://127.0.0.1:5181') : (process.env.USER_PREVIEW_URL || 'http://127.0.0.1:5180');
   await page.goto(appUrl + (bonusPlan?.entryToken ? `/#e=${bonusPlan.entryToken}` : ''));
-  try { await page.waitForSelector(bonusPlan?.entryExpired || bonusPlan?.entryRetry ? '.entry-access-screen' : admin ? '.admin-shell' : '.user-app', { timeout: 20000 }); }
+  try { await page.waitForSelector(loginPlan ? '.user-login' : bonusPlan?.entryExpired || bonusPlan?.entryRetry ? '.entry-access-screen' : admin ? '.admin-shell' : '.user-app', { timeout: 20000 }); }
   catch (error) { console.error(JSON.stringify({ text: await page.locator('body').innerText(), errors, calls }, null, 2)); await page.screenshot({ path: '/tmp/gana777-browser-checks/failure.png', fullPage: true }); throw error; }
   return { context, page, calls, errors };
 }
 try {
+  const loginPlan = { attempts: 0, rejectNext: true };
+  const loginApp = await openApp(false, true, null, null, null, loginPlan);
+  const loginPage = loginApp.page;
+  await loginPage.getByRole('heading', { name: 'Bienvenido', exact: true }).waitFor();
+  await loginPage.waitForFunction(() => document.querySelector('.login-character img')?.naturalWidth > 0);
+  const originalMascot = await loginPage.locator('.login-character img').getAttribute('src');
+  assert.match(originalMascot, /panda-login-transparent/);
+  assert.equal(await loginPage.getByRole('textbox', { name: 'Usuario', exact: true }).count(), 1);
+  for (const [width, height] of [[477, 849], [390, 844], [320, 700], [1440, 1000]]) {
+    await loginPage.setViewportSize({ width, height }); await loginPage.waitForTimeout(100);
+    assert.ok(await loginPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Login sin desborde a ${width}px`);
+    assert.equal(await loginPage.locator('.login-character img').getAttribute('src'), originalMascot);
+    await loginPage.screenshot({ path: `/tmp/gana777-browser-checks/login-refined-${width}.png`, fullPage: true });
+  }
+  await loginPage.setViewportSize({ width: 390, height: 844 });
+  await loginPage.getByRole('textbox', { name: 'Usuario', exact: true }).fill('jugador');
+  await loginPage.locator('#password').fill('PruebaSegura123!');
+  await loginPage.getByRole('button', { name: 'Mostrar contraseña', exact: true }).click();
+  assert.equal(await loginPage.locator('#password').getAttribute('type'), 'text');
+  await loginPage.getByRole('button', { name: 'Ocultar contraseña', exact: true }).click();
+  assert.equal(await loginPage.locator('#password').getAttribute('type'), 'password');
+  await loginPage.getByRole('button', { name: 'Crear usuario', exact: false }).click();
+  await loginPage.locator('.player-access-card').waitFor();
+  await loginPage.locator('.player-access-back').click();
+  await loginPage.locator('.login-card').waitFor();
+  await loginPage.getByRole('textbox', { name: 'Usuario', exact: true }).fill('jugador');
+  await loginPage.locator('#password').fill('PruebaSegura123!');
+  await loginPage.getByRole('button', { name: 'Instalar GANA777', exact: true }).click();
+  await loginPage.getByRole('dialog').waitFor();
+  await loginPage.getByRole('button', { name: 'Cerrar instrucciones', exact: true }).click();
+  await loginPage.getByRole('button', { name: 'Ingresar', exact: true }).click();
+  await loginPage.locator('.login-card .alert.error').waitFor();
+  assert.equal(await loginPage.locator('#email').inputValue(), 'jugador');
+  assert.equal(await loginPage.locator('#password').inputValue(), 'PruebaSegura123!');
+  assert.equal(loginPlan.attempts, 1);
+  await loginPage.getByRole('button', { name: 'Ingresar', exact: true }).click();
+  await loginPage.waitForSelector('.user-app');
+  assert.equal(loginPlan.attempts, 2);
+  assert.deepEqual(loginApp.errors, []);
+  records.push({ app: 'refined-login', checks: ['original panda unchanged', '320 to 1440 px', 'visible username label', 'password visibility', 'access request and return', 'installation instructions', 'failed login preserves fields', 'successful login'] });
+  await loginApp.context.close();
+
   for (const mode of ['success', 'retry', 'expired']) {
     const entryPlan = { offers: [], entryToken: 'a'.repeat(32), entryExpired: mode === 'expired', entryFailNext: mode === 'retry', entryRetry: mode === 'retry' };
     const entry = await openApp(false, true, null, entryPlan);
@@ -207,9 +275,38 @@ try {
   records.push({ app: 'player-mobile', checks: ['initial queries bounded', 'history server pagination', '50 latest messages', 'older messages', 'deposit navigation'], requests: calls.length });
   await context.close();
 
-  const admin = await openApp(true);
+  const withdrawalPlan = { withdrawalTest: true, offers: [], submissions: 0 };
+  const withdrawalApp = await openApp(false, true, null, withdrawalPlan);
+  const wp = withdrawalApp.page;
+  await wp.getByRole('button', { name: /^Retir/ }).click();
+  await wp.getByText('Retiro mínimo: $5.000.', { exact: true }).waitFor();
+  await wp.getByRole('textbox', { name: 'Titular de la cuenta', exact: true }).fill('Persona Prueba');
+  await wp.getByRole('textbox', { name: 'CBU / CVU', exact: true }).fill('0123456789012345678901');
+  const withdrawalInput = wp.getByRole('textbox', { name: 'Monto a retirar en pesos argentinos', exact: true });
+  const withdrawalButton = wp.getByRole('button', { name: 'Solicitar retiro', exact: true });
+  for (const value of ['1', '1000', '4.999', '4.999,99']) {
+    await withdrawalInput.fill(value);
+    await wp.getByText('El retiro mínimo es de $5.000. Ingresá $5.000 o más.', { exact: true }).waitFor();
+    assert.equal(await withdrawalButton.isDisabled(), true);
+    await withdrawalInput.evaluate(element => element.form.requestSubmit());
+    assert.equal(withdrawalPlan.submissions, 0, 'El envío forzado tampoco llama a la RPC por debajo de 5000');
+  }
+  await withdrawalInput.fill('5.000');
+  assert.equal(await withdrawalButton.isEnabled(), true);
+  await withdrawalButton.click();
+  await wp.getByText('Tu solicitud fue enviada. Podés seguir su estado en el historial.', { exact: true }).waitFor();
+  assert.equal(withdrawalPlan.submissions, 1);
+  assert.equal(withdrawalPlan.savedWithdrawal.p_amount, '5000');
+  assert.deepEqual(withdrawalApp.errors, []);
+  records.push({ app: 'minimum-withdrawal', checks: ['explicit 5000 minimum', '4999.99 blocked', 'forced submit blocked', '5000 accepted', 'canonical amount sent once'] });
+  await withdrawalApp.context.close();
+
+  const chatPlan = { failNextSend: true, sends: [], rows: Array.from({ length: 16 }, (_, i) => ({ ...requestRows[i], id: uid(28000 + i), user_id: uid(301), kind: i < 8 ? 'deposit' : 'withdrawal', status: i % 2 ? 'approved' : 'pending', credited_at: i % 2 ? stamp(i + 80) : null, approved_at: i % 2 ? stamp(i + 60) : null })) };
+  const admin = await openApp(true, false, null, null, chatPlan);
   const ap = admin.page;
   const nav = ap.getByRole('navigation', { name: 'Navegación principal', exact: true });
+  assert.equal(await ap.getByRole('combobox', { name: 'Tema del panel', exact: true }).count(), 0);
+  assert.equal(await ap.locator('.admin-shell').evaluate(element => getComputedStyle(element).getPropertyValue('--panel-surface').trim()), '#151219', 'Una preferencia antigua no cambia el tema único');
   if (process.env.PANEL_VISUAL_CHECK || process.argv.includes('--visual')) {
     await ap.waitForSelector('.admin-overview');
     await ap.screenshot({ path: '/tmp/gana777-browser-checks/panel-overview.png', fullPage: true });
@@ -230,11 +327,8 @@ try {
       assert.ok(await ap.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${label}: no horizontal overflow`);
     }
     assert.equal(await ap.locator('.admin-page-guide, .admin-guide-dialog').count(), 0);
-    for (const theme of ['grafito', 'esmeralda', 'dorado', 'negro', 'violeta']) {
-      await ap.getByRole('combobox', { name: 'Tema del panel', exact: true }).selectOption(theme);
-      await ap.waitForFunction(value => document.querySelector('.admin-shell')?.classList.contains(`admin-theme-${value}`), theme);
-      assert.ok(await ap.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
-    }
+    assert.equal(await ap.getByRole('combobox', { name: 'Tema del panel', exact: true }).count(), 0);
+    assert.equal(await ap.locator('.admin-shell').evaluate(element => getComputedStyle(element).getPropertyValue('--panel-surface').trim()), '#151219');
 
   }
   await nav.getByRole('button', { name: 'Usuarios', exact: true }).click();
@@ -248,15 +342,161 @@ try {
   assert.ok(await ap.locator('.withdrawal-summary-button').count() <= 20);
   const parts = admin.calls.filter(call => call.path.endsWith('/withdrawal_parts'));
   assert.ok(parts.length > 0 && parts.every(call => call.query.request_id?.startsWith('in.(')));
-  await nav.getByRole('button', { name: /^Chat \d/ }).click();
+  await nav.getByRole('button', { name: /^Centro de atención/ }).click();
   await ap.waitForSelector('.regular-chat-admin-view .admin-chat-item');
   assert.ok(await ap.locator('.regular-chat-admin-view .admin-chat-item').count() <= 50);
+  const chatRows = ap.locator('.regular-chat-admin-view .admin-chat-item');
+  assert.equal(await ap.locator('.regular-chat-admin-view .admin-chat-inbox').isVisible(), true);
+  assert.equal(await ap.locator('.regular-chat-admin-view .admin-chat-thread').isVisible(), false);
+  await ap.getByRole('button', { name: /^Por responder/ }).click();
+  await ap.waitForFunction(() => document.querySelectorAll('.regular-chat-admin-view .attention-thread-status').length > 0 && [...document.querySelectorAll('.regular-chat-admin-view .attention-thread-status')].every(item => item.classList.contains('is-pending')));
+  const pendingTimes = await chatRows.locator('time').evaluateAll(items => items.map(item => item.dateTime));
+  assert.deepEqual(pendingTimes, [...pendingTimes].sort(), 'Pendientes más antiguos primero');
+  await ap.getByRole('button', { name: 'Esperando al jugador', exact: true }).click();
+  await ap.waitForFunction(() => [...document.querySelectorAll('.regular-chat-admin-view .attention-thread-status')].every(item => item.textContent === 'Esperando al jugador'));
+  await ap.getByRole('button', { name: /^Por responder/ }).click();
+  await ap.waitForFunction(() => [...document.querySelectorAll('.regular-chat-admin-view .attention-thread-status')].some(item => item.textContent === 'Por responder'));
   await ap.locator('.regular-chat-admin-view .admin-chat-item').first().click();
   await ap.waitForSelector('.admin-chat-thread .message');
   await ap.getByRole('button', { name: 'Ver mensajes anteriores', exact: true }).click();
   await ap.waitForFunction(() => document.querySelectorAll('.admin-chat-thread .message').length === 100);
+  assert.equal(await ap.locator('.regular-chat-admin-view .admin-chat-inbox').isVisible(), false);
+  assert.equal(await ap.locator('.attention-player-context').count(), 0, 'La ficha se consulta a pedido');
+  await ap.getByRole('button', { name: 'Ver datos del jugador', exact: true }).click();
+  await ap.locator('.attention-pending-counts').getByText('4', { exact: true }).first().waitFor();
+  const scopedOperations = () => admin.calls.filter(call => call.path.endsWith('/request_summaries') && call.query.user_id);
+  assert.ok(scopedOperations().every(call => call.query.status === 'eq.pending'), 'Historial cerrado no consulta movimientos recientes');
+  await ap.locator('.attention-player-context details summary').first().click();
+  await ap.getByText('Referencia', { exact: true }).first().waitFor();
+  await ap.getByRole('button', { name: 'Ver historial', exact: true }).click();
+  await ap.getByText('8 cargas · Más recientes primero.', { exact: true }).waitFor();
+  assert.equal(await ap.locator('.attention-recent-operations article').count(), 5);
+  await ap.locator('.attention-history-pager').getByRole('button', { name: 'Siguiente', exact: true }).click();
+  await ap.waitForFunction(() => document.querySelectorAll('.attention-recent-operations article').length === 3);
+  await ap.getByRole('group', { name: 'Tipo de operación del historial' }).getByRole('button', { name: 'Retiros', exact: true }).click();
+  await ap.getByText('8 retiros · Más recientes primero.', { exact: true }).waitFor();
+  assert.ok(scopedOperations().every(call => call.query.user_id === `eq.${uid(301)}`));
+  assert.ok(scopedOperations().filter(call => !call.query.status).every(call => call.query.limit === '5' && ['eq.deposit', 'eq.withdrawal'].includes(call.query.kind)));
+  await ap.getByRole('button', { name: 'Cerrar historial', exact: true }).click();
+  await ap.getByRole('button', { name: 'Cerrar datos del jugador', exact: true }).click();
+  const composer = ap.locator('#admin-chat-message');
+  await ap.getByRole('combobox', { name: 'Respuestas rápidas', exact: true }).selectOption('greeting');
+  assert.equal(await composer.inputValue(), 'Hola, ¿en qué podemos ayudarte?');
+  assert.equal(chatPlan.sends.length, 0, 'Insertar plantilla no envía mensajes');
+  await composer.fill('Mi respuesta editada.');
+  await ap.getByRole('combobox', { name: 'Respuestas rápidas', exact: true }).selectOption('checking');
+  const firstDraft = await composer.inputValue();
+  assert.ok(firstDraft.startsWith('Mi respuesta editada.\n'));
+  await ap.getByRole('button', { name: 'Volver a conversaciones', exact: true }).click();
+  await chatRows.nth(1).click();
+  assert.equal(await composer.inputValue(), '');
+  await composer.fill('Borrador del segundo jugador');
+  await ap.getByRole('button', { name: 'Volver a conversaciones', exact: true }).click();
+  await chatRows.first().click();
+  assert.equal(await composer.inputValue(), firstDraft, 'Cada jugador conserva su borrador');
+  await ap.getByRole('button', { name: 'Enviar respuesta', exact: true }).click();
+  await ap.locator('.admin-chat-feedback.is-error').waitFor();
+  assert.equal(await composer.inputValue(), firstDraft, 'El fallo conserva el texto');
+  let releaseSend;
+  chatPlan.barrier = new Promise(resolve => { releaseSend = resolve; });
+  await composer.evaluate(element => { element.form.requestSubmit(); element.form.requestSubmit(); });
+  await ap.waitForFunction(() => document.querySelector('#admin-chat-message').disabled);
+  releaseSend();
+  await ap.waitForFunction(() => document.querySelector('#admin-chat-message').value === '' && !document.querySelector('#admin-chat-message').disabled);
+  chatPlan.barrier = null;
+  assert.equal(chatPlan.sends.length, 2, 'Un fallo y un reintento; sin envíos duplicados');
+  assert.equal(chatPlan.sends[1].body, firstDraft);
+  assert.equal(chatPlan.sends[1].user_id, uid(301));
+  await ap.getByRole('button', { name: 'Volver a conversaciones', exact: true }).click();
+  await chatRows.nth(1).click();
+  assert.equal(await composer.inputValue(), 'Borrador del segundo jugador');
+  await ap.getByRole('button', { name: 'Volver a conversaciones', exact: true }).click();
+  await chatRows.first().click();
+  assert.ok(admin.calls.filter(call => call.path.endsWith('/request_summaries') && call.query.user_id).some(call => call.query.status === 'eq.pending' && call.query.limit === '3'));
+  await ap.evaluate(() => { document.activeElement?.blur(); window.scrollTo(0, 0); });
   await ap.screenshot({ path: '/tmp/gana777-browser-checks/admin-chat.png', fullPage: true });
-  await nav.getByRole('button', { name: /^Chat externo/ }).click();
+  for (const [width, height] of [[1440, 900], [1366, 768], [1100, 700], [1024, 600], [955, 900], [390, 844], [320, 700]]) {
+    await ap.setViewportSize({ width, height });
+    await ap.waitForTimeout(100);
+    assert.ok(await ap.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Atención sin desborde horizontal a ${width}px`);
+    assert.ok(await ap.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1), `Atención cabe en ${width}x${height} sin bajar la página: ${JSON.stringify(await ap.evaluate(() => ({ height: innerHeight, doc: document.documentElement.scrollHeight, html: getComputedStyle(document.documentElement).height, body: document.body.getBoundingClientRect().height, bodyMin: getComputedStyle(document.body).minHeight, root: document.getElementById('root')?.getBoundingClientRect().height, shell: document.querySelector('.attention-shell')?.getBoundingClientRect().height })))}`);
+    assert.ok(await composer.evaluate(element => element.getBoundingClientRect().bottom <= innerHeight && element.getBoundingClientRect().top >= 0 && element.getBoundingClientRect().right <= innerWidth + 1), 'Respuesta dentro de la pantalla');
+    assert.ok(await ap.locator('.admin-chat-layout').evaluate(element => element.getBoundingClientRect().right <= innerWidth + 1), 'Panel completo dentro del ancho visible');
+    assert.ok(await ap.locator('.regular-chat-admin-view .admin-chat-messages').evaluate(element => element.clientHeight >= 100), 'Espacio útil para leer mensajes');
+    await ap.evaluate(() => document.activeElement?.blur());
+    await ap.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await ap.screenshot({ path: `/tmp/gana777-browser-checks/attention-compact-${width}.png` });
+    await ap.getByRole('button', { name: 'Ver datos del jugador', exact: true }).click();
+    assert.ok(await ap.getByRole('dialog', { name: 'Datos del jugador', exact: true }).isVisible());
+    assert.ok(await ap.getByRole('dialog', { name: 'Datos del jugador', exact: true }).evaluate(element => element.getBoundingClientRect().bottom <= innerHeight + 1), 'Ficha dentro de la pantalla');
+    await ap.keyboard.press('Escape');
+    assert.equal(await ap.getByRole('dialog', { name: 'Datos del jugador', exact: true }).count(), 0);
+    await ap.getByRole('button', { name: 'Volver a conversaciones', exact: true }).click();
+    assert.ok(await ap.locator('.regular-chat-admin-view .admin-chat-inbox').isVisible());
+    assert.equal(await ap.locator('.regular-chat-admin-view .admin-chat-thread').isVisible(), false);
+    await ap.screenshot({ path: `/tmp/gana777-browser-checks/attention-list-${width}.png` });
+    await chatRows.first().click();
+  }
+  await ap.setViewportSize({ width: 1440, height: 1000 });
+  await ap.getByRole('button', { name: 'Volver a conversaciones', exact: true }).click();
+  await chatRows.nth(1).click();
+  await ap.getByRole('button', { name: 'Ver datos del jugador', exact: true }).click();
+  await ap.getByText('No hay operaciones pendientes.', { exact: true }).waitFor();
+  await ap.getByRole('button', { name: 'Ver historial', exact: true }).click();
+  await ap.getByRole('group', { name: 'Tipo de operación del historial' }).getByRole('button', { name: 'Retiros', exact: true }).click();
+  await ap.getByText('Este jugador todavía no tiene retiros.', { exact: true }).waitFor();
+  for (const width of [1024, 390]) {
+    await ap.setViewportSize({ width, height: 900 });
+    await ap.waitForTimeout(100);
+    await ap.evaluate(() => { document.activeElement?.blur(); window.scrollTo(0, 0); });
+    await ap.waitForFunction(() => { const pane = document.querySelector('.attention-player-dialog'); return pane && pane.getBoundingClientRect().height > 0 && pane.getBoundingClientRect().bottom <= innerHeight + 1; });
+    assert.ok(await ap.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    await ap.locator('.attention-player-context').screenshot({ path: `/tmp/gana777-browser-checks/attention-player-empty-${width}.png` });
+  }
+  await ap.setViewportSize({ width: 1440, height: 1000 });
+  await ap.getByRole('button', { name: 'Cerrar datos del jugador', exact: true }).click();
+  await ap.getByRole('navigation', { name: 'Bandejas de atención' }).getByRole('button', { name: /^Solicitudes de acceso/ }).click();
+  await ap.waitForSelector('.access-admin-item');
+  assert.equal(await ap.locator('.access-admin-item').count(), 4);
+  assert.equal(await ap.locator('.access-admin-thread').isVisible(), false);
+  const accessFilter = ap.getByRole('group', { name: 'Filtrar solicitudes', exact: true });
+  await accessFilter.getByRole('button', { name: 'Por configurar', exact: true }).click();
+  assert.equal(await ap.locator('.access-admin-item').count(), 2);
+  await ap.getByRole('textbox', { name: 'Buscar solicitud', exact: true }).fill('solicitante0');
+  assert.equal(await ap.locator('.access-admin-item').count(), 1);
+  await ap.getByRole('button', { name: 'Abrir solicitud de solicitante0', exact: true }).click();
+  await ap.locator('.access-admin-message').waitFor();
+  assert.equal(await ap.locator('.access-admin-inbox').isVisible(), false);
+  assert.equal(await ap.locator('.access-admin-thread').isVisible(), true);
+  assert.equal(await ap.locator('.access-admin-create').getByRole('textbox', { name: 'Usuario para el acceso' }).inputValue(), 'solicitante0');
+  assert.ok(await ap.getByRole('button', { name: 'Crear usuario y enviar acceso', exact: true }).isVisible());
+  for (const width of [1440, 955, 390, 320]) {
+    await ap.setViewportSize({ width, height: 820 }); await ap.waitForTimeout(100);
+    assert.ok(await ap.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    assert.ok(await ap.locator('.access-admin-layout').evaluate(el => el.getBoundingClientRect().right <= innerWidth + 1 && el.getBoundingClientRect().bottom <= innerHeight + 1));
+    await ap.screenshot({ path: `/tmp/gana777-browser-checks/access-detail-${width}.png` });
+  }
+  await ap.getByRole('button', { name: 'Volver a solicitudes', exact: true }).click();
+  assert.equal(await ap.locator('.access-admin-thread').isVisible(), false);
+  assert.equal(await ap.getByRole('textbox', { name: 'Buscar solicitud', exact: true }).inputValue(), 'solicitante0');
+  assert.equal(await accessFilter.getByRole('button', { name: 'Por configurar', exact: true }).getAttribute('aria-pressed'), 'true');
+  await ap.getByRole('textbox', { name: 'Buscar solicitud', exact: true }).fill('');
+  await accessFilter.getByRole('button', { name: 'Todas', exact: true }).click();
+  await ap.waitForFunction(() => document.querySelectorAll('.access-admin-item').length === 4);
+  assert.equal(await ap.locator('.access-admin-item').count(), 4);
+  await ap.setViewportSize({ width: 955, height: 820 }); await ap.waitForTimeout(100);
+  await ap.screenshot({ path: '/tmp/gana777-browser-checks/access-list.png' });
+  await ap.getByRole('button', { name: 'Crear usuario', exact: true }).click();
+  assert.equal(await ap.locator('.access-admin-inbox').isVisible(), false);
+  await ap.locator('.access-admin-manual-form').waitFor();
+  await ap.getByRole('button', { name: 'Volver a solicitudes', exact: true }).click();
+  assert.equal(await ap.locator('.access-admin-inbox').isVisible(), true);
+  await ap.getByRole('button', { name: 'Abrir solicitud de solicitante2', exact: true }).click();
+  await ap.getByRole('button', { name: 'Guardar y enviar nuevos datos', exact: true }).waitFor();
+  assert.equal(await ap.locator('.access-admin-create').getByRole('textbox', { name: 'Usuario para el acceso' }).getAttribute('readonly'), '');
+  await ap.getByRole('button', { name: 'Volver a solicitudes', exact: true }).click();
+  await ap.setViewportSize({ width: 1440, height: 1000 });
+  await ap.getByRole('navigation', { name: 'Bandejas de atención' }).getByRole('button', { name: /^Chat externo/ }).click();
   await ap.waitForSelector('.external-chat-admin-view .admin-chat-item');
   await ap.locator('.external-chat-admin-view .admin-chat-item').first().click();
   await ap.waitForSelector('.external-chat-admin-view .message');
@@ -266,7 +506,7 @@ try {
   await ap.waitForSelector('.admin-login');
   assert.equal(await ap.locator('.admin-chat-item, .player-card').count(), 0);
   assert.deepEqual(admin.errors, []);
-  records.push({ app: 'admin-desktop', checks: ['20 players per page', 'server search finds old player', '10 withdrawals per queue', 'parts restricted to visible ids', '50 conversations per page', 'older chat messages', 'external chat pagination', 'logout clears private screens'], requests: admin.calls.length });
+  records.push({ app: 'admin-desktop', checks: ['20 players per page', 'server search finds old player', '10 withdrawals per queue', 'parts restricted to visible ids', '50 conversations per page', 'older chat messages', 'editable quick replies', 'per-player drafts', 'failed send preserves text', 'duplicate send blocked', 'operation details', 'on-demand paginated player history', 'external chat pagination', 'logout clears private screens'], requests: admin.calls.length });
   await admin.context.close();
   if (process.env.PANEL_VISUAL_CHECK || process.argv.includes('--visual')) {
     const mobile = await openApp(true, true);

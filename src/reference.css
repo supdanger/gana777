@@ -2154,3 +2154,8 @@ html.player-portal :is(img, video) {
   outline-offset: 2px;
   box-shadow: 0 0 0 1px #ff536b;
 }
+
+/* Minimum withdrawal amount, shared by the portal's visual themes. */
+.user-app.page-withdrawal :is(.amount-minimum-note, .amount-minimum-error) { display: block; margin-top: 7px; font-size: 12px; line-height: 1.5; }
+.user-app.page-withdrawal .amount-minimum-note { color: var(--portal-muted, #b9afcc); }
+.user-app.page-withdrawal .amount-minimum-error { color: #ff9caa; font-weight: 700; }
