@@ -306,7 +306,7 @@ try {
   const ap = admin.page;
   const nav = ap.getByRole('navigation', { name: 'Navegación principal', exact: true });
   assert.equal(await ap.getByRole('combobox', { name: 'Tema del panel', exact: true }).count(), 0);
-  assert.equal(await ap.locator('.admin-shell').evaluate(element => getComputedStyle(element).getPropertyValue('--panel-surface').trim()), '#151219', 'Una preferencia antigua no cambia el tema único');
+  assert.equal(await ap.locator('.admin-shell').evaluate(element => getComputedStyle(element).getPropertyValue('--panel-surface').trim()), '#1b1b1b', 'Una preferencia antigua no cambia el tema único');
   if (process.env.PANEL_VISUAL_CHECK || process.argv.includes('--visual')) {
     await ap.waitForSelector('.admin-overview');
     await ap.screenshot({ path: '/tmp/gana777-browser-checks/panel-overview.png', fullPage: true });
@@ -328,7 +328,7 @@ try {
     }
     assert.equal(await ap.locator('.admin-page-guide, .admin-guide-dialog').count(), 0);
     assert.equal(await ap.getByRole('combobox', { name: 'Tema del panel', exact: true }).count(), 0);
-    assert.equal(await ap.locator('.admin-shell').evaluate(element => getComputedStyle(element).getPropertyValue('--panel-surface').trim()), '#151219');
+    assert.equal(await ap.locator('.admin-shell').evaluate(element => getComputedStyle(element).getPropertyValue('--panel-surface').trim()), '#1b1b1b');
 
   }
   await nav.getByRole('button', { name: 'Usuarios', exact: true }).click();

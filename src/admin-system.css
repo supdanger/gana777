@@ -9,23 +9,23 @@
   animation: admin-brand-shine 4.5s ease-in-out infinite;
   --panel-brand-gold: #e4ca95;
   --panel-brand-shine: linear-gradient(110deg, #b79a66 0%, #e4ca95 30%, #fff0cd 48%, #e4ca95 66%, #b79a66 100%);
-  --panel-bg: #0c0b10;
-  --panel-sidebar: #111015;
-  --panel-surface: #151219;
-  --panel-surface-raised: #24202c;
-  --panel-surface-soft: #111015;
-  --panel-surface-inset: #100e14;
-  --panel-hover: #292330;
-  --panel-border: #342c3e;
-  --panel-border-soft: #26212d;
-  --panel-text: #f5f3ff;
-  --panel-muted: #bbb2c6;
-  --panel-subtle: #a69bb3;
-  --panel-accent: #c4abdf;
-  --panel-accent-strong: #79549d;
-  --panel-accent-soft: #2c2238;
-  --panel-accent-border: #816499;
-  --panel-accent-text: #ede1f7;
+  --panel-bg: #101010;
+  --panel-sidebar: #151515;
+  --panel-surface: #1b1b1b;
+  --panel-surface-raised: #292929;
+  --panel-surface-soft: #151515;
+  --panel-surface-inset: #121212;
+  --panel-hover: #333333;
+  --panel-border: #3c3c3c;
+  --panel-border-soft: #2a2a2a;
+  --panel-text: #f3f3f3;
+  --panel-muted: #bdbdbd;
+  --panel-subtle: #a5a5a5;
+  --panel-accent: #d4d4d4;
+  --panel-accent-strong: #555555;
+  --panel-accent-soft: #303030;
+  --panel-accent-border: #666666;
+  --panel-accent-text: #eeeeee;
   --panel-success: #3dffb0;
   --panel-success-bg: #0d3d2c;
   --panel-success-border: #1fbf7a;
@@ -295,10 +295,10 @@
     to { background-position: 100% 50%; }
   }
   .admin-shell .admin-overview :is(.overview-metric, .bonus-counter-grid .card, .bonus-counter-totals .card, .bonus-shift-history, .deposit-leaderboard, .deposit-leaderboard-list li) {
-    background-image: linear-gradient(115deg, #101014 0%, #1c1525 50%, #2c1b3a 100%);
+    background-image: linear-gradient(115deg, #171717 0%, #202020 50%, #292929 100%);
     background-size: 200% 100%;
     background-repeat: no-repeat;
-    animation: admin-data-card-enter .36s cubic-bezier(.2, .75, .25, 1) both, admin-violet-card-gradient 24s ease-in-out .36s infinite alternate;
+    animation: admin-data-card-enter .36s cubic-bezier(.2, .75, .25, 1) both;
   }
 }
 
@@ -703,6 +703,13 @@ html:has(.attention-shell), body:has(.attention-shell) { height: 100dvh; min-hei
 .admin-shell.attention-shell .admin-chat-linked button { border-color: transparent; }
 .admin-shell.attention-shell .attention-player-context :is(.attention-operation, .attention-pending-counts > div, .attention-history-types) { border-color: transparent; }
 .admin-shell.attention-shell .attention-player-context .attention-history-types button[aria-pressed="true"] { border-color: transparent; background: var(--panel-accent-soft); }
+.admin-shell .admin-content :is(.primary, .cashier-create-submit, .account-form-actions button:first-child, .principal-create > button, .bonus-form-actions button:first-child, .contact-link-form button),
+.admin-shell.attention-shell .admin-chat-composer button:not(.admin-chat-image-button) { border-color: #666; background: linear-gradient(180deg, #555, #414141); color: #fff; }
+.admin-shell .admin-content :is(.primary, .cashier-create-submit, .account-form-actions button:first-child, .principal-create > button, .bonus-form-actions button:first-child, .contact-link-form button):hover:not(:disabled),
+.admin-shell.attention-shell .admin-chat-composer button:not(.admin-chat-image-button):hover:not(:disabled) { background: #666; }
+.admin-shell.attention-shell .admin-chat-messages .message.mine > p { background: #363636; }
+.admin-shell .admin-navigation .admin-nav-group button.active,
+.admin-shell .admin-content :is(.admin-chat-filters, .deposit-leaderboard-tabs, .platform-admin-tabs, .theme-card-slots) button.active { border-color: #777; background: #303030; color: #fff; box-shadow: inset 3px 0 0 var(--panel-brand-gold); }
 .admin-shell :is(.admin-chat-list, .admin-chat-messages, .access-admin-list, .access-admin-thread, .attention-player-dialog, .attention-player-context, .admin-navigation) { scrollbar-width: thin; scrollbar-color: #51465e transparent; }
 .admin-shell ::-webkit-scrollbar { width: 6px; height: 6px; }
 .admin-shell ::-webkit-scrollbar-track { background: transparent; }
