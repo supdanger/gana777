@@ -1,3 +1,4 @@
+import { AccessSecurity } from './access-security';
 import { useAttentionList } from './attention-conversation-list';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useAdminRefreshVersion } from './admin-refresh';
@@ -9,7 +10,7 @@ import { safeHttpsLink } from './security';
 
 type AccessMessage = { id: number; sender: 'player' | 'admin'; body: string; created_at: string };
 type Latest = { sender: string; body: string; created_at: string } | null;
-type AccessRequest = { id: string; username: string; referral_code: string | null; status: 'pending' | 'approved' | 'rejected'; player_user_id: string | null; has_personal_url: boolean; created_at: string; updated_at: string; latest_message: Latest; same_ip_usernames?: string[] };
+type AccessRequest = { id: string; username: string; referral_code: string | null; status: 'pending' | 'approved' | 'rejected'; player_user_id: string | null; has_personal_url: boolean; created_at: string; updated_at: string; latest_message: Latest; same_ip_usernames?: string[]; manual_ip_blocked?: boolean; can_block_ip?: boolean };
 function requestPreview(item: AccessRequest) {
   if (item.same_ip_usernames?.length) return `Aviso interno · misma IP que @${item.same_ip_usernames.join(', @')}`;
   if (item.status === 'approved' && !item.has_personal_url) return 'Acceso creado · falta enlace personal';
@@ -19,6 +20,7 @@ function requestPreview(item: AccessRequest) {
 export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy: boolean; action: (task: () => Promise<void>) => Promise<void> }) {
   const [requests, setRequests] = useState<AccessRequest[]>([]);
   const [selectedId, setSelectedId] = useState('');
+  const [securityOpen, setSecurityOpen] = useState(false);
   const [messages, setMessages] = useState<AccessMessage[]>([]);
   const [loading, setLoading] = useState(!demo);
   const [filter, setFilter] = useState<'setup' | 'all'>('all');
@@ -36,15 +38,20 @@ export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy:
   const [casinoUrl, setCasinoUrl] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const log = useRef<HTMLDivElement>(null);
-  const adminRefresh = useAdminRefreshVersion();
-  const selected = requests.find(item => item.id === selectedId) ?? null;
+  const adminRefresh = useAdminRefreshVersion('access-requests');
+  const manualRefresh = useAdminRefreshVersion();
+  const loadedCasinoUrl = useRef('');
+  const selectedSnapshot = useRef<AccessRequest | null>(null);
+  const currentSelected = requests.find(item => item.id === selectedId);
+  if (currentSelected) selectedSnapshot.current = currentSelected;
+  const selected = currentSelected ?? (selectedSnapshot.current?.id === selectedId ? selectedSnapshot.current : null);
   const needsSetup = (item: AccessRequest) => item.status === 'pending' || (item.status === 'approved' && !item.has_personal_url);
   const visible = requests.filter(item => (filter === 'all' || needsSetup(item)) && (!search.trim() || `${item.username} ${item.referral_code ?? ''} ${item.latest_message?.body ?? ''}`.toLocaleLowerCase('es').includes(search.trim().replace(/^@/, '').toLocaleLowerCase('es'))));
 
   const detailOpen = !!selectedId || manualCreateOpen;
   const { listRef, select, threadHeadingRef } = useAttentionList(manualCreateOpen ? 'manual' : selectedId, setSelectedId);
   function returnToList() {
-    setSelectedId(''); setManualCreateOpen(false);
+    setSelectedId(''); setManualCreateOpen(false); setSecurityOpen(false);
     setPassword(''); setCasinoUrl(''); setShowPassword(false);
     setManualPassword(''); setManualShowPassword(false); setManualError('');
   }
@@ -70,11 +77,11 @@ export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy:
   useEffect(() => {
     if (!selectedId || demo) { setMessages([]); return; }
     let alive = true;
-    void invokeAdminPlayerAccess({ action: 'admin-messages', request_id: selectedId }).then(result => { if (alive) { setMessages(result.messages as AccessMessage[]); setCasinoUrl(typeof result.casino_url === 'string' ? result.casino_url : ''); } }).catch(error => { if (alive) setThreadError(error instanceof Error ? error.message : 'No pudimos cargar la conversación.'); });
+    void invokeAdminPlayerAccess({ action: 'admin-messages', request_id: selectedId }).then(result => { if (alive) { setMessages(result.messages as AccessMessage[]); const nextUrl = typeof result.casino_url === 'string' ? result.casino_url : ''; const priorUrl = loadedCasinoUrl.current; loadedCasinoUrl.current = nextUrl; setCasinoUrl(current => current === priorUrl ? nextUrl : current); } }).catch(error => { if (alive) setThreadError(error instanceof Error ? error.message : 'No pudimos cargar la conversación.'); });
     return () => { alive = false; };
-  }, [selectedId, demo, adminRefresh]);
+  }, [selectedId, demo, manualRefresh, selected?.latest_message?.created_at, currentSelected ? 0 : adminRefresh]);
   useEffect(() => { if (log.current) log.current.scrollTop = log.current.scrollHeight; }, [messages]);
-  useEffect(() => { setPlayerUsername(selected?.username ?? ''); setPassword(''); setCasinoUrl(''); setShowPassword(false); }, [selectedId]);
+  useEffect(() => { loadedCasinoUrl.current = ''; setPlayerUsername(selected?.username ?? ''); setPassword(''); setCasinoUrl(''); setShowPassword(false); }, [selectedId]);
 
   async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!selected) return;
@@ -100,7 +107,7 @@ export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy:
       await invokeAdminPlayerAccess({ action: selected.status === 'approved' ? 'admin-configure' : 'admin-approve', request_id: selected.id, username: finalUsername, password, casino_url: link });
       setPassword(''); setCasinoUrl(''); setShowPassword(false); setThreadError('');
       const result = await invokeAdminPlayerAccess({ action: 'admin-messages', request_id: selected.id });
-      setMessages(result.messages as AccessMessage[]); setCasinoUrl(typeof result.casino_url === 'string' ? result.casino_url : ''); await refresh();
+      setMessages(result.messages as AccessMessage[]); const nextUrl = typeof result.casino_url === 'string' ? result.casino_url : ''; const priorUrl = loadedCasinoUrl.current; loadedCasinoUrl.current = nextUrl; setCasinoUrl(current => current === priorUrl ? nextUrl : current); await refresh();
     });
   }
   async function createManualPlayer(event: FormEvent<HTMLFormElement>) {
@@ -169,6 +176,8 @@ export function AdminPlayerAccess({ demo, busy, action }: { demo: boolean; busy:
           </form>
         </> : selected ? <>
           <header><span className="access-admin-avatar"><UserRound size={20} /></span><div><strong ref={threadHeadingRef} tabIndex={-1}>@{selected.username}</strong><small>{selected.referral_code ? `Código recomendado: @${selected.referral_code}` : 'Sin código de recomendado'} · {selected.status === 'pending' ? 'Pendiente' : selected.status === 'approved' ? 'Acceso creado' : 'Cerrada'}</small></div></header>
+          <div className="access-admin-network-note"><span>{selected.manual_ip_blocked ? 'IP bloqueada para nuevas solicitudes.' : 'Revisá coincidencias, pausas y bloqueos desde la ficha de seguridad.'}</span> <button type="button" disabled={busy || demo} onClick={() => setSecurityOpen(true)}>Seguridad y dispositivos</button></div>
+          {securityOpen && <AccessSecurity hasAccount={!!selected.player_user_id} key={selected.id} requestId={selected.id} username={selected.username} onClose={() => setSecurityOpen(false)} onChanged={refresh} />}
           {!!selected.same_ip_usernames?.length && <p className="access-admin-network-note" role="status">Aviso interno: comparte IP con @{selected.same_ip_usernames.join(', @')}. Esto no impide crear el usuario.</p>}
           <div className="access-admin-messages" ref={log} role="log" aria-live="polite">{messages.map(message => <article key={message.id} className={`access-admin-message${message.sender === 'admin' ? ' from-admin' : ''}`}><p>{message.body}</p><time>{date(message.created_at)}</time></article>)}</div>
           {(selected.status === 'pending' || selected.status === 'approved') && <>

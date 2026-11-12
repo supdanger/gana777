@@ -1,3 +1,4 @@
+import { useAdminRefreshVersion } from './admin-refresh';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Clock3 } from 'lucide-react';
 import { assertFormFields, InputError, parseAlias, parseBank, parseCbu, parseHolder } from '../supabase/functions/_shared/validation';
@@ -28,6 +29,7 @@ function persistError(error: { code?: string; message?: string }): Error {
 }
 
 export function AccountAdmin({ demo, busy, action }: { demo: boolean; busy: boolean; action: (task: () => Promise<void>) => Promise<void> }) {
+  const adminRefresh = useAdminRefreshVersion('accounts');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedShift, setSelectedShift] = useState<ShiftKey>('morning');
   const [loading, setLoading] = useState(!demo && !!supabase);
@@ -50,7 +52,7 @@ export function AccountAdmin({ demo, busy, action }: { demo: boolean; busy: bool
       setAccounts(attachThemeAssets((data ?? []) as Record<string, unknown>[], (themes ?? []) as { key: string; background_path: string | null; logo_path: string | null }[]));
     });
     return () => { alive = false; };
-  }, [demo]);
+  }, [demo, adminRefresh]);
 
   function readAccount(form: FormData) {
     assertFormFields(form, ['bank', 'holder', 'cbu', 'alias', 'shift_key', 'theme_key', 'theme_banner', 'included_banner', 'phone_number']);

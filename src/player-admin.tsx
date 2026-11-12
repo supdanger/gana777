@@ -1,3 +1,5 @@
+import { useAdminRefreshVersion } from './admin-refresh';
+import { AccountSecurityDialog } from './account-security';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ChevronDown, KeyRound, LogOut, Pencil, Phone, Search, UserPlus, UserRound, X } from 'lucide-react';
 import { InputError } from '../supabase/functions/_shared/validation';
@@ -27,11 +29,13 @@ async function functionError(error: unknown, data: unknown, fallback: string): P
 }
 
 export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boolean; action: (task: () => Promise<void>) => Promise<void> }) {
+  const adminRefresh = useAdminRefreshVersion('users');
   const [players, setPlayers] = useState<Player[]>([]);
   const [principals, setPrincipals] = useState<Principal[]>([]);
   const [loading, setLoading] = useState(!demo && !!supabase);
   const [loadError, setLoadError] = useState('');
   const [editId, setEditId] = useState<string | null>(null);
+  const [securityPlayer, setSecurityPlayer] = useState<Player | null>(null);
   const [passwordId, setPasswordId] = useState<string | null>(null);
   const [referrerQuery, setReferrerQuery] = useState('');
   const [referrerId, setReferrerId] = useState<string | null>(null);
@@ -81,7 +85,7 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
     const controller = new AbortController();
     const timer = window.setTimeout(() => void refresh(controller.signal), playerQuery.trim() ? 250 : 0);
     return () => { window.clearTimeout(timer); controller.abort(); requestVersion.current++; };
-  }, [demo, playerQuery, playerPage]);
+  }, [demo, playerQuery, playerPage, adminRefresh]);
   useEffect(() => {
     if (demo || !supabase) return;
     let alive = true;
@@ -182,6 +186,7 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
   const playerPages = Math.max(1, Math.ceil(playerTotal / pageSize));
 
   return <section className="player-admin" aria-labelledby="players-title">
+    {securityPlayer && <AccountSecurityDialog userId={securityPlayer.user_id} username={securityPlayer.username || securityPlayer.display_name} onClose={() => setSecurityPlayer(null)} />}
     <div className="account-heading"><div><h1 id="players-title">Jugadores</h1><p>Creá sus accesos y asigná el WhatsApp principal que los atenderá.</p></div><strong>{playerTotal} jugadores</strong></div>
     <form className={`player-create${createOpen ? ' is-open' : ' is-collapsed'}`} onSubmit={createPlayer}>
       <button type="button" className="player-form-toggle" aria-expanded={createOpen} aria-controls="player-create-fields" onClick={() => setCreateOpen(open => !open)}><span className="player-form-title"><UserPlus /><span><strong>Nuevo jugador</strong><small>{createOpen ? 'El teléfono y el principal son obligatorios.' : 'Abrí para crear una cuenta.'}</small></span></span><ChevronDown size={19} className={createOpen ? 'is-open' : ''} /></button>
@@ -217,7 +222,7 @@ export function PlayerAdmin({ demo, busy, action }: { demo: boolean; busy: boole
       <p className="player-referrer">{player.referrer_user_id ? <>Recomendado por <strong>{player.referrer_name || 'Jugador registrado'}</strong></> : 'Sin recomendador registrado · No genera premios por recomendación.'}</p>
       {editId === player.user_id && <form className="player-edit-form" onSubmit={event => void updatePlayer(event, player)}><label>Teléfono<input name="phone" type="tel" maxLength={30} defaultValue={player.phone ? `+${player.phone}` : ''} required /></label><label>ID de la plataforma<input name="external_user_id" maxLength={80} defaultValue={player.external_user_id ?? ''} /></label><label>WhatsApp principal<select name="whatsapp_principal_slot" defaultValue={player.whatsapp_principal_slot ?? ''} required><option value="" disabled>Seleccionar principal</option>{activePrincipals.map(item => <option key={item.slot} value={item.slot}>Principal {item.slot} · +{item.phone}</option>)}</select></label><div><button disabled={busy}>Guardar datos</button><button type="button" onClick={() => setEditId(null)}>Cancelar</button></div></form>}
       {passwordId === player.user_id && <form className="player-password-form" onSubmit={event => void changePassword(event, player)}><input name="password" type="password" minLength={8} maxLength={72} autoComplete="new-password" placeholder="Nueva contraseña" required /><button disabled={busy}>Guardar contraseña</button><button type="button" onClick={() => setPasswordId(null)}>Cancelar</button></form>}
-      <div className="player-card-actions"><button type="button" onClick={() => { setPasswordId(null); setEditId(player.user_id); }}><Pencil />Editar datos</button><button type="button" onClick={() => { setEditId(null); setPasswordId(player.user_id); }}><KeyRound />Cambiar contraseña</button><button type="button" onClick={() => void forceLogout(player)} disabled={busy || demo}><LogOut />Forzar salida</button><a href={player.whatsapp_principal_phone ? `https://wa.me/${player.whatsapp_principal_phone}` : undefined} aria-disabled={!player.whatsapp_principal_phone} target="_blank" rel="noopener noreferrer"><Phone />Abrir principal</a></div>
+      <div className="player-card-actions"><button type="button" disabled={busy || demo} onClick={() => setSecurityPlayer(player)}>Seguridad / bloquear usuario</button><button type="button" onClick={() => { setPasswordId(null); setEditId(player.user_id); }}><Pencil />Editar datos</button><button type="button" onClick={() => { setEditId(null); setPasswordId(player.user_id); }}><KeyRound />Cambiar contraseña</button><button type="button" onClick={() => void forceLogout(player)} disabled={busy || demo}><LogOut />Forzar salida</button><a href={player.whatsapp_principal_phone ? `https://wa.me/${player.whatsapp_principal_phone}` : undefined} aria-disabled={!player.whatsapp_principal_phone} target="_blank" rel="noopener noreferrer"><Phone />Abrir principal</a></div>
     </article>)}</div>}
     {playerPages > 1 && <nav className="loads-pager" aria-label="Páginas de jugadores"><button type="button" disabled={!playerPage || loading} onClick={() => setPlayerPage(page => page - 1)}>Anterior</button><span>{playerPage + 1} de {playerPages} · {playerTotal} jugadores</span><button type="button" disabled={playerPage + 1 >= playerPages || loading} onClick={() => setPlayerPage(page => page + 1)}>Siguiente</button></nav>}
   </section>;

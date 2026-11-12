@@ -32,3 +32,8 @@ Una solicitud conserva su monto total y la espera de 24 horas comienza cuando se
 El jugador ve el retiro agrupado en su historial; cada transferencia aparece como «Retiro 1 de 10 · Realizado» o «Pendiente», con su importe y su comprobante. Los comprobantes se guardan en un bucket privado; solo el titular y el personal con permiso de Retiros pueden obtener un enlace temporal de lectura. La interfaz no ofrece edición ni eliminación de estas fotos. Como ocurre con cualquier imagen mostrada en un navegador, no es técnicamente posible impedir capturas de pantalla o que el usuario la guarde por otros medios.
 
 Verificación antes de operar con dinero real: ejecutar `supabase/tests/026_withdrawal_parts_checks.sql` en un proyecto de prueba y comprobar desde el panel una solicitud de $1.000.000, diez fotos, la acreditación del último pago y la vista del historial con una cuenta de jugador. También verificar que otra cuenta no pueda abrir los comprobantes. El test SQL usa una transacción y revierte sus datos ficticios.
+# Pausa opcional por rechazo
+
+La función adicional se documenta en [RETIROS-PAUSA.md](./RETIROS-PAUSA.md).
+Requiere la migración 108, conserva las reglas anteriores y ofrece únicamente
+15 minutos, 2, 6 o 12 horas al rechazar una solicitud sin pagos realizados.

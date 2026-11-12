@@ -1,3 +1,4 @@
+import type { AdminLiveStatus } from './admin-live';
 import { AttentionCenter, attentionPages } from './attention-center';
 import './admin.css';
 import './admin-system.css';
@@ -57,8 +58,8 @@ function sectionLabel(page: Page): string {
   return groups.find(group => group.items.some(item => item.page === page))?.label ?? 'Panel';
 }
 
-export function AdminShell({ page, counts, permissions, superAdmin, staffName, avatarUrl, busy, navigate, logout, onRefresh, children }: {
-  page: Page; counts: PendingCounts; permissions: StaffPermissions; superAdmin: boolean;
+export function AdminShell({ liveStatus, page, counts, permissions, superAdmin, staffName, avatarUrl, busy, navigate, logout, onRefresh, children }: {
+  liveStatus: AdminLiveStatus; page: Page; counts: PendingCounts; permissions: StaffPermissions; superAdmin: boolean;
   staffName: string; avatarUrl: string | null; busy: boolean; navigate: (page: Page) => void;
   logout: () => void; onRefresh: () => void; children: ReactNode;
 }) {
@@ -138,6 +139,7 @@ export function AdminShell({ page, counts, permissions, superAdmin, staffName, a
       <header className="admin-topbar">
         <button ref={menuButton} className="admin-menu-toggle" aria-label="Abrir menú" aria-expanded={menuOpen} aria-controls="admin-sidebar" onClick={() => setMenuOpen(true)}><Menu /></button>
         <div className="admin-breadcrumb"><PanelHomeBrand onHome={() => go('home')} />{attention ? <h1 className="admin-attention-title">Centro de atención</h1> : <strong>{page === 'external-chat-admin' ? 'Opciones de chat' : titles[page]}</strong>}</div>
+        <span className={`admin-live-status is-${liveStatus}`} role="status" title={liveStatus === 'live' ? 'Los cambios llegan automáticamente. No se consultan novedades periódicamente.' : liveStatus === 'demo' ? 'Vista previa sin conexión a datos reales.' : 'La conexión se está recuperando. Podés usar Actualizar como respaldo.'}><i aria-hidden="true" /><span>{liveStatus === 'live' ? 'En vivo' : liveStatus === 'connecting' ? 'Conectando' : liveStatus === 'demo' ? 'Vista previa' : 'Reconectando'}</span></span>
         <button type="button" className="admin-refresh" disabled={busy} onClick={onRefresh} title="Actualizar los datos del panel"><RefreshCw size={15} aria-hidden="true" /><span>Actualizar</span></button>
         <div className="admin-staff-identity"><span className="admin-staff-avatar">{avatarUrl ? <img src={avatarUrl} alt="" /> : staffName.slice(0, 1).toUpperCase()}</span><span><strong>{staffName}</strong><small>{superAdmin ? 'Superadministrador' : 'Cajero'}</small></span></div>
       </header>

@@ -31,7 +31,7 @@ export function BonusCounterAdmin({ demo, demoCounters = [] }: { demo: boolean; 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const adminRefresh = useAdminRefreshVersion();
+  const adminRefresh = useAdminRefreshVersion('home');
 
   const refresh = useCallback(async () => {
     if (!supabase || demo) return;

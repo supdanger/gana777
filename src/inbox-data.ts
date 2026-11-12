@@ -53,3 +53,11 @@ export async function readInboxPage<T>(view: 'chat_inbox' | 'external_chat_inbox
   const byId = new Map((result.data ?? []).map(row => [String((row as unknown as Record<string, unknown>)[idColumn]), row]));
   return { rows: selected.flatMap(id => byId.has(id) ? [byId.get(id) as T] : []), total: matchedIds.length };
 }
+
+export type InboxTotals = { all: number; pending: number; completed: number };
+export async function readLiveInboxPage<T>(external: boolean, filter: InboxFilter, search: string, page: number, signal: AbortSignal): Promise<{ rows: T[]; total: number }> {
+  if (!supabase) return { rows: [], total: 0 };
+  const result = await supabase.rpc('admin_inbox_page', { p_external: external, p_filter: filter, p_search: searchPattern(search), p_page: page }).abortSignal(signal);
+  if (result.error) throw result.error;
+  return result.data as { rows: T[]; total: number };
+}

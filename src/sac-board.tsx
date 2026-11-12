@@ -127,7 +127,7 @@ export function SacBoard({
   const [stations, setStations] = useState<SacStation[]>(() => stationsOrDefaults([]));
   const [phones, setPhones] = useState<SacPhoneOption[]>(demo ? demoSacPhones : []);
   const [loadedShift, setLoadedShift] = useState<string | null>(demo ? 'morning' : null);
-  const adminRefresh = useAdminRefreshVersion();
+  const adminRefresh = useAdminRefreshVersion('shifts');
   const activeShift = liveShift === undefined ? loadedShift : liveShift;
   const shownPhones = phonesForShift(phones, activeShift);
   const [loading, setLoading] = useState(!demo && !!supabase);

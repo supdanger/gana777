@@ -184,6 +184,11 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     }
     reloadRef.current = () => { void refresh(true); };
     void refresh();
+    if (adminApp) {
+      const onChange = () => void refresh(true);
+      window.addEventListener('admin-content-change', onChange);
+      return () => { alive = false; window.removeEventListener('admin-content-change', onChange); };
+    }
     const onFocus = () => { if (document.visibilityState === 'visible') void refresh(); };
     window.addEventListener('focus', onFocus);
     const channel = db.channel('user-content')

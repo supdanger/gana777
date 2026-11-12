@@ -43,6 +43,7 @@ export function AdminExternalChat({ inbox, selectedId, demo, canLink, onSelect, 
   const [sendingEntry, setSendingEntry] = useState(false);
   const log = useRef<HTMLDivElement>(null);
   const adminRefresh = useAdminRefreshVersion();
+  const liveThreadRefresh = useAdminRefreshVersion('external-chat');
   const activeId = useRef(selectedId);
   activeId.current = selectedId;
   const selectedSnapshot = useRef<ExternalChatInboxRow | undefined>(undefined);
@@ -94,7 +95,7 @@ export function AdminExternalChat({ inbox, selectedId, demo, canLink, onSelect, 
         setHasMore((data ?? []).length === 50);
       });
     return () => { alive = false; };
-  }, [selectedId, demo, adminRefresh]);
+  }, [selectedId, demo, adminRefresh, currentSelected?.last_message_id, currentSelected ? 0 : liveThreadRefresh]);
 
   useEffect(() => {
     if (log.current && !loadingOlder) log.current.scrollTop = log.current.scrollHeight;

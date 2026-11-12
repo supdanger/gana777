@@ -723,3 +723,5 @@ html:has(.attention-shell), body:has(.attention-shell) { height: 100dvh; min-hei
 .admin-shell.attention-shell .admin-content :is(.admin-chat-entry input, .admin-chat-composer textarea),
 .admin-shell.attention-shell .admin-content :is(.admin-chat-entry input, .admin-chat-composer textarea):focus { border-color: transparent; outline: none; box-shadow: none; }
 .admin-shell.attention-shell .admin-content :is(.admin-chat-entry input, .admin-chat-composer textarea):focus-visible { border-color: transparent; outline: none; background: var(--panel-hover); box-shadow: inset 2px 0 0 var(--panel-accent-border); }
+
+.admin-shell .admin-live-status{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;color:var(--panel-muted);font-size:11px}.admin-shell .admin-live-status i{width:6px;height:6px;border-radius:50%;background:#bfa46e}.admin-shell .admin-live-status.is-live i{background:#83b89a}.admin-shell .admin-live-status.is-demo i{background:#888}@media(max-width:600px){.admin-shell .admin-live-status span{display:none}}

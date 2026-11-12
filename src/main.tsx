@@ -48,6 +48,8 @@ import { SAC_STATION_KEY, depositRouteLabel, parseSacStation, scopedDepositFilte
 const AdminShell = lazy(() => import('./admin-shell').then(module => ({ default: module.AdminShell })));
 const AdminOverview = lazy(() => import('./admin-overview').then(module => ({ default: module.AdminOverview })));
 import { AdminRefreshProvider } from './admin-refresh';
+import { useAdminLive } from './admin-live';
+import type { AdminLiveScope } from './admin-live-batch';
 import { pendingChatCount, pendingRequestCount } from './admin-navigation';
 const CashierAdmin = lazy(() => import('./cashier-admin').then(module => ({ default: module.CashierAdmin })));
 const ContactAdmin = lazy(() => import('./contact-admin').then(module => ({ default: module.ContactAdmin })));
@@ -81,7 +83,7 @@ import { registerPortalWorker } from './worker-registration';
 import { cachedResource, clearResourceCache, invalidateResourcePrefix } from './resource-cache';
 import { MESSAGE_PAGE_SIZE, mergeMessages } from './query-utils';
 import { readRequestPage, readWithdrawalParts } from './request-data';
-import { inboxIds, readInboxPage, type ChatSummary, type ExternalSummary, type InboxFilter } from './inbox-data';
+import { readLiveInboxPage, type InboxTotals, type InboxFilter } from './inbox-data';
 import './styles.css';
 import './mobile.css';
 import './reference.css';
@@ -125,6 +127,8 @@ function App() {
   const { settings, initialReady, initialError, retryInitialLoad } = useContent();
   const [session, setSession] = useState<Session | null>(null);
   const currentSessionId = useRef(session?.user.id);
+  const sessionRealtimeReady = useRef(false);
+  const checkSessionNow = useRef<(() => void) | null>(null);
   currentSessionId.current = session?.user.id;
   const [loading, setLoading] = useState(!!supabase);
   const [demo, setDemo] = useState(false);
@@ -162,8 +166,8 @@ function App() {
   const [chatBubbleOpen, setChatBubbleOpen] = useState(false);
   const [chatInbox, setChatInbox] = useState<ChatInboxRow[]>([]);
   const [chatReload, setChatReload] = useState(0);
-  const [chatSummary, setChatSummary] = useState<ChatSummary[]>([]);
-  const [externalSummary, setExternalSummary] = useState<ExternalSummary[]>([]);
+  const [chatSummary, setChatSummary] = useState<InboxTotals>({ all: 0, pending: 0, completed: 0 });
+  const [externalSummary, setExternalSummary] = useState<InboxTotals>({ all: 0, pending: 0, completed: 0 });
   const [chatQuery, setChatQuery] = useState({ search: '', filter: 'all' as InboxFilter, page: 0 });
   const [externalQuery, setExternalQuery] = useState({ search: '', filter: 'all' as InboxFilter, page: 0 });
   const [chatPageState, setChatPageState] = useState({ total: 0, loading: false });
@@ -201,8 +205,22 @@ function App() {
     setExternalChatReload(value => value + 1);
     setLeaderboardReload(value => value + 1);
   }, []);
+  const [adminLiveVersions, setAdminLiveVersions] = useState<Record<string, number>>({});
+  const onAdminChanges = useCallback((scopes: AdminLiveScope[]) => {
+    setAdminLiveVersions(old => {
+      const next = { ...old };
+      const affected = new Set<string>(scopes);
+      if (scopes.includes('accounts')) affected.add('shifts');
+      if (scopes.some(scope => ['deposit','withdrawal','bonuses','shifts'].includes(scope))) affected.add('home');
+      for (const scope of affected) next[scope] = (next[scope] ?? 0) + 1;
+      return next;
+    });
+    if (scopes.includes('staff')) refreshAdmin();
+    if (scopes.includes('settings') || scopes.includes('bonuses')) window.dispatchEvent(new Event('admin-content-change'));
+  }, [refreshAdmin]);
   const [pendingDepositCount, setPendingDepositCount] = useState(0);
   const [pendingWithdrawalCount, setPendingWithdrawalCount] = useState(0);
+  const [withdrawalPauseRevision, setWithdrawalPauseRevision] = useState(0);
   const [approvedDeposit, setApprovedDeposit] = useState<QueueDeposit | null>(null);
   const [reviewAmount, setReviewAmount] = useState('');
   const depositOperation = useRef<{ selected: QueueDeposit | null; approved: QueueDeposit | null }>({ selected: null, approved: null });
@@ -224,6 +242,7 @@ function App() {
   const playerHistoryReady = useRef(false);
   const playerHistoryClosing = useRef(false);
   const playerPageRef = useRef<Page>('home');
+  const adminLiveStatus = useAdminLive(session?.user.id, adminApp && !demo && staffReady, onAdminChanges, JSON.stringify(staffContext.permissions));
   const currentPageRef = useRef(page);
   const scrollPositions = useRef(new Map<Page, number>());
   const playerPopHandler = useRef<((event: PopStateEvent) => void) | null>(null);
@@ -471,8 +490,8 @@ function App() {
         setMessages([]);
         setChatInbox([]);
         setExternalChatInbox([]);
-        setChatSummary([]);
-        setExternalSummary([]);
+        setChatSummary({ all: 0, pending: 0, completed: 0 });
+        setExternalSummary({ all: 0, pending: 0, completed: 0 });
         setChatQuery({ search: '', filter: 'all', page: 0 });
         setExternalQuery({ search: '', filter: 'all', page: 0 });
         setExternalThread('');
@@ -582,6 +601,7 @@ function App() {
     window.addEventListener('focus', onFocus);
     const ownUser = `user_id=eq.${session.user.id}`;
     let refreshTimer = 0;
+    let withdrawalDirty = false;
     let refreshing = false;
     let queued = false;
     const schedulePlayerRefresh = () => {
@@ -590,6 +610,7 @@ function App() {
       refreshTimer = window.setTimeout(async () => {
         if (refreshing) { queued = true; return; }
         refreshing = true;
+        if (withdrawalDirty) { withdrawalDirty = false; setWithdrawalPauseRevision(value => value + 1); }
         await refresh();
         refreshing = false;
         if (alive && queued) { queued = false; schedulePlayerRefresh(); }
@@ -597,12 +618,24 @@ function App() {
       }, 200);
     };
     const channel = db.channel(`updates-${session.user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests', filter: ownUser }, schedulePlayerRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests', filter: ownUser }, payload => { if (('kind' in payload.new && payload.new.kind === 'withdrawal') || ('kind' in payload.old && payload.old.kind === 'withdrawal')) withdrawalDirty = true; schedulePlayerRefresh(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'withdrawal_pauses', filter: ownUser }, () => { withdrawalDirty = true; schedulePlayerRefresh(); })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'user_notifications', filter: ownUser }, payload => {
         if (payload.new.kind === 'withdrawal_paid' && currentPageRef.current === 'profile') setHistoryReload(value => value + 1);
       })
-      .subscribe();
-    return () => { alive = false; window.clearTimeout(refreshTimer); window.removeEventListener('focus', onFocus); void db.removeChannel(channel); };
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'player_session_signals', filter: ownUser }, payload => {
+        const revokedAt = 'revoked_at' in payload.new ? Date.parse(String(payload.new.revoked_at)) : NaN;
+        const signedInAt = Date.parse(session.user.last_sign_in_at ?? session.user.created_at ?? '');
+        if (alive && Number.isFinite(revokedAt) && (!signedInAt || revokedAt >= signedInAt)) {
+          void db.auth.signOut({ scope: 'local' });
+        }
+      })
+      .subscribe(status => {
+        if (!alive) return;
+        sessionRealtimeReady.current = status === 'SUBSCRIBED';
+        if (status === 'SUBSCRIBED') { checkSessionNow.current?.(); setWithdrawalPauseRevision(value => value + 1); }
+      });
+    return () => { alive = false; sessionRealtimeReady.current = false; window.clearTimeout(refreshTimer); window.removeEventListener('focus', onFocus); void db.removeChannel(channel); };
   }, [session?.user.id, sacStation, adminApp, adminRefresh]);
   useEffect(() => {
     if (adminApp || demo || !session || !supabase || (!chatBubbleOpen && page !== 'chat')) return;
@@ -699,20 +732,52 @@ function App() {
     const db = supabase;
     const signedInAt = Date.parse(session.user.last_sign_in_at ?? session.user.created_at ?? '');
     let alive = true;
-    const check = async () => {
-      if (document.visibilityState === 'hidden') return;
-      const { data, error } = await db.rpc('get_my_session_revoked_at');
-      if (!alive || error || !data || !signedInAt) return;
-      if (Date.parse(String(data)) > signedInAt) {
-        await db.auth.signOut();
-      }
+    let checking = false;
+    let lastCheck = 0;
+    const check = async (force = false) => {
+      if (!alive || checking || document.visibilityState === 'hidden') return;
+      const interval = sessionRealtimeReady.current ? 180_000 : 15_000;
+      if (!force && Date.now() - lastCheck < interval) return;
+      checking = true; lastCheck = Date.now();
+      try {
+        const { data, error } = await db.rpc('get_my_session_revoked_at');
+        if (!alive) return;
+        if (error?.message?.includes('ACCOUNT_BLOCKED')) {
+          await db.auth.signOut({ scope: 'local' });
+          setError('Tu acceso fue suspendido. Contactá a soporte.');
+          return;
+        }
+        if (error || !data || !signedInAt) return;
+        if (Date.parse(String(data)) > signedInAt) {
+          await db.auth.signOut({ scope: 'local' });
+        }
+      } finally { checking = false; }
     };
-    const onVisible = () => { if (document.visibilityState === 'visible') void check(); };
-    void check();
-    const timer = window.setInterval(() => void check(), 180_000);
+    const onVisible = () => { if (document.visibilityState === 'visible') void check(true); };
+    const reconnectCheck = () => { if (Date.now() - lastCheck >= 15_000) void check(true); };
+    checkSessionNow.current = reconnectCheck;
+    void check(true);
+    const timer = window.setInterval(() => void check(), 15_000);
     document.addEventListener('visibilitychange', onVisible);
-    return () => { alive = false; window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
+    return () => { alive = false; if (checkSessionNow.current === reconnectCheck) checkSessionNow.current = null; window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
   }, [adminApp, demo, session?.user.id, session?.user.last_sign_in_at, session?.user.created_at]);
+  useEffect(() => {
+    if (!adminApp || demo || !session || !supabase || !staffReady || (!adminLiveVersions.deposit && !adminLiveVersions.withdrawal)) return;
+    const db = supabase;
+    const controller = new AbortController();
+    const update = async (kind: 'deposit' | 'withdrawal') => {
+      if (!staffContext.superAdmin && !staffContext.permissions[kind]) return;
+      const scope = kind === 'deposit' && !sharedDeposits ? scopedDepositFilter(staffContext.superAdmin, sacStation) : 'all';
+      const setter = kind === 'deposit' ? setPendingDepositCount : setPendingWithdrawalCount;
+      if (scope === 'none') { setter(0); return; }
+      let query = db.from('request_summaries').select('id', { count: 'exact', head: true }).eq('kind', kind).eq('status', 'pending');
+      if (scope !== 'all') query = query.eq('deposit_sac', scope);
+      const result = await query.abortSignal(controller.signal);
+      if (!controller.signal.aborted && !result.error) setter(result.count ?? 0);
+    };
+    void Promise.all([update('deposit'),update('withdrawal')]);
+    return () => controller.abort();
+  }, [session?.user.id, demo, staffReady, sharedDeposits, sacStation, staffContext.superAdmin, staffContext.permissions.deposit, staffContext.permissions.withdrawal, adminLiveVersions.deposit, adminLiveVersions.withdrawal]);
   useEffect(() => {
     if (!adminApp || page !== 'withdrawal' || !session || !supabase || !staffReady || (!staffContext.superAdmin && !staffContext.permissions.withdrawal)) return;
     let alive = true;
@@ -737,73 +802,39 @@ function App() {
       finally { if (alive) setWithdrawalsLoading(false); }
     })();
     return () => { alive = false; controller.abort(); };
-  }, [adminApp, page, session?.user.id, withdrawalReload, withdrawalPages, staffReady, staffContext.superAdmin, staffContext.permissions.withdrawal]);
+  }, [adminApp, page, session?.user.id, withdrawalReload, withdrawalPages, staffReady, staffContext.superAdmin, staffContext.permissions.withdrawal, adminLiveVersions.withdrawal]);
   useEffect(() => {
-    if (!adminApp || !session || !supabase || !staffReady || (!staffContext.superAdmin && !staffContext.permissions.chat)) { setChatSummary([]); return; }
-    const db = supabase;
-    let alive = true;
+    if (!adminApp || demo || !session || !supabase || !staffReady || (!staffContext.superAdmin && !staffContext.permissions.chat)) { setChatSummary({ all: 0, pending: 0, completed: 0 }); return; }
     const controller = new AbortController();
-    let requestVersion = 0;
-    async function refreshInbox() {
-      const version = ++requestVersion;
-      const rows: ChatSummary[] = [];
-      const pageSize = 500;
-      for (let offset = 0; alive; offset += pageSize) {
-        const { data, error } = await db.from('chat_inbox')
-          .select('user_id,last_sender_id,completed_at')
-          .order('last_created_at', { ascending: false }).order('last_message_id', { ascending: false })
-          .range(offset, offset + pageSize - 1).abortSignal(controller.signal);
-        if (!alive || version !== requestVersion) return;
-        if (error) { setError('No pudimos cargar la bandeja de chat. Actualizá el panel e intentá de nuevo.'); return; }
-        rows.push(...((data ?? []) as ChatSummary[]));
-        if (!data || data.length < pageSize) break;
-      }
-      if (alive && version === requestVersion) setChatSummary(rows);
-    }
-    void refreshInbox();
-    return () => { alive = false; controller.abort(); };
-  }, [session?.user.id, chatReload, staffReady, staffContext.superAdmin, staffContext.permissions.chat]);
+    void supabase.rpc('admin_inbox_totals', { p_external: false }).abortSignal(controller.signal).then(({ data, error }) => {
+      if (controller.signal.aborted) return;
+      if (error) { setError('No pudimos actualizar los contadores de chat.'); return; }
+      setChatSummary(data as InboxTotals);
+    });
+    return () => controller.abort();
+  }, [session?.user.id, demo, chatReload, staffReady, staffContext.superAdmin, staffContext.permissions.chat, adminLiveVersions.chat]);
   useEffect(() => {
-    if (!adminApp || !session || !supabase || demo || (!staffContext.superAdmin && !staffContext.permissions.external_chat)) {
-      setExternalChatInbox([]); setExternalSummary([]);
-      return;
-    }
-    const db = supabase;
-    let alive = true;
-    let requestVersion = 0;
-    async function refreshExternalInbox() {
-      const version = ++requestVersion;
-      const rows: ExternalSummary[] = [];
-      const pageSize = 500;
-      for (let offset = 0; alive; offset += pageSize) {
-        const { data, error } = await db.from('external_chat_inbox')
-          .select('thread_id,last_sender_type,completed_at')
-          .order('last_message_at', { ascending: false }).order('last_message_id', { ascending: false })
-          .range(offset, offset + pageSize - 1);
-        if (!alive || version !== requestVersion) return;
-        if (error) { setError('No pudimos cargar la bandeja de chat externo. Actualizá el panel e intentá de nuevo.'); return; }
-        rows.push(...((data ?? []) as ExternalSummary[]));
-        if (!data || data.length < pageSize) break;
-      }
-      if (alive && version === requestVersion) setExternalSummary(rows);
-    }
-    void refreshExternalInbox();
-    return () => { alive = false; };
-  }, [session?.user.id, externalChatReload, demo, staffContext.superAdmin, staffContext.permissions.external_chat]);
+    if (!adminApp || demo || !session || !supabase || !staffReady || (!staffContext.superAdmin && !staffContext.permissions.external_chat)) { setExternalSummary({ all: 0, pending: 0, completed: 0 }); return; }
+    const controller = new AbortController();
+    void supabase.rpc('admin_inbox_totals', { p_external: true }).abortSignal(controller.signal).then(({ data, error }) => {
+      if (controller.signal.aborted) return;
+      if (error) { setError('No pudimos actualizar los contadores de chat externo.'); return; }
+      setExternalSummary(data as InboxTotals);
+    });
+    return () => controller.abort();
+  }, [session?.user.id, demo, externalChatReload, staffReady, staffContext.superAdmin, staffContext.permissions.external_chat, adminLiveVersions['external-chat']]);
   useEffect(() => {
     if (!adminApp || demo || !session || (page !== 'chat' && page !== 'external-chat')) return;
     const external = page === 'external-chat';
-    const directory = external ? externalSummary : chatSummary;
     const query = external ? externalQuery : chatQuery;
     const updateState = external ? setExternalPageState : setChatPageState;
     const controller = new AbortController();
     updateState(old => ({ ...old, loading: true }));
     const timer = window.setTimeout(async () => {
       try {
-        const ids = inboxIds(directory, query.filter);
         const result = external
-          ? await readInboxPage<ExternalChatInboxRow>('external_chat_inbox', ids, query.search, query.page, controller.signal)
-          : await readInboxPage<ChatInboxRow>('chat_inbox', ids, query.search, query.page, controller.signal);
+          ? await readLiveInboxPage<ExternalChatInboxRow>(true, query.filter, query.search, query.page, controller.signal)
+          : await readLiveInboxPage<ChatInboxRow>(false, query.filter, query.search, query.page, controller.signal);
         if (controller.signal.aborted) return;
         const lastPage = Math.max(0, Math.ceil(result.total / 50) - 1);
         if (query.page > lastPage) { (external ? setExternalQuery : setChatQuery)(old => ({ ...old, page: lastPage })); return; }
@@ -813,7 +844,7 @@ function App() {
       } catch (cause) { if (!controller.signal.aborted) { updateState(old => ({ ...old, loading: false })); setError(publicError(cause)); } }
     }, query.search ? 250 : 0);
     return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [adminApp, demo, session?.user.id, page, chatSummary, externalSummary, chatQuery, externalQuery]);
+  }, [adminApp, demo, session?.user.id, page, page === 'external-chat' ? externalChatReload : chatReload, chatQuery, externalQuery, adminLiveVersions[page]]);
   useEffect(() => {
     if (!adminApp || !session || !supabase || (!staffContext.superAdmin && !staffContext.permissions.access_requests) || demo) { setAccessRequestCount(0); return; }
     let alive = true;
@@ -827,7 +858,7 @@ function App() {
     };
     void refreshCount();
     return () => { alive = false; };
-  }, [session?.user.id, staffContext.superAdmin, staffContext.permissions.access_requests, demo, adminRefresh]);
+  }, [session?.user.id, staffContext.superAdmin, staffContext.permissions.access_requests, demo, adminRefresh, adminLiveVersions['access-requests']]);
   useEffect(() => {
     if (adminApp || demo || page !== 'deposit' || !session || !supabase) return;
     let alive = true;
@@ -914,27 +945,11 @@ function App() {
       setDepositLoading(false);
     })();
     return () => { alive = false; controller.abort(); };
-  }, [session, page, demo, depositPage, depositReload, staffReady, staffContext.superAdmin, sacStation, sharedDeposits, depositFilter]);
+  }, [session, page, demo, depositPage, depositReload, staffReady, staffContext.superAdmin, sacStation, sharedDeposits, depositFilter, adminLiveVersions.deposit]);
   useEffect(() => {
     if (!adminApp || !sharedDeposits || demo || page !== 'deposit' || !session || !supabase) return;
     const db = supabase;
-    let timer = 0;
-    let dirty = false;
-    let lastRefresh = Date.now();
-    const refresh = () => {
-      dirty = true;
-      if (document.visibilityState === 'hidden' || timer) return;
-      timer = window.setTimeout(() => {
-        timer = 0;
-        if (document.visibilityState === 'hidden') return;
-        dirty = false; lastRefresh = Date.now();
-        setDepositReload(value => value + 1);
-      }, 600);
-    };
-    const onVisible = () => {
-      if (document.visibilityState === 'visible' && (dirty || Date.now() - lastRefresh > 15_000)) refresh();
-    };
-    const channel = db.channel(`deposit-queue-${session.user.id}`)
+    const channel = db.channel(`deposit-claims-${session.user.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'deposit_claims' }, payload => {
         const next = payload.new as { request_id?: string; claim_token?: string };
         const { selected, approved } = depositOperation.current;
@@ -942,18 +957,8 @@ function App() {
           setSelectedDepositId(null); setActiveDeposit(null); setApprovedDeposit(null);
           setNotice('La asignación de esta carga cambió. Volvé a abrirla antes de continuar.');
         }
-        refresh();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests', filter: 'kind=eq.deposit' }, refresh)
-      .subscribe(status => { if (status === 'SUBSCRIBED') refresh(); });
-    window.addEventListener('focus', onVisible);
-    document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener('focus', onVisible);
-      document.removeEventListener('visibilitychange', onVisible);
-      void db.removeChannel(channel);
-    };
+      }).subscribe();
+    return () => { void db.removeChannel(channel); };
   }, [sharedDeposits, demo, page, session?.user.id]);
   useEffect(() => {
     if (!adminApp || page !== 'history' || demo || !session || !supabase || !staffReady) return;
@@ -986,7 +991,7 @@ function App() {
       setHistoryLoading(false);
     })();
     return () => { alive = false; };
-  }, [session, page, demo, historyKind, historyPage, historyReload, staffReady, staffContext.superAdmin, sacStation, sharedDeposits]);
+  }, [session, page, demo, historyKind, historyPage, historyReload, staffReady, staffContext.superAdmin, sacStation, sharedDeposits, adminLiveVersions[historyKind]]);
 
   async function action(task: () => Promise<void>) {
     setBusy(true); setError(''); setNotice('');
@@ -1054,7 +1059,7 @@ function App() {
           p_amount: String(form.get('amount')).trim(), p_holder: parseHolder(form.get('holder')),
           p_cbu: parseCbu(form.get('cbu')), p_alias: parseAlias(form.get('alias')),
         }).single();
-        if (error) throw error;
+        if (error) { if (error.code === 'PT423') setWithdrawalPauseRevision(value => value + 1); throw error; }
         row = data as RequestRow;
         const createdParts = await supabase.from('withdrawal_parts').select('request_id,part_number,amount,receipt_path,paid_at').eq('request_id', row.id);
         if (createdParts.error) throw createdParts.error;
@@ -1427,8 +1432,8 @@ function App() {
   const pendingCounts = {
     deposit: demo ? pendingRequestCount(requests, 'deposit') : pendingDepositCount,
     withdrawal: adminApp && !demo ? pendingWithdrawalCount : pendingRequestCount(requests, 'withdrawal'),
-    chat: pendingChatCount(demo ? chatInbox : chatSummary),
-    externalChat: (demo ? externalChatInbox : externalSummary).filter(row => !row.completed_at && row.last_sender_type === 'visitor').length,
+    chat: demo ? pendingChatCount(chatInbox) : chatSummary.pending,
+    externalChat: demo ? externalChatInbox.filter(row => !row.completed_at && row.last_sender_type === 'visitor').length : externalSummary.pending,
     access: accessRequestCount,
   };
   const canOpenCurrentPage = !adminApp || demo || canOpenAdminPage(page, staffContext.permissions, staffContext.superAdmin);
@@ -1438,10 +1443,10 @@ function App() {
       {(adminApp || (page !== 'deposit' && page !== 'withdrawal')) && feedback}
       {!adminApp && page === 'profile' && <UserProfile name={name} busy={busy} logout={() => void logout()} />}
       {!adminApp && !demo && session && <PlayerNotifications key={session.user.id} userId={session.user.id} settingsPage={page === 'home' || page === 'profile' ? page : null} onOpenChat={() => navigate('chat')} onOpenWheel={() => navigate('wheel')} />}
-      {page === 'home' && (adminApp ? <AdminOverview counts={pendingCounts} permissions={demo ? allStaffPermissions : staffContext.permissions} superAdmin={demo || staffContext.superAdmin} navigate={navigate} note={!sharedDeposits && !demo && !staffContext.superAdmin && !sacStation ? <p className="shift-note">Elegí el SAC de esta computadora en Cargas para ver sus pendientes.</p> : null} bonuses={bonusBoard()} leaderboard={<DepositLeaderboard demo={demo} requests={requests} reloadKey={leaderboardReload} />} /> : <UserHome name={name} navigate={navigate} onClaimSpecialBonus={id => { setSelectedBonusId(id); navigate('deposit'); }} onOpenChat={() => setChatBubbleOpen(true)} whatsappUrl={demo ? undefined : playerWhatsAppUrl} username={demo ? null : playerUsername} casinoUrl={demo ? null : playerCasinoUrl} demo={demo} userId={demo ? '' : userId} wheelEligible={demo || wheelEligible} />)}
+      {page === 'home' && (adminApp ? <AdminOverview counts={pendingCounts} permissions={demo ? allStaffPermissions : staffContext.permissions} superAdmin={demo || staffContext.superAdmin} navigate={navigate} note={!sharedDeposits && !demo && !staffContext.superAdmin && !sacStation ? <p className="shift-note">Elegí el SAC de esta computadora en Cargas para ver sus pendientes.</p> : null} bonuses={bonusBoard()} leaderboard={<DepositLeaderboard demo={demo} requests={requests} reloadKey={leaderboardReload + (adminLiveVersions.home ?? 0)} />} /> : <UserHome name={name} navigate={navigate} onClaimSpecialBonus={id => { setSelectedBonusId(id); navigate('deposit'); }} onOpenChat={() => setChatBubbleOpen(true)} whatsappUrl={demo ? undefined : playerWhatsAppUrl} username={demo ? null : playerUsername} casinoUrl={demo ? null : playerCasinoUrl} demo={demo} userId={demo ? '' : userId} wheelEligible={demo || wheelEligible} />)}
       {!adminApp && page === 'bonuses' && <PlayerBonuses demo={demo} onClaim={id => { setSelectedBonusId(id); navigate('deposit'); }} />}
       {!adminApp && page === 'profile' && <>{history('deposit')}{history('withdrawal')}<ReferralBonusHistory userId={userId} demo={demo} /></>}
-      {(page === 'deposit' || page === 'withdrawal') && !adminApp && <RequestForm key={`${page}:${selectedBonusId}`} kind={page} requests={requests.filter(r => r.user_id === userId)} bank={bank} bankOperation={bankOperation} retryAt={page === 'deposit' ? depositRetryAt : 0} initialBonusId={page === 'deposit' ? selectedBonusId : ''} busy={busy} demo={demo} feedback={feedback} onSubmit={submitRequest} onCopy={(text, label) => void action(async () => { await navigator.clipboard.writeText(text); setNotice(`${label} copiado.`); })} submissionError={error} onBrowseBonuses={() => navigate('bonuses')} onOpenWithdrawalHistory={() => { setUserHistoryOpen(old => ({ ...old, withdrawal: true })); setProfileHistoryTarget('withdrawal'); navigate('profile'); }} />}
+      {(page === 'deposit' || page === 'withdrawal') && !adminApp && <RequestForm key={`${page}:${selectedBonusId}`} pauseRevision={withdrawalPauseRevision} kind={page} requests={requests.filter(r => r.user_id === userId)} bank={bank} bankOperation={bankOperation} retryAt={page === 'deposit' ? depositRetryAt : 0} initialBonusId={page === 'deposit' ? selectedBonusId : ''} busy={busy} demo={demo} feedback={feedback} onSubmit={submitRequest} onCopy={(text, label) => void action(async () => { await navigator.clipboard.writeText(text); setNotice(`${label} copiado.`); })} submissionError={error} onBrowseBonuses={() => navigate('bonuses')} onOpenWithdrawalHistory={() => { setUserHistoryOpen(old => ({ ...old, withdrawal: true })); setProfileHistoryTarget('withdrawal'); navigate('profile'); }} />}
       {adminApp && page === 'deposit' && depositList()}
       {adminApp && page === 'withdrawal' && <AdminWithdrawals pagination={demo ? undefined : { pendingPage: withdrawalPages.pending, resolvedPage: withdrawalPages.resolved, pendingTotal: withdrawalTotals.pending, resolvedTotal: withdrawalTotals.resolved, loading: withdrawalsLoading, onPage: (kind, next) => setWithdrawalPages(old => ({ ...old, [kind]: next })) }} requests={requests} parts={withdrawalParts} busy={busy} demo={demo} onAdjust={async (request, amount) => {
         try {
@@ -1492,16 +1497,20 @@ function App() {
           setError(message);
           return { ok: false, error: message };
         } finally { setBusy(false); }
-      }} onReview={(request, status) => void action(async () => {
-        if (!canOpenAdminPage('withdrawal', staffContext.permissions, staffContext.superAdmin)) throw new InputError('No tenés permiso para revisar retiros.');
-        const { data, error } = await supabase!.from('requests').update({ status }).eq('id', parseUuid(request.id)).eq('status', 'pending').select('id,status').single();
-        if (error) throw error;
-        setRequests(old => old.map(item => item.id === request.id ? { ...item, status: data.status as RequestRow['status'] } : item));
-        setPendingWithdrawalCount(value => Math.max(0, value - 1));
-        setHistoryReload(value => value + 1);
-        setNotice('Retiro rechazado.');
-        setWithdrawalReload(value => value + 1);
-      })} />}
+      }} onReview={async (request, _status, options) => {
+        setBusy(true); setError(''); setNotice('');
+        try {
+          if (!supabase || demo || !canOpenAdminPage('withdrawal', staffContext.permissions, staffContext.superAdmin)) throw new InputError('No tenés permiso para revisar retiros.');
+          const { data, error } = await supabase.rpc('reject_withdrawal_with_pause', { p_request: parseUuid(request.id), p_reason: options.reason, p_minutes: options.minutes });
+          if (error) throw error;
+          setRequests(old => old.map(item => item.id === request.id ? { ...item, status: 'rejected' } : item));
+          if (!data.reused) setPendingWithdrawalCount(value => Math.max(0, value - 1));
+          setHistoryReload(value => value + 1); setWithdrawalReload(value => value + 1);
+          setNotice(data.reused ? 'El rechazo ya estaba registrado. No se duplicó ni se extendió la pausa.' : data.effective_paused_until ? `Retiro rechazado. Nuevas solicitudes en pausa hasta ${date(data.effective_paused_until)}` : 'Retiro rechazado sin pausa adicional.');
+          return { ok: true };
+        } catch (cause) { const message = publicError(cause); setError(message); return { ok: false, error: message }; }
+        finally { setBusy(false); }
+      }} />}
       {adminApp && page === 'history' && history()}
       {adminApp && page === 'users' && <PlayerAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'link' && <LoginLinkAdmin demo={demo} busy={busy} action={action} />}
@@ -1519,13 +1528,13 @@ function App() {
       {adminApp && page === 'accounts' && <AccountAdmin demo={demo} busy={busy} action={action} />}
       {adminApp && page === 'shifts' && <ShiftAdmin demo={demo} busy={busy} action={action} station={sacStation} onStation={chooseSac} sharedDeposits={sharedDeposits} />}
       {adminApp && page === 'cashiers' && staffContext.superAdmin && <CashierAdmin demo={demo} busy={busy} action={action} />}
-      {adminApp && page === 'chat' && <AdminChat pagination={demo ? undefined : { ...chatPageState, search: chatQuery.search, filter: chatQuery.filter, page: chatQuery.page, all: chatSummary.length, pending: pendingCounts.chat, completed: chatSummary.filter(row => !!row.completed_at).length, onQuery: (search, filter) => { setChatQuery({ search, filter, page: 0 }); }, onPage: next => { setThread(''); setChatQuery(old => ({ ...old, page: next })); } }} inbox={chatInbox} selectedId={thread} demo={demo} canDeposit={demo || canOpenAdminPage('deposit', staffContext.permissions, staffContext.superAdmin)} canWithdrawal={demo || canOpenAdminPage('withdrawal', staffContext.permissions, staffContext.superAdmin)} canManageExternalLinks={staffContext.superAdmin || staffContext.permissions.external_chat} onSelect={setThread} onChanged={() => setChatReload(value => value + 1)} />}
-      {adminApp && page === 'external-chat' && <AdminExternalChat pagination={demo ? undefined : { ...externalPageState, search: externalQuery.search, filter: externalQuery.filter, page: externalQuery.page, all: externalSummary.length, pending: pendingCounts.externalChat, completed: externalSummary.filter(row => !!row.completed_at).length, onQuery: (search, filter) => { setExternalQuery({ search, filter, page: 0 }); }, onPage: next => { setExternalThread(''); setExternalQuery(old => ({ ...old, page: next })); } }} inbox={externalChatInbox} selectedId={externalThread} demo={demo} canLink={staffContext.superAdmin || staffContext.permissions.chat} onSelect={setExternalThread} onChanged={() => setExternalChatReload(value => value + 1)} onLinked={linkedUserId => { setExternalThread(''); setThread(linkedUserId); setChatReload(value => value + 1); setExternalChatReload(value => value + 1); navigate('chat'); }} />}
+      {adminApp && page === 'chat' && <AdminChat pagination={demo ? undefined : { ...chatPageState, search: chatQuery.search, filter: chatQuery.filter, page: chatQuery.page, all: chatSummary.all, pending: pendingCounts.chat, completed: chatSummary.completed, onQuery: (search, filter) => { setChatQuery({ search, filter, page: 0 }); }, onPage: next => { setThread(''); setChatQuery(old => ({ ...old, page: next })); } }} inbox={chatInbox} selectedId={thread} demo={demo} canDeposit={demo || canOpenAdminPage('deposit', staffContext.permissions, staffContext.superAdmin)} canWithdrawal={demo || canOpenAdminPage('withdrawal', staffContext.permissions, staffContext.superAdmin)} canManageExternalLinks={staffContext.superAdmin || staffContext.permissions.external_chat} onSelect={setThread} onChanged={() => setChatReload(value => value + 1)} />}
+      {adminApp && page === 'external-chat' && <AdminExternalChat pagination={demo ? undefined : { ...externalPageState, search: externalQuery.search, filter: externalQuery.filter, page: externalQuery.page, all: externalSummary.all, pending: pendingCounts.externalChat, completed: externalSummary.completed, onQuery: (search, filter) => { setExternalQuery({ search, filter, page: 0 }); }, onPage: next => { setExternalThread(''); setExternalQuery(old => ({ ...old, page: next })); } }} inbox={externalChatInbox} selectedId={externalThread} demo={demo} canLink={staffContext.superAdmin || staffContext.permissions.chat} onSelect={setExternalThread} onChanged={() => setExternalChatReload(value => value + 1)} onLinked={linkedUserId => { setExternalThread(''); setThread(linkedUserId); setChatReload(value => value + 1); setExternalChatReload(value => value + 1); navigate('chat'); }} />}
       {adminApp && page === 'external-chat-admin' && (demo || staffContext.superAdmin) && <AdminExternalChatSettings demo={demo} />}
     </>}
   </AsyncView>;
   const staffAvatarUrl = staffContext.avatarPath && supabase ? supabase.storage.from('cashier-avatars').getPublicUrl(staffContext.avatarPath).data.publicUrl : null;
-  if (adminApp) return <AsyncView viewKey={`admin-shell:${userId}`}><AdminRefreshProvider version={adminRefresh} refresh={refreshAdmin}><AdminShell page={page} counts={pendingCounts} permissions={demo ? allStaffPermissions : staffContext.permissions} superAdmin={demo || staffContext.superAdmin} staffName={demo ? 'Superadministrador' : staffContext.displayName || name} avatarUrl={staffAvatarUrl} busy={busy} navigate={navigate} logout={() => void logout()} onRefresh={refreshAdmin}>{content}</AdminShell></AdminRefreshProvider></AsyncView>;
+  if (adminApp) return <AsyncView viewKey={`admin-shell:${userId}`}><AdminRefreshProvider scopes={adminLiveVersions} version={adminRefresh} refresh={refreshAdmin}><AdminShell liveStatus={adminLiveStatus} page={page} counts={pendingCounts} permissions={demo ? allStaffPermissions : staffContext.permissions} superAdmin={demo || staffContext.superAdmin} staffName={demo ? 'Superadministrador' : staffContext.displayName || name} avatarUrl={staffAvatarUrl} busy={busy} navigate={navigate} logout={() => void logout()} onRefresh={refreshAdmin}>{content}</AdminShell></AdminRefreshProvider></AsyncView>;
   const surface = themeSurface(settings, path => supabase?.storage.from('app-assets').getPublicUrl(path).data.publicUrl ?? null);
   return <div className={`app user-app page-${page} ${surface.className}`} style={surface.style}>
     <UserHeader page={page} navigate={navigate} name={name} />

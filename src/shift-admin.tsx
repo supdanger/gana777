@@ -21,7 +21,7 @@ export function ShiftAdmin({ demo, busy, action, station, onStation, sharedDepos
   const [loading, setLoading] = useState(!demo && !!supabase);
   const [loadError, setLoadError] = useState('');
   const [now, setNow] = useState(Date.now);
-  const adminRefresh = useAdminRefreshVersion();
+  const adminRefresh = useAdminRefreshVersion('shifts');
 
   async function loadState() {
     if (!supabase) return;

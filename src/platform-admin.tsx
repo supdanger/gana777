@@ -1,3 +1,4 @@
+import { useAdminRefreshVersion } from './admin-refresh';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Activity, Ban, ChevronRight, ExternalLink, KeyRound, Layers3, Link2, RefreshCw, Search, ShieldCheck, UserRound } from 'lucide-react';
 import { InputError } from '../supabase/functions/_shared/validation';
@@ -30,6 +31,7 @@ const detailTabs: { id: DetailTab; label: string }[] = [
 ];
 
 export function PlatformAdmin({ demo, busy, action }: { demo: boolean; busy: boolean; action: (task: () => Promise<void>) => Promise<void> }) {
+  const adminRefresh = useAdminRefreshVersion('platform');
   const [players, setPlayers] = useState<Player[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -83,7 +85,7 @@ export function PlatformAdmin({ demo, busy, action }: { demo: boolean; busy: boo
       setDetail(result); setLinkInput(result.casino_link?.url ?? '');
     } catch (failure) { if (selectedIdRef.current === userId) setDetailError(failure instanceof Error ? failure.message : 'No pudimos cargar la ficha.'); }
   }
-  useEffect(() => { void load(true); }, [demo, search]);
+  useEffect(() => { void load(true); }, [demo, search, adminRefresh]);
   useEffect(() => {
     if (demo || !supabase) return;
     void supabase.from('whatsapp_principals').select('slot,phone,active').order('slot').then(({ data }) => setPrincipals((data ?? []) as Principal[]));

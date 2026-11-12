@@ -86,6 +86,7 @@ export function AdminChat({ inbox, selectedId, demo, canManageExternalLinks, onS
   const completed = pagination?.completed ?? inbox.filter(row => !!row.completed_at).length;
   const title = (row: ChatInboxRow) => row.username || row.display_name || `Usuario ${row.user_id.slice(0, 8)}`;
   const adminRefresh = useAdminRefreshVersion();
+  const liveThreadRefresh = useAdminRefreshVersion('chat');
 
   useEffect(() => {
     if (!selectedId || demo) { setMessages([]); return; }
@@ -115,7 +116,7 @@ export function AdminChat({ inbox, selectedId, demo, canManageExternalLinks, onS
       });
     loadLatest();
     return () => { alive = false; };
-  }, [selectedId, demo, adminRefresh]);
+  }, [selectedId, demo, adminRefresh, selected?.last_message_id, currentSelected ? 0 : liveThreadRefresh]);
 
   useEffect(() => {
     if (!selectedId || demo || !supabase) { setExternalLinks([]); return; }

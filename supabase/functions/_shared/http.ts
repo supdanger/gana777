@@ -11,7 +11,7 @@ export const cors = {
 export function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
 }
-export async function authenticate(request: Request) {
+export async function authenticate(request: Request, permission?: string) {
   const authorization = request.headers.get('Authorization');
   if (!authorization?.startsWith('Bearer ')) throw new HttpError(401, 'Ingresá a tu cuenta para continuar.');
   const db = createClient(requiredEnv('SUPABASE_URL'), requiredEnv('SUPABASE_ANON_KEY'), {
@@ -19,6 +19,10 @@ export async function authenticate(request: Request) {
   });
   const { data, error } = await db.auth.getUser(authorization.slice(7));
   if (error || !data.user) throw new HttpError(401, 'Tu sesión venció. Volvé a ingresar.');
+  const access = permission ? await db.rpc('authorize_staff_access', { p_permission: permission }) : await db.rpc('account_access_allowed');
+  if (access.error?.message?.includes('ACCOUNT_BLOCKED') || (!permission && access.data === false)) throw new HttpError(403, 'ACCOUNT_BLOCKED: Tu acceso fue suspendido. Contactá a soporte.');
+  if (access.error) throw new HttpError(503, 'No pudimos verificar el estado de tu cuenta. Intentá más tarde.');
+  if (permission && !access.data) throw new HttpError(403, 'No tenés permiso para gestionar este apartado.');
   return { db, user: data.user };
 }
 export function serverClient() {

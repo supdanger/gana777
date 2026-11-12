@@ -1,3 +1,5 @@
+import { WithdrawalRejectionDialog, WithdrawalRejectionRecord } from './withdrawal-rejection-dialog';
+import type { WithdrawalRejection } from './withdrawal-pause';
 import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type FormEvent, type MouseEvent, type ReactNode } from 'react';
 import { Check, ChevronDown, ChevronRight, ClipboardPaste, Clock3, Copy, Edit3, Eye, WalletCards, X } from 'lucide-react';
 import { useAdminRefreshVersion } from './admin-refresh';
@@ -16,11 +18,12 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onAdju
   parts: WithdrawalPart[];
   busy: boolean;
   demo: boolean;
-  onReview: (request: RequestRow, status: ReviewStatus) => void;
+  onReview: (request: RequestRow, status: ReviewStatus, options: WithdrawalRejection) => Promise<{ ok: boolean; error?: string }>;
   onAdjust: (request: RequestRow, amount: number) => Promise<{ ok: boolean; error?: string }>;
   onPay: (request: RequestRow, part: WithdrawalPart, file: File, sourceAccount: WithdrawalSourceAccount) => Promise<{ ok: boolean; error?: string }>;
   onViewReceipt: (part: WithdrawalPart) => void;
 }) {
+  const [rejectTarget, setRejectTarget] = useState<RequestRow | null>(null);
   const [copied, setCopied] = useState('');
   const [copyError, setCopyError] = useState('');
   const [receiptFiles, setReceiptFiles] = useState<Record<string, File>>({});
@@ -44,7 +47,7 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onAdju
   const [selectedSourceId, setSelectedSourceId] = useState('');
   const [paymentError, setPaymentError] = useState('');
   const [now, setNow] = useState(Date.now);
-  const adminRefresh = useAdminRefreshVersion();
+  const adminRefresh = useAdminRefreshVersion('withdrawal');
   const [editingAmountId, setEditingAmountId] = useState<string | null>(null);
   const [amountError, setAmountError] = useState('');
   const trigger = useRef<HTMLButtonElement | null>(null);
@@ -52,6 +55,8 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onAdju
   const inspectionRef = useRef(inspection);
   const selectionRef = useRef(paymentSelection);
   const busyRef = useRef(busy);
+  const rejectionOpenRef = useRef(false);
+  rejectionOpenRef.current = !!rejectTarget;
   inspectionRef.current = inspection;
   selectionRef.current = paymentSelection;
   busyRef.current = busy;
@@ -66,6 +71,7 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onAdju
     document.body.style.overflow = 'hidden';
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        if (rejectionOpenRef.current) return;
         if (inspectionRef.current) setInspection(null);
         else if (selectionRef.current) { if (!busyRef.current) setPaymentSelection(null); }
         else setSelectedId(null);
@@ -258,7 +264,8 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onAdju
         })}
       </section>}
       {isPending && payments.length === 0 && <p className="withdrawal-parts-missing">No se generaron los pagos de este retiro. Revisá la migración de retiros antes de acreditarlo.</p>}
-      {isPending && <footer className="withdrawal-review-actions"><p>{paid.length ? 'El retiro seguirá en proceso hasta completar todos los pagos.' : 'Verificá los datos antes de transferir. Cada pago requiere su comprobante.'}</p>{paid.length === 0 && <div><button className="withdrawal-reject" type="button" disabled={busy || demo} onClick={() => { if (window.confirm('¿Confirmás que querés rechazar este retiro?')) onReview(request, 'rejected'); }}>Rechazar retiro</button></div>}</footer>}
+      {request.status === 'rejected' && !demo && <WithdrawalRejectionRecord key={request.id} requestId={request.id} />}
+      {isPending && <footer className="withdrawal-review-actions"><p>{paid.length ? 'El retiro seguirá en proceso hasta completar todos los pagos.' : 'Verificá los datos antes de transferir. Cada pago requiere su comprobante.'}</p>{paid.length === 0 && <div><button className="withdrawal-reject" type="button" disabled={busy || demo} onClick={() => setRejectTarget(request)}>Rechazar retiro</button></div>}</footer>}
     </article>;
   }
 
@@ -287,6 +294,7 @@ export function AdminWithdrawals({ requests, parts, busy, demo, onReview, onAdju
   }
 
   return <div className="admin-withdrawals">
+    {rejectTarget && <WithdrawalRejectionDialog request={rejectTarget} onClose={() => setRejectTarget(null)} onConfirm={async (request, options) => { const result = await onReview(request, 'rejected', options); if (result.ok) setSelectedId(null); return result; }} />}
     <div className="withdrawal-page-heading"><div><h1>Retiros</h1><p>Abrí un retiro para revisar los datos y completar sus pagos.</p></div><strong>{pagination ? pagination.pendingTotal + pagination.resolvedTotal : withdrawals.length} solicitudes</strong></div>
     {!selected && copyError && <p className="alert error" role="alert">{copyError}</p>}
     {!selected && receiptError && <p className="alert error" role="alert">{receiptError}</p>}

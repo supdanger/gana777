@@ -1,3 +1,4 @@
+import { useWithdrawalPause } from './use-withdrawal-pause';
 import { MINIMUM_WITHDRAWAL_AMOUNT } from '../supabase/functions/_shared/validation';
 import { bonusScheduleOpen, bonusScheduleText, hasBonusSchedule } from '../supabase/functions/_shared/bonus-schedule';
 import { useBonusScheduleClock } from './bonus-schedule-clock';
@@ -188,25 +189,30 @@ function BankPause({ status, now }: { status: BankOperationStatus; now: number }
     </div>
   </section>;
 }
-export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, initialBonusId = '', busy, demo, onSubmit, onCopy, onOpenWithdrawalHistory, onBrowseBonuses, feedback, submissionError = '' }: {
-  kind: 'deposit' | 'withdrawal'; requests: RequestRow[]; bank: Bank | null; bankOperation: BankOperationStatus | null; retryAt?: number; initialBonusId?: string; busy: boolean; demo: boolean;
+export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, initialBonusId = '', busy, demo, onSubmit, onCopy, onOpenWithdrawalHistory, onBrowseBonuses, feedback, submissionError = '', pauseRevision = 0 }: {
+  pauseRevision?: number; kind: 'deposit' | 'withdrawal'; requests: RequestRow[]; bank: Bank | null; bankOperation: BankOperationStatus | null; retryAt?: number; initialBonusId?: string; busy: boolean; demo: boolean;
   onSubmit: (event: FormEvent<HTMLFormElement>, receipt?: File | null) => void | Promise<void>; onCopy: (text: string, label: string) => void; onOpenWithdrawalHistory: () => void; onBrowseBonuses?: () => void; feedback?: ReactNode; submissionError?: string;
 }) {
   const { promotions, reloadPromotions, settings } = useContent();
   const scheduleNow = useBonusScheduleClock(promotions);
   const [now, setNow] = useState(Date.now);
+  const pause = useWithdrawalPause(kind === 'withdrawal' && !demo, pauseRevision);
+  const serverNow = now + pause.offset;
+  const pauseActive = kind === 'withdrawal' && pause.until > serverNow;
   useEffect(() => {
     setNow(Date.now());
     if (kind !== 'withdrawal' && bankOperation?.mode !== 'closing' && retryAt <= Date.now()) return;
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
+    let timer = 0;
+    const visible = () => { window.clearInterval(timer); if (document.visibilityState === 'hidden') return; setNow(Date.now()); timer = window.setInterval(() => setNow(Date.now()), 1000); };
+    visible(); document.addEventListener('visibilitychange', visible);
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', visible); };
   }, [kind, bankOperation?.mode, retryAt]);
   const pending = requests.some(r => r.kind === 'withdrawal' && r.status === 'pending');
   const pendingDeposit = kind === 'deposit' && requests.some(r => r.kind === 'deposit' && r.status === 'pending');
-  const nextAt = Math.max(0, ...requests.filter(r => r.kind === 'withdrawal' && r.status === 'approved' && r.approved_at).map(r => Date.parse(r.approved_at!) + 86400000));
-  const seconds = Math.max(0, Math.ceil((nextAt - now) / 1000));
+  const nextAt = Math.max(pause.until, 0, ...requests.filter(r => r.kind === 'withdrawal' && r.status === 'approved' && r.approved_at).map(r => Date.parse(r.approved_at!) + 86400000));
+  const seconds = Math.max(0, Math.ceil((nextAt - serverNow) / 1000));
   const countdown = [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60].map(v => String(v).padStart(2, '0')).join(':');
-  const withdrawalBlocked = kind === 'withdrawal' && (pending || seconds > 0);
+  const withdrawalBlocked = kind === 'withdrawal' && (pending || seconds > 0 || pause.loading || !!pause.error);
   const depositRetrySeconds = kind === 'deposit' ? Math.max(0, Math.ceil((retryAt - now) / 1000)) : 0;
   const depositRetryCountdown = `${String(Math.floor(depositRetrySeconds / 60)).padStart(2, '0')}:${String(depositRetrySeconds % 60).padStart(2, '0')}`;
   const [file, setFile] = useState<File | null>(null);
@@ -424,6 +430,7 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
     </form>;
   }
   return <form className="request-form" onSubmit={event => {
+    if (kind === 'withdrawal' && withdrawalBlocked) { event.preventDefault(); return; }
     if (kind === 'withdrawal' && !withdrawalAmountValid) {
       event.preventDefault();
       const input = event.currentTarget.elements.namedItem('amount');
@@ -473,9 +480,13 @@ export function RequestForm({ kind, requests, bank, bankOperation, retryAt = 0, 
       <section className={`card withdrawal-window${withdrawalArt ? ' has-withdrawal-art' : ''} ${pending ? 'pending' : seconds > 0 ? 'counting' : 'ready'}`} style={withdrawalArt ? homeBannerLayoutStyles(withdrawalArt.layout) as CSSProperties : undefined}>
         {withdrawalArt && (/\.(mp4|webm)$/i.test(withdrawalArt.path) ? <VisibleVideo className="withdrawal-banner-art" src={supabase?.storage.from('app-assets').getPublicUrl(withdrawalArt.path).data.publicUrl} autoPlay muted loop playsInline preload="metadata" aria-hidden="true" /> : <StorageImage path={withdrawalArt.path} alt="" className="withdrawal-banner-art" />)}
         <div className="withdrawal-window-copy">
-          {pending ? <><strong className="withdrawal-state-title">Retiro en proceso</strong><p>El contador comenzará cuando se acredite.</p></> : seconds > 0 ? <><p>Próximo retiro disponible en</p><strong className="withdrawal-countdown" role="timer" aria-label="Tiempo restante para solicitar otro retiro">{countdown}</strong></> : <><strong className="withdrawal-state-title">Retiro disponible</strong><p>Ya podés solicitarlo.</p></>}
+          {pending ? <><strong className="withdrawal-state-title">Retiro en proceso</strong><p>El contador comenzará cuando se acredite.</p></> : pause.loading ? <strong className="withdrawal-state-title">Verificando disponibilidad…</strong> : pause.error ? <strong className="withdrawal-state-title">Disponibilidad sin confirmar</strong> : seconds > 0 ? <><p>{pauseActive ? 'Nuevos retiros en pausa · podés volver a solicitar en' : 'Próximo retiro disponible en'}</p><strong className="withdrawal-countdown" role="timer" aria-label="Tiempo restante para solicitar otro retiro" aria-live="off">{countdown}</strong></> : <><strong className="withdrawal-state-title">Retiro disponible</strong><p>Ya podés solicitarlo.</p></>}
         </div>
       </section>
+      {pauseActive && <section className="card withdrawal-pause-detail"><strong>Motivo de la pausa</strong><p>{pause.reason}</p><small>Podés volver a solicitar desde {date(new Date(nextAt).toISOString())}.</small>{nextAt > pause.until && <p>También sigue vigente la espera de 24 horas desde tu último retiro acreditado.</p>}</section>}
+      {pause.loading && <p role="status" className="amount-minimum-note">Verificando disponibilidad de retiros…</p>}
+      {pause.error && <p role="alert" className="amount-minimum-error">{pause.error} <button type="button" onClick={pause.retry}>Reintentar</button></p>}
+      {!pending && !pauseActive && pause.lastReason && <p className="card withdrawal-rejection-record"><strong>Último retiro rechazado</strong><br />{pause.lastReason}</p>}
       <button className="withdrawal-history-link" type="button" onClick={onOpenWithdrawalHistory}><FileText size={19} /><span>Ver historial de retiros</span><ChevronRight size={20} /></button>
       <section className="card account-card"><SectionHeading icon={<FileText />} title="Datos de la cuenta" /><label>Titular de la cuenta<input name="holder" autoComplete="name" placeholder="Nombre y apellido" minLength={2} maxLength={120} required /></label><label>Alias (opcional)<input name="alias" placeholder="Ej.: mi.alias" minLength={6} maxLength={20} pattern="[a-zA-Z0-9.\-]{6,20}" autoCapitalize="none" spellCheck={false} /></label><label>CBU / CVU<input name="cbu" placeholder="22 números, con o sin puntos" inputMode="decimal" pattern="[0-9. \-]{22,34}" maxLength={34} autoCapitalize="none" spellCheck={false} required /></label>{amount}</section>
     </>}

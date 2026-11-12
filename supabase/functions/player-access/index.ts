@@ -71,10 +71,8 @@ async function platformProfile(server: ReturnType<typeof serverClient>, userId: 
   if (error || !data) throw new HttpError(404, 'No encontramos ese usuario Platform.');
   return data;
 }
-async function requireStaff(request: Request, permission: 'access_requests' | 'platform' = 'access_requests') {
-  const { db, user } = await authenticate(request);
-  const { data: allowed, error } = await db.rpc('has_admin_permission', { permission_name: permission });
-  if (error || !allowed) throw new HttpError(403, `No tenés permiso para gestionar ${permission === 'platform' ? 'Platform' : 'solicitudes de acceso'}.`);
+async function requireStaff(request: Request, permission: 'access_requests' | 'platform' | 'users' = 'access_requests') {
+  const { user } = await authenticate(request, permission);
   return { user, server: serverClient() };
 }
 function missingIpColumn(error: { message?: string } | null | undefined): boolean {
@@ -145,6 +143,9 @@ Deno.serve(async request => {
 
       const { data: existingToken } = await server.from('player_access_requests').select('id,username,status').eq('access_token_hash', tokenHash).maybeSingle();
       if (existingToken) return json({ ok: true, request_id: existingToken.id, username: existingToken.username, status: existingToken.status, resumed: true });
+      const { data: blocked, error: blockError } = await server.rpc('check_access_security', { p_ip: ipHash, p_browser: deviceHash });
+      if (blockError) throw new HttpError(503, 'No pudimos verificar la disponibilidad de solicitudes. Intentá más tarde.');
+      if (blocked) throw new HttpError(403, 'No se permiten nuevas solicitudes desde este navegador o red. Contactá a soporte.');
 
       const { data: deviceRequests, error: deviceCheckError } = await server.from('player_access_requests')
         .select('id,username,status,player_user_id').eq('device_hash', deviceHash).in('status', ['pending', 'approved']).limit(100);
@@ -168,6 +169,7 @@ Deno.serve(async request => {
         access_token_hash: tokenHash, device_hash: deviceHash, ip_hash: ipHash, footprint_hash: footprintHash,
         origin_ip: originIp, origin_user_agent: originUserAgent,
       }).select('id,username,status,created_at,updated_at').single();
+      if (error?.code === '42501') throw new HttpError(403, 'No se permiten nuevas solicitudes desde este navegador o red. Contactá a soporte.');
       if (error?.code === '23505' && error.message.includes('player_access_requests_one_open_device')) {
         throw new HttpError(409, 'Este dispositivo ya tiene una solicitud abierta. Retomá la conversación guardada en este navegador.');
       }
@@ -241,6 +243,56 @@ Deno.serve(async request => {
       return json({ ok: true, user_id: created.user.id, username: playerUsername });
     }
 
+    if (action === 'admin-account-security' || action === 'admin-account-apply') {
+      const { server, user } = await requireStaff(request, payload.request_id ? 'access_requests' : 'users');
+      let userId: string;
+      if (payload.request_id) {
+        const source = await server.from('player_access_requests').select('player_user_id').eq('id', id(payload.request_id)).maybeSingle();
+        if (source.error || !source.data?.player_user_id) throw new HttpError(400, 'Esta solicitud todavía no tiene un usuario creado.');
+        userId = source.data.player_user_id;
+      } else userId = id(payload.user_id);
+      const profile = await server.from('user_profiles').select('user_id').eq('user_id', userId).maybeSingle();
+      if (profile.error || !profile.data) throw new HttpError(404, 'Jugador no encontrado.');
+      const [admin, cashier] = await Promise.all([server.from('admin_users').select('user_id').eq('user_id', userId).maybeSingle(), server.from('cashier_profiles').select('user_id').eq('user_id', userId).maybeSingle()]);
+      if (admin.error || cashier.error) throw new HttpError(503, 'No pudimos verificar el tipo de cuenta.');
+      if (userId === user.id || admin.data || cashier.data) throw new HttpError(400, 'Este control solo se aplica a jugadores.');
+      let warning: string | null = null;
+      if (action === 'admin-account-apply') {
+        if (typeof payload.blocked !== 'boolean') throw new HttpError(400, 'Estado de bloqueo no válido.');
+        const reason = text(payload.reason, 'Motivo', 5, 240);
+        if (!payload.blocked) {
+          const unban = await server.auth.admin.updateUserById(userId, { ban_duration: 'none' });
+          if (unban.error) throw new HttpError(503, 'No pudimos desbloquear el inicio de sesión. La cuenta sigue suspendida.');
+        }
+        const saved = await server.rpc('set_player_account_block', { p_user: userId, p_actor: user.id, p_blocked: payload.blocked, p_reason: reason });
+        if (saved.error) throw new HttpError(400, saved.error.code === 'P0001' ? saved.error.message : 'No pudimos guardar el bloqueo. Verificá la migración 105.');
+        if (payload.blocked) {
+          const ban = await server.auth.admin.updateUserById(userId, { ban_duration: '876000h' });
+          if (ban.error) warning = 'El acceso al portal quedó bloqueado y sus sesiones revocadas. No pudimos sincronizar el bloqueo de inicio de sesión; volvé a aplicar el bloqueo para reintentarlo.';
+        }
+      }
+      const [control, events] = await Promise.all([server.from('player_account_controls').select('blocked,updated_at,reason').eq('user_id', userId).maybeSingle(),server.from('player_account_events').select('id,blocked,reason,actor_id,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(30)]);
+      if (control.error || events.error) throw new HttpError(503, 'No pudimos cargar el estado. Verificá la migración 105.');
+      return json({ ok: true, control: control.data, events: events.data, warning });
+    }
+
+    if (action === 'admin-security' || action === 'admin-security-apply') {
+      const { server, user } = await requireStaff(request);
+      const requestId = id(payload.request_id);
+      if (action === 'admin-security-apply') {
+        const operation = text(payload.operation, 'Acción', 2, 24);
+        if (!['pause', 'browser', 'ip', 'review', 'exception', 'unblock_browser', 'unblock_ip'].includes(operation)) throw new HttpError(400, 'Acción no válida.');
+        const reason = text(payload.reason, 'Motivo', 5, 240);
+        const minutes = operation === 'pause' ? Number(payload.minutes) : null;
+        if (operation === 'pause' && (!Number.isInteger(minutes) || minutes! < 1 || minutes! > 43200)) throw new HttpError(400, 'Elegí entre 1 minuto y 30 días.');
+        const { error } = await server.rpc('apply_access_security', { p_request: requestId, p_actor: user.id, p_action: operation, p_reason: reason, p_minutes: minutes });
+        if (error) throw new HttpError(400, error.code === 'P0001' ? error.message : 'No pudimos guardar el control. Verificá la migración 104.');
+      }
+      const { data, error } = await server.rpc('read_access_security', { p_request: requestId });
+      if (error) throw new HttpError(503, 'No pudimos cargar la ficha de seguridad. Verificá la migración 104.');
+      return json({ ok: true, security: data });
+    }
+
     if (action === 'admin-list') {
       const { server } = await requireStaff(request);
       const flaggedInbox = await server.from('player_access_request_inbox').select('id,username,referral_code,status,player_user_id,created_at,updated_at,last_sender,last_body,last_message_at,ip_blocked,matched_username').order('created_at', { ascending: false }).limit(200);
@@ -255,6 +307,11 @@ Deno.serve(async request => {
         : { data: [], error: null };
       if (requestIpsError) throw new HttpError(500, 'No pudimos revisar las coincidencias de red.');
       const activeIpHashes = [...new Set((requestIps ?? []).flatMap(row => row.ip_hash ? [row.ip_hash] : []))];
+      const { data: blocks, error: blocksError } = activeIpHashes.length
+        ? await server.from('access_security_controls').select('subject_hash').eq('scope', 'ip').in('subject_hash', activeIpHashes).eq('active', true).or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
+        : { data: [], error: null };
+      if (blocksError) throw new HttpError(503, 'No pudimos cargar los bloqueos de IP. Verificá la migración 104.');
+      const blockedHashes = new Set((blocks ?? []).map(row => row.subject_hash));
       const { data: ipPeers, error: ipPeersError } = activeIpHashes.length
         ? await server.from('player_access_requests').select('id,username,status,ip_hash').in('ip_hash', activeIpHashes).in('status', ['pending', 'approved']).limit(2000)
         : { data: [], error: null };
@@ -277,6 +334,8 @@ Deno.serve(async request => {
         id: row.id, username: row.username, referral_code: row.referral_code, status: row.status,
         player_user_id: row.player_user_id, created_at: row.created_at, updated_at: row.updated_at,
         has_personal_url: Boolean(row.player_user_id && linkedIds.has(row.player_user_id)),
+        manual_ip_blocked: blockedHashes.has(ipHashByRequest.get(row.id) ?? ''),
+        can_block_ip: Boolean(ipHashByRequest.get(row.id)),
         same_ip_usernames: (ipPeersByHash.get(ipHashByRequest.get(row.id) ?? '') ?? []).filter(name => name !== row.username),
         ip_blocked: Boolean('ip_blocked' in row && row.ip_blocked),
         matched_username: 'matched_username' in row && typeof row.matched_username === 'string' ? row.matched_username : null,

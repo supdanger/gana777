@@ -33,7 +33,34 @@ mkdirSync('/tmp/gana777-browser-checks', { recursive: true });
 async function openApp(admin, mobile = false, queue = null, bonusPlan = null, chatPlan = null, loginPlan = null) {
   const context = await browser.newContext({ viewport: mobile ? { width: 390, height: 844 } : { width: 1440, height: 1000 }, serviceWorkers: 'block', reducedMotion: 'reduce' });
   if (!loginPlan) await context.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), { key: storageKey, value: session(admin, bonusPlan?.now ? Date.parse(bonusPlan.now) : Date.now()) });
-  await context.routeWebSocket('**/*', socket => socket.close());
+  await context.routeWebSocket('**/*', socket => {
+    if (!bonusPlan?.realtimeEnabled) { socket.close(); return; }
+    bonusPlan.socketConnections = (bonusPlan.socketConnections ?? 0) + 1;
+    bonusPlan.breakConnection = () => socket.close();
+    const send = msg => socket.send(JSON.stringify([msg.join_ref ?? null,msg.ref ?? null,msg.topic,msg.event,msg.payload]));
+    socket.onMessage(raw => {
+      const parsed = JSON.parse(String(raw));
+      const msg = Array.isArray(parsed) ? { join_ref: parsed[0], ref: parsed[1], topic: parsed[2], event: parsed[3], payload: parsed[4] } : parsed;
+      if (msg.event === 'phx_join') {
+        const changes = (msg.payload?.config?.postgres_changes ?? []).map((change,i)=>({ ...change, id: i+1 }));
+        send({ event: 'phx_reply', topic: msg.topic, ref: msg.ref, join_ref: msg.join_ref, payload: { status: 'ok', response: { postgres_changes: changes } } });
+        const signal = changes.find(c=>c.table === 'player_session_signals');
+        const adminSignal = changes.find(c => c.table === 'admin_live_signals');
+        if (adminSignal) {
+          bonusPlan.adminSubscribed = true;
+          bonusPlan.emitAdminChange = (scope, version) => {
+            bonusPlan.liveVersions ??= {};
+            bonusPlan.liveVersions[scope] = Math.max(bonusPlan.liveVersions[scope] ?? 0, version);
+            send({ event: 'postgres_changes', topic: msg.topic, ref: null, payload: { ids: [adminSignal.id], data: { schema: 'public', table: 'admin_live_signals', type: 'UPDATE', columns: [{ name: 'scope', type: 'text' }, { name: 'version', type: 'int8' }], record: { scope, version }, old_record: {}, errors: null, commit_timestamp: new Date().toISOString() } } });
+          };
+        }
+        if (signal) {
+          bonusPlan.realtimeSubscribed = true;
+          bonusPlan.emitSessionRevocation = () => send({ event: 'postgres_changes', topic: msg.topic, ref: null, payload: { ids: [signal.id], data: { schema: 'public', table: 'player_session_signals', type: 'UPDATE', columns: [{ name: 'user_id', type: 'uuid' }, { name: 'revoked_at', type: 'timestamptz' }], record: { user_id: uid(1), revoked_at: new Date().toISOString() }, old_record: {}, errors: null, commit_timestamp: new Date().toISOString() } } });
+        }
+      } else if (msg.event === 'heartbeat') send({ event: 'phx_reply', topic: msg.topic, ref: msg.ref, payload: { status: 'ok', response: {} } });
+    });
+  });
   const calls = [];
   const errors = [];
   await context.route('**/*', async route => {
@@ -70,7 +97,27 @@ async function openApp(admin, mobile = false, queue = null, bonusPlan = null, ch
     else if (url.pathname.includes('/functions/') && resource === 'player-access' && chatPlan) {
       const args = req.postDataJSON();
       if (args.action === 'admin-list') body = { ok: true, requests: Array.from({ length: 4 }, (_, i) => ({ id: uid(30000 + i), username: `solicitante${i}`, referral_code: i ? null : 'equipo', status: ['pending', 'approved', 'approved', 'rejected'][i], player_user_id: i === 1 || i === 2 ? uid(31000 + i) : null, has_personal_url: i === 2, created_at: stamp(i), updated_at: stamp(i), latest_message: { sender: 'player', body: `Consulta de acceso ${i}`, created_at: stamp(i) } })) };
+      else if (args.action === 'admin-account-security' || args.action === 'admin-account-apply') {
+        chatPlan.accountEvents ??= [];
+        if (args.action === 'admin-account-apply') {
+          assert.ok(args.reason.length >= 5);
+          chatPlan.accountControl = { blocked: args.blocked, reason: args.reason, updated_at: stamp(0) };
+          chatPlan.accountEvents.unshift({ id: chatPlan.accountEvents.length+1, blocked: args.blocked, reason: args.reason, actor_id: uid(1), created_at: stamp(0) });
+        }
+        body = { ok: true, control: chatPlan.accountControl ?? null, events: chatPlan.accountEvents };
+      }
       else if (args.action === 'admin-messages') body = { ok: true, messages: [{ id: 1, sender: 'player', body: `Mensaje de la solicitud ${args.request_id}`, created_at: stamp(0) }], casino_url: '' };
+      else if (args.action === 'admin-security' || args.action === 'admin-security-apply') {
+        chatPlan.security ??= { can_ip: true, can_browser: true, browser_info: 'Android / Chrome', observed_at: stamp(0), recent_requests: 2, controls: [], related: [{ username: 'familiar', same_ip: true, same_browser: false, similar_footprint: false, observed_at: stamp(1) }], events: [] };
+        if (args.action === 'admin-security-apply') {
+          chatPlan.securityWrites = (chatPlan.securityWrites ?? 0) + 1;
+          assert.ok(args.reason.length >= 5);
+          if (args.operation === 'pause') { assert.equal(args.minutes, 120); chatPlan.security.controls = [{ scope: 'browser', expires_at: new Date(Date.now() + 7200000).toISOString() }]; }
+          if (args.operation === 'unblock_browser') chatPlan.security.controls = [];
+          chatPlan.security.events.unshift({ id: chatPlan.securityWrites, action: args.operation, reason: args.reason, actor: 'admin', created_at: stamp(0), expires_at: null });
+        }
+        body = { ok: true, security: chatPlan.security };
+      }
       else if (args.action === 'admin-count') body = { ok: true, pending_count: 2 };
       else return route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ error: 'Esta prueba no permite modificar accesos.' }) });
     }
@@ -106,13 +153,42 @@ async function openApp(admin, mobile = false, queue = null, bonusPlan = null, ch
         }
       }
       else if (resource === 'get_deposit_queue_mode') return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ code: 'PGRST202', message: 'Function not available in legacy fixture' }) });
+      else if (resource === 'get_my_withdrawal_pause') body = { server_now: bonusPlan?.now || new Date().toISOString(), paused_until: bonusPlan?.withdrawalPauseUntil ?? null, reason: bonusPlan?.withdrawalPauseUntil ? 'Solicitud revisada por soporte.' : null, last_rejection: bonusPlan?.withdrawalPauseUntil ? { reason: 'Solicitud revisada por soporte.', created_at: bonusPlan.now } : null };
+      else if (resource === 'reject_withdrawal_with_pause') {
+        const args=req.postDataJSON();
+        assert.ok(args.p_reason.length>=5);
+        if(args.p_minutes!==null)assert.ok([15,120,360,720].includes(args.p_minutes));
+        bonusPlan.rejectionCalls=(bonusPlan.rejectionCalls??0)+1;
+        if(bonusPlan.rejectionFailNext){bonusPlan.rejectionFailNext=false;return route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({code:'P0001',message:'Error de rechazo simulado. Reintentá.'})});}
+        bonusPlan.lastRejection=args;
+        bonusPlan.rejectedIds ??= new Set(); bonusPlan.rejectedIds.add(args.p_request);
+        body={id:args.p_request,status:'rejected',minutes:args.p_minutes,paused_until:args.p_minutes?new Date(Date.now()+args.p_minutes*60000).toISOString():null,effective_paused_until:args.p_minutes?new Date(Date.now()+args.p_minutes*60000).toISOString():null,reused:false};
+      }
       else if (resource === 'create_withdrawal' && bonusPlan?.withdrawalTest) {
         const args = req.postDataJSON(); bonusPlan.submissions = (bonusPlan.submissions || 0) + 1; bonusPlan.savedWithdrawal = args;
         body = { ...requestRows[0], id: uid(32000), user_id: uid(1), kind: 'withdrawal', amount: Number(args.p_amount), status: 'pending', holder: args.p_holder, cbu: args.p_cbu, alias: args.p_alias, created_at: new Date().toISOString(), approved_at: null }; single = true;
       }
+      else if (resource === 'admin_inbox_totals' || resource === 'admin_inbox_page') {
+        const args = req.postDataJSON();
+        let rows = args.p_external ? [...external] : [...chats];
+        const pending = row => !row.completed_at && (args.p_external ? row.last_sender_type === 'visitor' : row.last_sender_id === row.user_id);
+        if (resource === 'admin_inbox_totals') body = { all: rows.length, pending: rows.filter(pending).length, completed: rows.filter(row => row.completed_at).length };
+        else {
+          if (args.p_filter === 'pending') rows = rows.filter(pending);
+          if (args.p_filter === 'waiting') rows = rows.filter(row => !row.completed_at && !pending(row));
+          if (args.p_filter === 'completed') rows = rows.filter(row => row.completed_at);
+          if (args.p_search) rows = rows.filter(row => [row.username,row.display_name,row.nickname,row.last_body].filter(Boolean).join(' ').toLowerCase().includes(args.p_search.toLowerCase()));
+          const field = args.p_external ? 'last_message_at' : 'last_created_at';
+          rows.sort((a,b) => args.p_filter === 'pending' ? a[field].localeCompare(b[field]) : b[field].localeCompare(a[field]));
+          body = { total: rows.length, rows: rows.slice(args.p_page*50,(args.p_page+1)*50) };
+        }
+      }
       else if (resource === 'is_admin') body = admin;
       else if (resource === 'get_admin_context') { body = { is_super_admin: true, username: 'admin', display_name: 'Operador prueba', avatar_path: null, permissions: {} }; single = true; }
-      else if (resource === 'get_my_session_revoked_at') body = null;
+      else if (resource === 'get_my_session_revoked_at') {
+        if (bonusPlan?.blockedAccount) return route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ code: 'PT403', message: 'ACCOUNT_BLOCKED: Tu acceso fue suspendido.' }) });
+        body = null;
+      }
       else if (resource === 'get_my_whatsapp_url') body = 'https://wa.me/595981111111';
       else if (resource === 'player_next_deposit_number') body = 4;
       else if (resource === 'special_bonus_availability' && bonusPlan?.availability) { const serverNow = new Date(await page.evaluate(() => Date.now()) + (bonusPlan.clockOffset || 0)).toISOString(); body = bonusPlan.availability.map(row => ({ ...row, server_now: serverNow })); }
@@ -135,6 +211,7 @@ async function openApp(admin, mobile = false, queue = null, bonusPlan = null, ch
           body = [...bonusPlan.offers];
         }
       }
+      else if (resource === 'admin_live_signals') body = ['deposit','withdrawal','chat','external-chat','access-requests','users','shifts','accounts','bonuses','settings','staff'].map(scope => ({ scope, version: bonusPlan?.liveVersions?.[scope] ?? 0 }));
       else if (resource === 'app_settings') body = [settings];
       else if (resource === 'user_profiles') body = [{ user_id: uid(1), username: 'jugador', display_name: 'Jugador prueba' }];
       else if (resource === 'player_casino_links') body = [{ user_id: uid(1), url: 'https://example.test/casino' }];
@@ -143,7 +220,8 @@ async function openApp(admin, mobile = false, queue = null, bonusPlan = null, ch
         const search = url.searchParams.get('or');
         if (search) body = body.filter(row => [row.username, row.display_name, row.external_user_id, row.phone].some(value => search.includes(`*${value}*`)));
       } else if (resource === 'whatsapp_principals') body = [{ slot: 1, phone: '595981111111', active: true }];
-      else if (resource === 'request_summaries' && bonusPlan?.withdrawalTest) body = [];
+      else if (resource === 'withdrawal_rejections') body = bonusPlan?.lastRejection ? [{ request_id: bonusPlan.lastRejection.p_request, reason: bonusPlan.lastRejection.p_reason, minutes: bonusPlan.lastRejection.p_minutes, paused_until: null, created_at: new Date().toISOString() }] : [];
+      else if (resource === 'request_summaries' && bonusPlan?.withdrawalTest) body = bonusPlan.approvedWithdrawal ? [bonusPlan.approvedWithdrawal] : [];
       else if (resource === 'request_summaries' && chatPlan && url.searchParams.has('user_id')) body = [...chatPlan.rows];
       else if (resource === 'request_summaries') body = bonusPlan && !admin ? [...requestRows.filter(row => row.kind !== 'deposit' || row.status !== 'pending'), ...(bonusPlan.receipt?.saved ? [bonusPlan.receipt.saved] : [])] : [...requestRows];
       else if (resource === 'chat_inbox') body = [...chats];
@@ -157,6 +235,7 @@ async function openApp(admin, mobile = false, queue = null, bonusPlan = null, ch
         const cursor = url.searchParams.get('or');
         if (cursor) { const older = cursor.match(/created_at\.lt\.([^,]+)/)?.[1]; if (older) body = body.filter(row => row.created_at < older); }
       }
+      if (resource === 'request_summaries' && admin && bonusPlan?.rejectedIds) body = body.map(row => bonusPlan.rejectedIds.has(row.id) ? { ...row, status: 'rejected' } : row);
       for (const [field, expression] of url.searchParams) {
         if (expression.startsWith('eq.')) body = body.filter(row => String(row[field]) === expression.slice(3));
         if (expression.startsWith('neq.')) body = body.filter(row => String(row[field]) !== expression.slice(4));
@@ -181,11 +260,163 @@ async function openApp(admin, mobile = false, queue = null, bonusPlan = null, ch
   page.on('pageerror', error => errors.push(error.message));
   const appUrl = admin ? (process.env.ADMIN_PREVIEW_URL || 'http://127.0.0.1:5181') : (process.env.USER_PREVIEW_URL || 'http://127.0.0.1:5180');
   await page.goto(appUrl + (bonusPlan?.entryToken ? `/#e=${bonusPlan.entryToken}` : ''));
-  try { await page.waitForSelector(loginPlan ? '.user-login' : bonusPlan?.entryExpired || bonusPlan?.entryRetry ? '.entry-access-screen' : admin ? '.admin-shell' : '.user-app', { timeout: 20000 }); }
+  try { await page.waitForSelector(loginPlan || bonusPlan?.blockedAccount ? '.user-login' : bonusPlan?.entryExpired || bonusPlan?.entryRetry ? '.entry-access-screen' : admin ? '.admin-shell' : '.user-app', { timeout: 20000 }); }
   catch (error) { console.error(JSON.stringify({ text: await page.locator('body').innerText(), errors, calls }, null, 2)); await page.screenshot({ path: '/tmp/gana777-browser-checks/failure.png', fullPage: true }); throw error; }
   return { context, page, calls, errors };
 }
 try {
+  if (process.env.REQUEST_PROFILE) {
+    const profilePlan = { offers: [], now: '2026-11-07T12:00:00Z', realtimeEnabled: process.env.REQUEST_PROFILE !== 'before' && process.env.REQUEST_PROFILE !== 'fallback' };
+    const app = await openApp(false, true, null, profilePlan);
+    await app.page.waitForTimeout(300);
+    const initial = app.calls.length;
+    if (process.env.REQUEST_PROFILE === 'hidden') await app.page.evaluate(() => { Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' }); document.dispatchEvent(new Event('visibilitychange')); });
+    const cdp = await app.context.newCDPSession(app.page);
+    await cdp.send('Performance.enable');
+    const before = await cdp.send('Performance.getMetrics');
+    for (let n = 0; n < 20; n++) { await app.page.clock.runFor(15_000); await app.page.waitForTimeout(10); }
+    const after = await cdp.send('Performance.getMetrics');
+    const delta = app.calls.slice(initial);
+    const byPath = Object.fromEntries([...new Set(delta.map(c=>c.path))].map(path=>[path,delta.filter(c=>c.path===path).length]));
+    const report = { environment: 'Local Chromium, production build; remote APIs mocked; 5 minutes of simulated visible idle time', initialRequests: initial, realtimeSubscribed: profilePlan.realtimeSubscribed ?? false, websocketConnections: profilePlan.socketConnections ?? 0, idleRequests5min: delta.length, idleByPath: byPath, beforeMetrics: before.metrics, afterMetrics: after.metrics, javascriptErrors: app.errors };
+    writeFileSync(`/tmp/gana777-browser-checks/resource-profile-${process.env.REQUEST_PROFILE}.json`, JSON.stringify(report,null,2));
+    assert.deepEqual(app.errors, []);
+    const sessionCalls = delta.filter(c => c.path.endsWith('/get_my_session_revoked_at')).length;
+    if (process.env.REQUEST_PROFILE === 'after') { assert.ok(report.realtimeSubscribed); assert.equal(sessionCalls, 1); assert.equal(report.websocketConnections, 1); }
+    if (process.env.REQUEST_PROFILE === 'fallback') assert.equal(sessionCalls, 20);
+    if (process.env.REQUEST_PROFILE === 'hidden') assert.equal(delta.length, 0);
+    console.log(JSON.stringify(report,null,2));
+    await app.context.close();
+    await browser.close();
+    process.exit(0);
+  }
+  if (!process.env.ADMIN_LIVE_ONLY) {
+    for (const minutes of [15,120,360,720]) {
+      const now='2026-11-12T12:00:00Z';
+      const plan={withdrawalTest:true,offers:[],now,withdrawalPauseUntil:new Date(Date.parse(now)+minutes*60000).toISOString()};
+      const app=await openApp(false,true,null,plan);const p=app.page;
+      await p.getByRole('button',{name:/^Retir/}).click();
+      const timer=p.getByRole('timer',{name:'Tiempo restante para solicitar otro retiro',exact:true});await timer.waitFor();
+      await p.getByRole('textbox',{name:'Titular de la cuenta',exact:true}).fill('Persona Prueba');
+      await p.getByRole('textbox',{name:'CBU / CVU',exact:true}).fill('0123456789012345678901');
+      await p.getByRole('textbox',{name:'Monto a retirar en pesos argentinos',exact:true}).fill('5000');
+      assert.equal(await p.getByRole('button',{name:'Solicitar retiro',exact:true}).isEnabled(),false);
+      await p.locator('form.request-form').evaluate(form=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
+      assert.equal(plan.submissions??0,0);
+      const reads=()=>app.calls.filter(c=>c.path.endsWith('/get_my_withdrawal_pause')).length;
+      const before=reads(),text=await timer.innerText();await p.clock.runFor(10_000);assert.notEqual(await timer.innerText(),text);assert.equal(reads(),before,'El contador no consulta por segundo');
+      if(minutes===15){
+        plan.now=new Date(Date.parse(now)+10_000).toISOString();await p.reload();await p.getByRole('button',{name:/^Retir/}).click();await p.getByRole('timer').waitFor();assert.ok((await p.getByRole('timer').innerText()).startsWith('00:14:'),'recargar no reinicia la pausa');
+        await p.getByRole('textbox',{name:'Titular de la cuenta',exact:true}).fill('Persona Prueba');await p.getByRole('textbox',{name:'CBU / CVU',exact:true}).fill('0123456789012345678901');await p.getByRole('textbox',{name:'Monto a retirar en pesos argentinos',exact:true}).fill('5000');
+        const beforeExpiry=reads();await p.clock.fastForward(15*60000);assert.equal(await p.getByRole('button',{name:'Solicitar retiro',exact:true}).isEnabled(),true);assert.equal(reads(),beforeExpiry,'vencer no requiere consultar');
+      }
+      if(minutes===120){await p.screenshot({path:'/tmp/gana777-browser-checks/withdrawal-pause-player-mobile.png'});assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}
+      assert.deepEqual(app.errors,[]);await app.context.close();
+    }
+    const now='2026-11-12T12:00:00Z';
+    const windowPlan={withdrawalTest:true,offers:[],now,withdrawalPauseUntil:new Date(Date.parse(now)+15*60000).toISOString(),approvedWithdrawal:{...requestRows[1],status:'approved',approved_at:new Date(Date.parse(now)-3600000).toISOString()}};
+    const windowApp=await openApp(false,true,null,windowPlan);await windowApp.page.getByRole('button',{name:/^Retir/}).click();await windowApp.page.getByRole('timer').waitFor();await windowApp.page.clock.fastForward(20*60000);assert.ok(await windowApp.page.getByRole('timer').count());assert.equal(await windowApp.page.getByRole('button',{name:'Solicitar retiro',exact:true}).isEnabled(),false,'las 24 horas siguen bloqueando después de vencer la pausa');await windowApp.context.close();
+    const rejectPlan={offers:[],rejectionCalls:0,rejectionFailNext:true};const rejectApp=await openApp(true,false,null,rejectPlan);const rp=rejectApp.page;
+    await rp.getByRole('navigation',{name:'Navegación principal',exact:true}).getByRole('button',{name:/^Retiros/}).click();
+    for(const duration of [15,120,360,720,null]) {
+      await rp.locator('section[aria-labelledby="withdrawals-pending-title"] .withdrawal-summary-button').first().click();
+      await rp.getByRole('button',{name:'Rechazar retiro',exact:true}).click();
+      let modal=rp.getByRole('dialog',{name:'Rechazar retiro',exact:true});await modal.waitFor();
+      if(duration===15){await rp.keyboard.press('Escape');assert.equal(await modal.count(),0);assert.ok(await rp.locator('.withdrawal-modal').isVisible());await rp.getByRole('button',{name:'Rechazar retiro',exact:true}).click();modal=rp.getByRole('dialog',{name:'Rechazar retiro',exact:true});}
+      assert.equal(await modal.getByRole('checkbox').isChecked(),false);
+      if(duration!==null){await modal.getByRole('checkbox').check();assert.equal(await modal.getByRole('radio').count(),4);await modal.locator('input[type="radio"][value="'+duration+'"]').check();}
+      const submit=modal.getByRole('button',{name:duration===null?'Rechazar solicitud':'Rechazar y aplicar pausa',exact:true});
+      const count=rejectPlan.rejectionCalls;await submit.click();await modal.getByRole('alert').waitFor();assert.equal(rejectPlan.rejectionCalls,count);
+      await modal.getByRole('textbox',{name:'Motivo del rechazo · lo verá el jugador',exact:true}).fill('Motivo de rechazo de prueba.');
+      if(duration===360){await rp.setViewportSize({width:390,height:844});assert.ok(await modal.evaluate(el=>el.scrollWidth<=el.clientWidth+1));await rp.screenshot({path:'/tmp/gana777-browser-checks/withdrawal-rejection-dialog-mobile.png'});}
+      await submit.click();
+      if(duration===15){await modal.getByRole('alert').waitFor();assert.equal(await modal.getByRole('textbox').inputValue(),'Motivo de rechazo de prueba.');assert.equal(await modal.getByRole('checkbox').isChecked(),true);await submit.click();}
+      await rp.waitForFunction(()=>!document.querySelector('dialog.withdrawal-rejection-dialog'));
+      assert.equal(rejectPlan.lastRejection.p_minutes,duration);
+      await rp.evaluate(()=>document.querySelector('button[aria-label="Cerrar detalle"]')?.click());
+    }
+    assert.deepEqual(rejectApp.errors,[]);await rejectApp.context.close();
+    records.push({app:'withdrawal-rejection-pause',checks:['four fixed durations','forced submit blocked','counter ticks without requests','reload keeps deadline','expiry without requests','existing 24h window preserved','reject without pause','failed rejection retains form','cancel keeps original review open','mobile without overflow']});
+    if(process.env.WITHDRAWAL_PAUSE_ONLY){console.log(JSON.stringify(records,null,2));await browser.close();process.exit(0);}
+  }
+  const livePlan = { offers: [], now: '2026-11-07T12:00:00Z', realtimeEnabled: true, liveVersions: {} };
+  const liveApp = await openApp(true, false, null, livePlan, { sends: [] });
+  const livePage = liveApp.page;
+  await livePage.locator('.admin-live-status.is-live').waitFor();
+  await livePage.locator('.bonus-counter-totals').waitFor();
+  await livePage.getByText('Todavía no hay cargas acreditadas en este período.', { exact: true }).waitFor();
+  await livePage.waitForTimeout(100);
+  const beforeIdle = liveApp.calls.length;
+  await livePage.clock.fastForward(300_000);
+  await livePage.waitForTimeout(100);
+  const idleRequests = liveApp.calls.length - beforeIdle;
+  assert.equal(idleRequests, 0, 'Reposo: ' + JSON.stringify(liveApp.calls.slice(beforeIdle).map(c=>c.path)));
+  await livePage.getByRole('navigation', { name: 'Navegación principal', exact: true }).getByRole('button', { name: /^Centro de atención/ }).click();
+  await livePage.locator('.regular-chat-admin-view .admin-chat-item').first().waitFor();
+  await livePage.getByRole('button', { name: 'Abrir conversación de chat143', exact: true }).click();
+  await livePage.locator('.admin-chat-thread .message').first().waitFor();
+  await livePage.waitForTimeout(100);
+  const draft = livePage.locator('#admin-chat-message');
+  await draft.fill('Borrador que debe conservarse');
+  const originalOther = { ...chats[142] }, originalSelected = { ...chats[143] };
+  chats[142].last_message_id = uid(990142); chats[142].last_body = 'Nuevo mensaje en otra conversación'; chats[142].last_created_at = stamp(300);
+  let mark = liveApp.calls.length;
+  for (let version=1; version<=100; version++) livePlan.emitAdminChange('chat', version);
+  await livePage.clock.runFor(1000); await livePage.waitForTimeout(150);
+  const burst = liveApp.calls.slice(mark);
+  assert.equal(burst.filter(c=>c.path.endsWith('/admin_inbox_page')).length,1);
+  assert.equal(burst.filter(c=>c.path.endsWith('/admin_inbox_totals')).length,1);
+  assert.equal(burst.filter(c=>c.path.endsWith('/unified_chat_messages')).length,0,'Un mensaje de otra conversación no recarga el historial abierto');
+  assert.equal(burst.filter(c=>c.path.endsWith('/get_admin_context')).length,0);
+  assert.equal(await draft.inputValue(),'Borrador que debe conservarse');
+  chats[143].last_message_id = uid(990143); chats[143].last_created_at = stamp(301);
+  mark = liveApp.calls.length; livePlan.emitAdminChange('chat',101);
+  await livePage.clock.runFor(1000); await livePage.waitForTimeout(150);
+  assert.equal(liveApp.calls.slice(mark).filter(c=>c.path.endsWith('/unified_chat_messages')).length,1);
+  assert.equal(await draft.inputValue(),'Borrador que debe conservarse');
+  mark = liveApp.calls.length; livePlan.emitAdminChange('chat',101);
+  await livePage.clock.runFor(1000); await livePage.waitForTimeout(100);
+  assert.equal(liveApp.calls.length-mark,0,'Una versión repetida no genera consultas');
+  await livePage.evaluate(()=> { window.panelTestHidden = true; Object.defineProperty(document,'visibilityState',{ configurable:true,get:()=>window.panelTestHidden?'hidden':'visible' }); document.dispatchEvent(new Event('visibilitychange')); });
+  mark=liveApp.calls.length;
+  for (let version=102;version<=201;version++) livePlan.emitAdminChange('chat',version);
+  await livePage.clock.runFor(1000); await livePage.waitForTimeout(100);
+  assert.equal(liveApp.calls.length-mark,0,'Los cambios ocultos quedan pendientes sin consultar');
+  await livePage.evaluate(()=> { window.panelTestHidden = false; document.dispatchEvent(new Event('visibilitychange')); });
+  await livePage.clock.runFor(1000); await livePage.waitForTimeout(150);
+  const resume=liveApp.calls.slice(mark);
+  assert.equal(resume.filter(c=>c.path.endsWith('/admin_live_signals')).length,1);
+  assert.equal(resume.filter(c=>c.path.endsWith('/admin_inbox_page')).length,1);
+  assert.equal(resume.filter(c=>c.path.endsWith('/admin_inbox_totals')).length,1);
+  mark=liveApp.calls.length;livePlan.liveVersions.chat=300;livePlan.breakConnection();
+  for(let attempt=0;attempt<5;attempt++){await livePage.clock.runFor(1500);await livePage.waitForTimeout(100);if(livePlan.socketConnections>1)break;}
+  await livePage.locator('.admin-live-status.is-live').waitFor();
+  await livePage.clock.runFor(1000);await livePage.waitForTimeout(150);
+  const reconnect=liveApp.calls.slice(mark);
+  assert.ok(reconnect.some(c=>c.path.endsWith('/admin_live_signals')),'Reconectar verifica las versiones perdidas');
+  assert.equal(reconnect.filter(c=>c.path.endsWith('/admin_inbox_page')).length,1);
+  assert.equal(await draft.inputValue(),'Borrador que debe conservarse');
+  assert.deepEqual(liveApp.errors,[]);
+  const liveReport={idleMinutesSimulated:5,idleHttpRequests:idleRequests,eventsInBurst:100,burstPageRequests:1,burstCounterRequests:1,unrelatedOpenThreadReloads:0,duplicateVersionRequests:0,hiddenHttpRequests:0,resumeVersionChecks:1,reconnectPageRequests:1,draftPreserved:true,environment:'Local production build; HTTP and WebSocket mocks, not a production load test'};
+  writeFileSync('/tmp/gana777-browser-checks/admin-live-resource-report.json',JSON.stringify(liveReport,null,2));
+  records.push({app:'admin-live',...liveReport});
+  await livePage.screenshot({path:'/tmp/gana777-browser-checks/admin-live-desktop.png'});
+  Object.assign(chats[142],originalOther);Object.assign(chats[143],originalSelected);await liveApp.context.close();
+  if(process.env.ADMIN_LIVE_ONLY){console.log(JSON.stringify(liveReport,null,2));await browser.close();process.exit(0);}
+  const blockPlan = { blockedAccount: false, offers: [], now: '2026-11-07T12:00:00Z' };
+  const blockedAccountApp = await openApp(false, true, null, blockPlan);
+  blockPlan.blockedAccount = true;
+  await blockedAccountApp.page.clock.fastForward(15_001);
+  await blockedAccountApp.page.locator('.user-login').waitFor();
+  await blockedAccountApp.context.close();
+  const realtimePlan = { offers: [], now: '2026-11-07T12:00:00Z', realtimeEnabled: true };
+  const realtimeApp = await openApp(false, true, null, realtimePlan);
+  await realtimeApp.page.waitForTimeout(100);
+  assert.ok(realtimePlan.realtimeSubscribed, 'Debe suscribir el aviso real de sesión');
+  realtimePlan.emitSessionRevocation();
+  await realtimeApp.page.locator('.user-login').waitFor();
+  await realtimeApp.context.close();
+  records.push({ app: 'account-block-session', checks: ['active player session closes on blocked account check', 'Realtime revocation closes session without waiting for polling'] });
   const loginPlan = { attempts: 0, rejectNext: true };
   const loginApp = await openApp(false, true, null, null, null, loginPlan);
   const loginPage = loginApp.page;
@@ -470,6 +701,46 @@ try {
   assert.equal(await ap.locator('.access-admin-thread').isVisible(), true);
   assert.equal(await ap.locator('.access-admin-create').getByRole('textbox', { name: 'Usuario para el acceso' }).inputValue(), 'solicitante0');
   assert.ok(await ap.getByRole('button', { name: 'Crear usuario y enviar acceso', exact: true }).isVisible());
+  await ap.getByRole('button', { name: 'Seguridad y dispositivos' }).click();
+  const securityDialog = ap.getByRole('dialog', { name: 'Seguridad de @solicitante0' });
+  await securityDialog.getByText('@familiar', { exact: true }).waitFor();
+  await securityDialog.getByRole('button', { name: 'Pausar nuevas solicitudes', exact: true }).click();
+  await securityDialog.getByRole('button', { name: 'Confirmar acción', exact: true }).click();
+  await securityDialog.getByRole('alert').filter({ hasText: 'al menos 5 caracteres' }).waitFor();
+  await securityDialog.getByLabel('Duración', { exact: true }).selectOption('120');
+  await securityDialog.getByLabel('Motivo obligatorio').fill('Revisión de solicitudes repetidas');
+  await securityDialog.getByRole('button', { name: 'Confirmar acción', exact: true }).click();
+  await securityDialog.getByText('Navegador en pausa', { exact: true }).waitFor();
+  for (const width of [1440, 390, 320]) {
+    await ap.setViewportSize({ width, height: 820 });
+    assert.ok(await securityDialog.evaluate(el => el.scrollWidth <= el.clientWidth + 1));
+    await ap.screenshot({ path: `/tmp/gana777-browser-checks/access-security-${width}.png` });
+  }
+  await securityDialog.getByRole('button', { name: 'Retirar este control', exact: true }).click();
+  await securityDialog.getByLabel('Motivo obligatorio').fill('Caso revisado por el operador');
+  await securityDialog.getByRole('button', { name: 'Confirmar acción', exact: true }).click();
+  await securityDialog.getByText('Sin pausas ni bloqueos activos.', { exact: true }).waitFor();
+  await securityDialog.getByRole('button', { name: 'Cerrar ficha de seguridad' }).click();
+  await ap.getByRole('button', { name: 'Volver a solicitudes', exact: true }).click();
+  await ap.getByRole('textbox', { name: 'Buscar solicitud', exact: true }).fill('solicitante1');
+  await ap.getByRole('button', { name: 'Abrir solicitud de solicitante1', exact: true }).click();
+  await ap.getByRole('button', { name: 'Seguridad y dispositivos' }).click();
+  const accountDialog = ap.getByRole('dialog', { name: 'Seguridad de @solicitante1' });
+  await accountDialog.getByText('Sin bloqueo de cuenta', { exact: true }).waitFor();
+  await accountDialog.getByRole('button', { name: 'Bloquear usuario y cerrar sesiones', exact: true }).click();
+  await accountDialog.getByRole('textbox', { name: 'Motivo obligatorio', exact: true }).fill('Bloqueo manual de cuenta repetida');
+  await accountDialog.getByRole('button', { name: 'Confirmar cambio de cuenta', exact: true }).click();
+  await accountDialog.getByRole('button', { name: 'Desbloquear usuario', exact: true }).waitFor();
+  await accountDialog.getByRole('button', { name: 'Desbloquear usuario', exact: true }).click();
+  await accountDialog.getByRole('textbox', { name: 'Motivo obligatorio', exact: true }).fill('Caso revisado y autorizado');
+  await accountDialog.getByRole('button', { name: 'Confirmar cambio de cuenta', exact: true }).click();
+  await accountDialog.getByText('Sin bloqueo de cuenta', { exact: true }).waitFor();
+  await accountDialog.getByRole('button', { name: 'Cerrar ficha de seguridad' }).click();
+  await ap.getByRole('button', { name: 'Volver a solicitudes', exact: true }).click();
+  await ap.getByRole('textbox', { name: 'Buscar solicitud', exact: true }).fill('solicitante0');
+  await ap.getByRole('button', { name: 'Abrir solicitud de solicitante0', exact: true }).click();
+
+
   for (const width of [1440, 955, 390, 320]) {
     await ap.setViewportSize({ width, height: 820 }); await ap.waitForTimeout(100);
     assert.ok(await ap.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
@@ -718,7 +989,7 @@ try {
   await bonusTimer.waitFor();
   assert.doesNotMatch(await cp.locator('.player-bonus-card').innerText(), /hora de Paraguay|14:00[–-]17:00/);
   assert.equal(await cp.getByRole('button', { name: 'Obtener', exact: true }).count(), 0);
-  const databaseCalls = () => countdownApp.calls.filter(call => call.path.includes('/rest/')).length;
+  const databaseCalls = () => countdownApp.calls.filter(call => call.path.includes('/rest/') && !call.path.endsWith('/get_my_session_revoked_at')).length;
   const beforeCountdown = databaseCalls();
   const firstCountdown = await bonusTimer.innerText();
   await cp.clock.fastForward(1000);
@@ -739,11 +1010,11 @@ try {
   const op = offsetApp.page;
   await op.getByRole('button', { name: /Bonos disponibles/ }).click();
   await op.getByRole('button', { name: 'Obtener', exact: true }).waitFor();
-  const beforeOffset = offsetApp.calls.filter(call => call.path.includes('/rest/')).length;
+  const beforeOffset = offsetApp.calls.filter(call => call.path.includes('/rest/') && !call.path.endsWith('/get_my_session_revoked_at')).length;
   await op.clock.fastForward(15_000);
   await op.getByRole('timer', { name: 'Tiempo hasta que el bono esté disponible', exact: true }).waitFor();
   assert.equal(await op.getByRole('button', { name: 'Obtener', exact: true }).count(), 0, 'El cierre usa también la corrección del reloj del servidor');
-  assert.equal(offsetApp.calls.filter(call => call.path.includes('/rest/')).length, beforeOffset);
+  assert.equal(offsetApp.calls.filter(call => call.path.includes('/rest/') && !call.path.endsWith('/get_my_session_revoked_at')).length, beforeOffset);
   assert.deepEqual(offsetApp.errors, []);
   await offsetApp.context.close();
   records.push({ app: 'bonus-server-clock', checks: ['schedule boundary with server clock offset', 'no query at corrected boundary'] });

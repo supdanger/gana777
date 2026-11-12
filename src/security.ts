@@ -38,11 +38,16 @@ const publicDatabaseMessages = new Set([
   'Un teléfono elegido ya está en otro SAC.',
   'Elegí hasta 20 teléfonos.',
   'El retiro ya no está pendiente.',
+  'Tenés una pausa activa para solicitar retiros. Esperá a que termine la cuenta regresiva.',
+  'Este retiro ya tiene pagos realizados y no se puede rechazar.',
+  'Ingresá un motivo de 5 a 240 caracteres.',
+  'Elegí 15 minutos, 2, 6 o 12 horas.',
+  'Retiro no encontrado.',
   'Este pago ya fue confirmado.',
 ]);
 export function publicError(error: unknown): string {
   if (error instanceof InputError) return error.message;
   if (error && typeof error === 'object' && 'code' in error && 'message' in error
-    && error.code === 'P0001' && typeof error.message === 'string' && publicDatabaseMessages.has(error.message)) return error.message;
+    && (error.code === 'P0001' || error.code === 'PT423') && typeof error.message === 'string' && publicDatabaseMessages.has(error.message)) return error.message;
   return 'No se pudo completar la operación. Verificá los datos e intentá nuevamente.';
 }
