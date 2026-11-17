@@ -1,6 +1,5 @@
 import { useAdminRefreshVersion } from './admin-refresh';
 import { useEffect, useState, type FormEvent } from 'react';
-import { Clock3 } from 'lucide-react';
 import { assertFormFields, InputError, parseAlias, parseBank, parseCbu, parseHolder } from '../supabase/functions/_shared/validation';
 import { supabase, type Bank } from './lib';
 import { groupAccountsByPhone, parsePhoneNumber } from './sac';
@@ -8,8 +7,9 @@ import { shifts, shiftLabel, type ShiftKey } from './shifts';
 import { bankThemeRegistry, type BankThemeKey } from './bank-themes';
 import { BankTransferCard } from './bank-transfer-card';
 
-type Account = Omit<Bank, 'assignment_id'> & { theme_key: BankThemeKey; active: boolean; shift_key: ShiftKey; usage_count: number; phone_number: number | null };
-const accountColumns = 'id,bank,holder,cbu,alias,theme_key,active,shift_key,usage_count,phone_number';
+type Account = Omit<Bank, 'assignment_id'> & { theme_key: BankThemeKey; active: boolean; withdrawal_active: boolean; shift_key: ShiftKey; usage_count: number; phone_number: number | null };
+const accountColumns = 'id,bank,holder,cbu,alias,theme_key,active,withdrawal_active,shift_key,usage_count,phone_number';
+const legacyAccountColumns = 'id,bank,holder,cbu,alias,theme_key,active,shift_key,usage_count,phone_number';
 const previewNotice = 'La vista previa no guarda las cuentas. Entrá como administrador para realizar cambios.';
 
 function attachThemeAssets(accounts: Record<string, unknown>[], themes: { key: string; background_path: string | null; logo_path: string | null }[]): Account[] {
@@ -17,7 +17,8 @@ function attachThemeAssets(accounts: Record<string, unknown>[], themes: { key: s
   return accounts.map(row => {
     const theme = byKey.get(String(row.theme_key));
     const phone = row.phone_number == null || row.phone_number === '' ? null : Number(row.phone_number);
-    return { ...row, phone_number: Number.isInteger(phone) ? phone : null, theme_background_path: theme?.background_path ?? null, theme_logo_path: theme?.logo_path ?? null, usage_count: Number(row.usage_count) || 0 } as Account;
+    const active = row.active === true;
+    return { ...row, phone_number: Number.isInteger(phone) ? phone : null, theme_background_path: theme?.background_path ?? null, theme_logo_path: theme?.logo_path ?? null, usage_count: Number(row.usage_count) || 0, active, withdrawal_active: row.withdrawal_active === undefined ? active : row.withdrawal_active === true } as Account;
   });
 }
 
@@ -34,6 +35,7 @@ export function AccountAdmin({ demo, busy, action }: { demo: boolean; busy: bool
   const [selectedShift, setSelectedShift] = useState<ShiftKey>('morning');
   const [loading, setLoading] = useState(!demo && !!supabase);
   const [loadError, setLoadError] = useState('');
+  const [withdrawalReady, setWithdrawalReady] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const editing = accounts.find(item => item.id === editingId) ?? null;
   const visibleAccounts = accounts.filter(account => account.shift_key === selectedShift);
@@ -45,11 +47,23 @@ export function AccountAdmin({ demo, busy, action }: { demo: boolean; busy: bool
     void Promise.all([
       db.from('bank_accounts').select(accountColumns).order('usage_count').order('bank'),
       db.from('bank_themes').select('key,background_path,logo_path'),
-    ]).then(([{ data, error }, { data: themes }]) => {
+    ]).then(async ([accountsResult, themesResult]) => {
       if (!alive) return;
+      let rows = (accountsResult.data ?? null) as Record<string, unknown>[] | null;
+      let error = accountsResult.error;
+      let ready = true;
+      if (error && /withdrawal_active/i.test(error.message ?? '')) {
+        const legacy = await db.from('bank_accounts').select(legacyAccountColumns).order('usage_count').order('bank');
+        if (!alive) return;
+        rows = (legacy.data ?? null) as Record<string, unknown>[] | null;
+        error = legacy.error;
+        ready = false;
+      }
       setLoading(false);
+      setWithdrawalReady(ready);
       if (error) { setLoadError('No pudimos cargar las cuentas. Aplicá primero la migración de turnos.'); return; }
-      setAccounts(attachThemeAssets((data ?? []) as Record<string, unknown>[], (themes ?? []) as { key: string; background_path: string | null; logo_path: string | null }[]));
+      setLoadError('');
+      setAccounts(attachThemeAssets(rows ?? [], (themesResult.data ?? []) as { key: string; background_path: string | null; logo_path: string | null }[]));
     });
     return () => { alive = false; };
   }, [demo, adminRefresh]);
@@ -109,12 +123,12 @@ export function AccountAdmin({ demo, busy, action }: { demo: boolean; busy: bool
     });
   }
 
-  async function toggleAccount(account: Account) {
+  async function toggleAccount(account: Account, field: 'active' | 'withdrawal_active') {
     await action(async () => {
       if (demo || !supabase) throw new InputError(previewNotice);
-      const { data, error } = await supabase.from('bank_accounts').update({ active: !account.active }).eq('id', account.id).select('id,active').single();
+      const { data, error } = await supabase.from('bank_accounts').update({ [field]: !account[field] }).eq('id', account.id).select('id,active,withdrawal_active').single();
       if (error || !data) throw persistError(error ?? { message: 'No se pudo guardar la cuenta.' });
-      setAccounts(old => old.map(item => item.id === account.id ? { ...item, active: data.active } : item));
+      setAccounts(old => old.map(item => item.id === account.id ? { ...item, active: data.active, withdrawal_active: data.withdrawal_active } : item));
     });
   }
 
@@ -131,7 +145,7 @@ export function AccountAdmin({ demo, busy, action }: { demo: boolean; busy: bool
   }
 
   return <section className="account-admin" aria-labelledby="account-title">
-    <div className="account-heading"><div><h1 id="account-title">Cuentas</h1><p>Organizá las cuentas de cada turno y el teléfono donde está cada una.</p></div><strong>{accounts.length} cuentas</strong></div>
+    <div className="account-heading"><div><h1 id="account-title">Cuentas</h1><p>Organizá las cuentas de cada turno y el teléfono donde está cada una.{withdrawalReady ? ' En la misma tarjeta podés habilitarla para usuarios y para retiros.' : ''}</p></div><strong>{accounts.length} cuentas</strong></div>
     <div className="shift-tabs" role="tablist" aria-label="Turno de las cuentas">
       {shifts.map(shift => {
         const count = accounts.filter(account => account.shift_key === shift.key).length;
@@ -159,17 +173,27 @@ export function AccountAdmin({ demo, busy, action }: { demo: boolean; busy: bool
     {loading ? <p className="empty">Cargando cuentas…</p> : loadError ? <p className="empty">{loadError}</p> : !visibleAccounts.length ? <p className="empty">Todavía no hay cuentas en {shiftLabel[selectedShift].toLowerCase()}.</p> : groupAccountsByPhone(visibleAccounts).map(group => <section className={`account-phone-group${group.phone === null ? ' unassigned' : ''}`} key={group.phone ?? 'none'} aria-label={group.phone === null ? 'Cuentas sin teléfono' : `Teléfono ${group.phone}`}>
       <header><h2>{group.phone === null ? 'Sin teléfono' : `Teléfono ${group.phone}`}</h2><p>{group.phone === null ? 'Asignales un número para identificarlas más fácilmente.' : `${group.items.length} ${group.items.length === 1 ? 'cuenta' : 'cuentas'}`}</p></header>
       <div className="account-offers">
-      {group.items.map(account => <article className={`account-offer${account.active ? '' : ' inactive'}${editing?.id === account.id ? ' editing' : ''}`} key={account.id}>
+      {group.items.map(account => {
+        const pausedLook = withdrawalReady ? !account.active && !account.withdrawal_active : !account.active;
+        const userLabel = withdrawalReady ? (account.active ? 'Pausar usuarios' : 'Activar usuarios') : (account.active ? 'Pausar' : 'Habilitar');
+        return <article className={`account-offer${pausedLook ? ' inactive' : ''}${editing?.id === account.id ? ' editing' : ''}`} key={account.id}>
         <div className="withdrawal-source-card">
           <BankTransferCard bank={account} compact />
-          <div className={`withdrawal-source-state${account.active ? '' : ' is-cooling'}`}>{account.active ? <Clock3 size={15} /> : null}<span>{account.active ? 'Disponible' : 'Pausada'}</span></div>
+          <div className="account-availability">
+            {withdrawalReady ? <>
+              <div className={`withdrawal-source-state${account.active ? '' : ' is-cooling'}`}><span>{account.active ? 'Usuarios' : 'Sin usuarios'}</span></div>
+              <div className={`withdrawal-source-state${account.withdrawal_active ? '' : ' is-cooling'}`}><span>{account.withdrawal_active ? 'Retiros' : 'Sin retiros'}</span></div>
+            </> : <div className={`withdrawal-source-state${account.active ? '' : ' is-cooling'}`}><span>{account.active ? 'Disponible' : 'Pausada'}</span></div>}
+          </div>
         </div>
         <div className="account-offer-actions">
+          <button type="button" className={withdrawalReady && account.active ? 'is-on' : ''} aria-pressed={account.active} disabled={busy} onClick={() => void toggleAccount(account, 'active')}>{userLabel}</button>
+          {withdrawalReady && <button type="button" className={account.withdrawal_active ? 'is-on' : ''} aria-pressed={account.withdrawal_active} disabled={busy} onClick={() => void toggleAccount(account, 'withdrawal_active')}>{account.withdrawal_active ? 'Pausar retiros' : 'Activar retiros'}</button>}
           <button type="button" disabled={busy} onClick={() => { setEditingId(account.id); document.getElementById('account-title')?.scrollIntoView({ block: 'start' }); }}>Editar</button>
-          <button type="button" disabled={busy} onClick={() => void toggleAccount(account)}>{account.active ? 'Pausar' : 'Habilitar'}</button>
           <button type="button" disabled={busy} onClick={() => void removeAccount(account)}>Eliminar</button>
         </div>
-      </article>)}
+      </article>;
+      })}
       </div>
     </section>)}
   </section>;

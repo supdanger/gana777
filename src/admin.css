@@ -1521,9 +1521,12 @@ a.chat-entry-link:hover { filter: brightness(1.08); }
 .account-offer.editing { outline: 2px solid var(--panel-accent-border); outline-offset: 3px; border-radius: 12px; }
 .account-offer.inactive { opacity: 1; }
 .account-offer.inactive .bank-theme-art { filter: saturate(.45) brightness(.72); }
-.admin-content .account-offer-actions { display: flex; justify-content: stretch; gap: 6px; }
-.admin-content .account-offer-actions button { flex: 1; min-height: 32px; padding: 6px 8px; border-color: var(--panel-border); border-radius: 8px; background: var(--panel-surface-inset); font-size: 11px; }
+.account-offer .account-availability { position: absolute; z-index: 1; bottom: 12px; left: 12px; display: flex; flex-wrap: wrap; gap: 6px; max-width: calc(100% - 24px); }
+.account-offer .account-availability .withdrawal-source-state { position: static; max-width: none; }
+.admin-content .account-offer-actions { display: flex; flex-wrap: wrap; justify-content: stretch; gap: 6px; }
+.admin-content .account-offer-actions button { flex: 1 1 calc(50% - 6px); min-height: 32px; padding: 6px 8px; border-color: var(--panel-border); border-radius: 8px; background: var(--panel-surface-inset); font-size: 11px; }
 .admin-content .account-offer-actions button:hover { border-color: var(--panel-accent-border); background: var(--panel-surface); }
+.admin-content .account-offer-actions button.is-on { border-color: var(--panel-success-border); background: var(--panel-success-bg); color: var(--panel-success); }
 .access-admin { display: grid; gap: 14px; min-width: 0; }
 .access-admin-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .access-admin-heading h1 { margin: 0; background: linear-gradient(145deg, var(--panel-accent-strong), var(--panel-accent-strong) 45%, var(--panel-accent-strong)); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
